@@ -19,6 +19,45 @@ Item {
     property string newSleepTime: "23:30"
     property int clockClickCount: 0
 
+    // ---------- v0.15 网址屏蔽 ----------
+    property string siteInput: ""
+    property bool siteBlockLocal: false
+    property var localBlockedSites: []
+    property var demoBlockedSites: null
+    readonly property bool siteBlockEnabledValue: (typeof App !== "undefined" && App.siteBlockEnabled !== undefined)
+                                                    ? App.siteBlockEnabled === true : page.siteBlockLocal
+    readonly property var blockedSitesList: page.demoBlockedSites !== null ? page.demoBlockedSites
+                                            : ((typeof App !== "undefined" && App.blockedSites !== undefined
+                                                && App.blockedSites !== null) ? App.blockedSites : page.localBlockedSites)
+    function toggleSiteBlock() {
+        if (typeof App !== "undefined" && typeof App.setSiteBlockEnabled === "function")
+            App.setSiteBlockEnabled(!page.siteBlockEnabledValue)
+        else
+            page.siteBlockLocal = !page.siteBlockLocal
+    }
+    function addBlockedSite() {
+        var domain = page.siteInput.trim()
+        if (domain.length === 0) return
+        if (typeof App !== "undefined" && typeof App.addBlockedSite === "function") {
+            App.addBlockedSite(domain)
+        } else {
+            var list = page.localBlockedSites.slice()
+            if (list.indexOf(domain) < 0) list.push(domain)
+            page.localBlockedSites = list
+        }
+        page.siteInput = ""
+    }
+    function removeBlockedSite(domain) {
+        if (typeof App !== "undefined" && typeof App.removeBlockedSite === "function") {
+            App.removeBlockedSite(String(domain))
+        } else {
+            var list = page.localBlockedSites.slice()
+            var index = list.indexOf(String(domain))
+            if (index >= 0) list.splice(index, 1)
+            page.localBlockedSites = list
+        }
+    }
+
     // ---------- v0.14 数据与备份 ----------
     property bool backupBusyLocal: false
     property bool backupConfirmOpen: false
@@ -894,6 +933,167 @@ Item {
                 }
             }
 
+            // ---------- v0.15 网址屏蔽 ----------
+            GlassCard {
+                width: parent.width
+                implicitHeight: siteBlockColumn.implicitHeight + 36
+                height: implicitHeight
+                radius: 20
+                interactive: false
+                glassSource: page.glassSource
+
+                Column {
+                    id: siteBlockColumn
+                    x: 20
+                    y: 18
+                    width: parent.width - 40
+                    spacing: 10
+
+                    Row {
+                        width: parent.width
+                        spacing: 9
+                        Glyph {
+                            anchors.verticalCenter: parent.verticalCenter
+                            kind: "lock"
+                            size: 15
+                            color: AppTheme.accent
+                        }
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: qsTr("网址屏蔽")
+                            color: AppTheme.textPrimary
+                            font.pixelSize: AppTheme.fs(15)
+                            font.weight: Font.DemiBold
+                            font.family: AppTheme.fontFamily
+                        }
+                        Item { width: parent.width - 300; height: 1 }
+                        GlassSwitch {
+                            anchors.verticalCenter: parent.verticalCenter
+                            checked: page.siteBlockEnabledValue
+                            onClicked: page.toggleSiteBlock()
+                        }
+                    }
+
+                    Text {
+                        width: parent.width
+                        text: qsTr("专注期间通过 hosts 屏蔽这些网站，需要管理员权限；开关与列表在锁定开始时生效。")
+                        color: AppTheme.textTertiary
+                        font.pixelSize: AppTheme.fs(10)
+                        font.family: AppTheme.fontFamily
+                        wrapMode: Text.WordWrap
+                    }
+
+                    Row {
+                        width: parent.width
+                        spacing: 8
+                        TextInput {
+                            id: siteInput
+                            width: 300
+                            height: 32
+                            verticalAlignment: TextInput.AlignVCenter
+                            color: AppTheme.textPrimary
+                            selectionColor: AppTheme.accentSoft
+                            selectedTextColor: "#FFFFFF"
+                            font.pixelSize: AppTheme.fs(12)
+                            font.family: AppTheme.fontFamily
+                            text: page.siteInput
+                            onTextChanged: page.siteInput = text
+                            onAccepted: page.addBlockedSite()
+                            Rectangle {
+                                anchors.fill: parent
+                                z: -1
+                                radius: 9
+                                color: AppTheme.cardBgAlt
+                                border.width: 1
+                                border.color: siteInput.activeFocus ? AppTheme.accent : AppTheme.cardBorder
+                            }
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                anchors.left: parent.left
+                                anchors.leftMargin: 10
+                                visible: siteInput.text.length === 0
+                                text: qsTr("例如 bilibili.com")
+                                color: AppTheme.textTertiary
+                                font.pixelSize: AppTheme.fs(11)
+                                font.family: AppTheme.fontFamily
+                            }
+                        }
+                        GlassButton {
+                            text: qsTr("添加")
+                            tone: "ghost"
+                            fontSize: AppTheme.fs(12)
+                            padH: 16
+                            minHeight: 32
+                            onClicked: page.addBlockedSite()
+                        }
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: qsTr("已屏蔽 %1 个域名").arg(page.blockedSitesList.length)
+                            color: AppTheme.textTertiary
+                            font.pixelSize: AppTheme.fs(10)
+                            font.family: AppTheme.fontFamily
+                        }
+                    }
+
+                    Flow {
+                        width: parent.width
+                        spacing: 8
+                        Repeater {
+                            model: page.blockedSitesList
+                            delegate: Item {
+                                width: blockedLabel.implicitWidth + 34
+                                height: 28
+                                Rectangle {
+                                    anchors.fill: parent
+                                    radius: 14
+                                    color: AppTheme.cardBgAlt
+                                    border.width: 1
+                                    border.color: AppTheme.cardBorder
+                                }
+                                Text {
+                                    id: blockedLabel
+                                    anchors.left: parent.left
+                                    anchors.leftMargin: 11
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: String(modelData)
+                                    color: AppTheme.textSecondary
+                                    font.pixelSize: AppTheme.fs(10)
+                                    font.family: AppTheme.fontFamily
+                                }
+                                Item {
+                                    anchors.right: parent.right
+                                    anchors.rightMargin: 6
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: 16
+                                    height: 16
+                                    Glyph {
+                                        anchors.centerIn: parent
+                                        kind: "close"
+                                        size: 8
+                                        color: removeSiteArea.containsMouse ? AppTheme.danger : AppTheme.textTertiary
+                                    }
+                                    MouseArea {
+                                        id: removeSiteArea
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: page.removeBlockedSite(modelData)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Text {
+                        visible: page.blockedSitesList.length === 0
+                        text: qsTr("还没有屏蔽网站，添加一个域名即可。")
+                        color: AppTheme.textTertiary
+                        font.pixelSize: AppTheme.fs(10)
+                        font.family: AppTheme.fontFamily
+                    }
+                }
+            }
+
             // ---------- v0.14 数据与备份 ----------
             GlassCard {
                 width: parent.width
@@ -1122,7 +1322,7 @@ Item {
                     }
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
-                        text: qsTr("睡眠模式已移至清空间页顶部「还清 · 睡眠模式」")
+                        text: qsTr("睡眠模式已并入清空间的「还清」档位，可在那里设置作息。")
                         color: AppTheme.textSecondary
                         font.pixelSize: AppTheme.fs(12)
                         font.family: AppTheme.fontFamily

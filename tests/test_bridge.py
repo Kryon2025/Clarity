@@ -69,7 +69,9 @@ class BridgeTest(unittest.TestCase):
         self.assertEqual(bridge.space["mode"], "medium")
         self.assertEqual(bridge.spaceMinutes, 90)
         self.assertEqual(len(bridge.spacesLight), 2)
-        self.assertEqual([m["label"] for m in bridge.modes], ["浅清", "覆清", "深清"])
+        self.assertEqual(
+            [m["label"] for m in bridge.modes], ["浅清", "覆清", "深清", "还清"]
+        )
 
     def test_add_space_for(self) -> None:
         bridge = self.bridge

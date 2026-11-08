@@ -57,6 +57,7 @@ from ..services import ai as ai_service
 from ..services import app_usage
 from ..services import backup as backup_service
 from ..services import click_counter
+from ..services import site_blocker
 from ..services import sleep_mode, system_control, wallpaper
 from ..services.autostart import AutostartManager
 from ..services.lock_hardening import LockHardening
@@ -218,6 +219,9 @@ class AppBridge(QObject):
         self._last_session_clicks = 0
         self._click_counter = click_counter.ClickCounter(self)
         self._click_counter.changed.connect(self._on_click_count_changed)
+        # v0.15 网站屏蔽 / 结束卡片背景
+        self._site_blocker = site_blocker.HostsSiteBlocker()
+        self._site_block_applied = False
         self._volume = -1
         self._sleep_lock_active = False
         self._clock_clicks: deque[float] = deque()
@@ -760,6 +764,19 @@ class AppBridge(QObject):
     def sleepSchedules(self) -> list[str]:
         return self._sleep.schedule_times()
 
+    @Property(str, notify=sleepChanged)
+    def sleepModeSummary(self) -> str:
+        """第 4 档「还清」卡片摘要：作息时间 · 本月剩余解锁次数。"""
+        times = self._sleep.schedule_times()
+        if not times:
+            return QCoreApplication.translate("ShenQing", "未设置作息时间")
+        return "{} · {}".format(
+            " / ".join(times),
+            QCoreApplication.translate("ShenQing", "本月剩余 {0} 次").format(
+                self._sleep.unlock_chances
+            ),
+        )
+
     @Property(list, notify=sleepChanged)
     def sleepScheduleItems(self) -> list[dict]:
         return self._sleep.schedules()
@@ -883,6 +900,8 @@ class AppBridge(QObject):
                 changed = True
             if changed:
                 self.wallpaperChanged.emit()
+                # cardBackgroundUrl 默认回退必应壁纸，URL 变化也要通知设置绑定
+                self.settingsChanged.emit()
         except Exception as exc:  # noqa: BLE001
             logger.info("壁纸/头像加载失败：%s", exc)
 
@@ -1781,6 +1800,10 @@ class AppBridge(QObject):
     # ================= 服务退出清理 =================
     def _shutdown_services(self) -> None:
         try:
+            self._restore_site_block(force=True)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("退出恢复网站屏蔽失败：%s", exc)
+        try:
             self._click_counter.stop()
         except Exception as exc:  # noqa: BLE001
             logger.warning("停止点击统计失败：%s", exc)
@@ -2054,6 +2077,7 @@ class AppBridge(QObject):
         self.lockedChanged.emit()
         if persist_state and not trial:
             self._write_session_state(end_at_ms=end_at_ms)
+        self._apply_site_block()
         if recovered:
             self.toast.emit(
                 QCoreApplication.translate("ShenQing", "检测到未完成的专注，已恢复锁定")
@@ -2066,6 +2090,130 @@ class AppBridge(QObject):
         payload["level"] = level
         payload["trial"] = bool(trial)
         self._dispatch("session_start", payload)
+
+    # ================= v0.15 网站屏蔽（hosts） =================
+    @Property(list, notify=settingsChanged)
+    def blockedSites(self) -> list[str]:
+        values = self._settings.get("blocked_sites", [])
+        return site_blocker.normalize_domains(values if isinstance(values, list) else [])
+
+    @Slot(str, result=bool)
+    def addBlockedSite(self, value: str) -> bool:
+        domain = site_blocker.normalize_domain(value)
+        if not domain:
+            self.toast.emit(QCoreApplication.translate("ShenQing", "域名格式不正确"))
+            return False
+        sites = self.blockedSites
+        if domain in sites:
+            self.toast.emit(QCoreApplication.translate("ShenQing", "该网站已在屏蔽列表"))
+            return False
+        sites.append(domain)
+        self._settings.set("blocked_sites", sites)
+        self.settingsChanged.emit()
+        self.toast.emit(
+            QCoreApplication.translate("ShenQing", "已添加屏蔽网站：{0}").format(domain)
+        )
+        return True
+
+    @Slot(str, result=bool)
+    def removeBlockedSite(self, value: str) -> bool:
+        domain = site_blocker.normalize_domain(value)
+        if not domain:
+            return False
+        sites = self.blockedSites
+        if domain not in sites:
+            return False
+        sites.remove(domain)
+        self._settings.set("blocked_sites", sites)
+        self.settingsChanged.emit()
+        return True
+
+    @Property(bool, notify=settingsChanged)
+    def siteBlockEnabled(self) -> bool:
+        return bool(self._settings.get("site_block_enabled", True))
+
+    @Slot(bool)
+    def setSiteBlockEnabled(self, enabled: bool) -> None:
+        self._settings.set("site_block_enabled", bool(enabled))
+        if self.busy:
+            if enabled:
+                self._apply_site_block()
+            else:
+                self._restore_site_block(force=True)
+        self.settingsChanged.emit()
+
+    def _apply_site_block(self) -> None:
+        sites = self.blockedSites
+        if not self.siteBlockEnabled or not sites:
+            return
+        ok, message = self._site_blocker.apply(sites)
+        self._site_block_applied = ok
+        if ok:
+            self.toast.emit(
+                QCoreApplication.translate("ShenQing", "已屏蔽 {0} 个网站").format(len(sites))
+            )
+        else:
+            self.toast.emit(message)
+
+    def _restore_site_block(self, force: bool = False) -> None:
+        if not force and not self._site_block_applied:
+            return
+        ok, message = self._site_blocker.restore()
+        self._site_block_applied = False
+        if not ok:
+            logger.warning("恢复网站屏蔽失败：%s", message)
+
+    def cleanup_stale_site_block(self) -> bool:
+        """应用启动时清理上次崩溃残留的 hosts 屏蔽段。"""
+        ok, message = self._site_blocker.cleanup_stale()
+        if not ok:
+            logger.warning("清理残留网站屏蔽失败：%s", message)
+        return ok
+
+    # ================= v0.15 结束卡片背景 =================
+    @Property(str, notify=settingsChanged)
+    def cardBackgroundUrl(self) -> str:
+        custom = str(self._settings.get("card_background", "") or "")
+        return wallpaper.card_background_url(custom, self.bingWallpaperUrl)
+
+    @Slot(result=str)
+    def pickCardBackground(self) -> str:
+        from PySide6.QtWidgets import QFileDialog
+
+        try:
+            selected, _filter = QFileDialog.getOpenFileName(
+                None,
+                QCoreApplication.translate("ShenQing", "选择结束卡片背景"),
+                str(Path.home()),
+                QCoreApplication.translate("ShenQing", "图片 (*.png *.jpg *.jpeg *.webp)"),
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("打开背景选择对话框失败：%s", exc)
+            return ""
+        if not selected:
+            return ""
+        saved = wallpaper.save_card_background(selected)
+        if not saved:
+            self.toast.emit(QCoreApplication.translate("ShenQing", "背景图片无效"))
+            return ""
+        self._settings.set("card_background", saved)
+        self.settingsChanged.emit()
+        return saved
+
+    @Slot(str, result=bool)
+    def setCardBackground(self, path: str) -> bool:
+        saved = wallpaper.save_card_background(path)
+        if not saved:
+            self.toast.emit(QCoreApplication.translate("ShenQing", "背景图片无效"))
+            return False
+        self._settings.set("card_background", saved)
+        self.settingsChanged.emit()
+        return True
+
+    @Slot()
+    def clearCardBackground(self) -> None:
+        self._settings.set("card_background", "")
+        self.settingsChanged.emit()
 
     # ================= v0.14 点击计数 / 专注恢复 =================
     @Property(int, notify=tickChanged)
@@ -2729,6 +2877,14 @@ class AppBridge(QObject):
                     "desc": self._mode_desc(level.value),
                 }
             )
+        # v0.15：还清作为第 4 档（仅 UI 展示，不进入 LockLevel 枚举）
+        result.append(
+            {
+                "value": "sleep",
+                "label": QCoreApplication.translate("ShenQing", "还清"),
+                "desc": QCoreApplication.translate("ShenQing", "按作息时间自动锁定"),
+            }
+        )
         return result
 
     @staticmethod
@@ -3229,6 +3385,7 @@ class AppBridge(QObject):
     def _on_finished(self, elapsed_seconds: int, completed: bool, pauses: int) -> None:
         clicks = self._stop_click_tracking()
         self._delete_session_state()
+        self._restore_site_block(force=True)
         self._guard.stop()
         power.allow_sleep()
         self._sleep_lock_active = False

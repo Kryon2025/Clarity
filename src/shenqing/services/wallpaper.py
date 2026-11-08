@@ -42,6 +42,45 @@ def _to_url(path: Path) -> str:
         return ""
 
 
+CARD_BACKGROUND_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp")
+
+
+def backgrounds_dir() -> Path:
+    path = app_data_dir() / "backgrounds"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def save_card_background(source: str | Path) -> str:
+    """把用户选的图片复制到数据目录，返回保存后的绝对路径（失败空串）。"""
+    import shutil
+    import time as _time
+
+    text = str(source or "").strip()
+    if not text:
+        return ""
+    path = Path(text)
+    if not path.is_file() or path.suffix.lower() not in CARD_BACKGROUND_SUFFIXES:
+        return ""
+    try:
+        target = backgrounds_dir() / f"card-{int(_time.time() * 1000)}{path.suffix.lower()}"
+        shutil.copy2(path, target)
+        return str(target.resolve())
+    except OSError as exc:
+        logger.warning("保存结束卡片背景失败：%s", exc)
+        return ""
+
+
+def card_background_url(custom_path: str, fallback: str = "") -> str:
+    """本地自定义背景存在则返回 file:// URL，否则回退必应壁纸 URL。"""
+    text = str(custom_path or "").strip()
+    if text:
+        path = Path(text)
+        if path.is_file():
+            return _to_url(path)
+    return str(fallback or "")
+
+
 def cached_bing_url() -> str:
     path = bing_cache_path()
     if path.exists() and path.stat().st_size > 0:

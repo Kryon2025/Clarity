@@ -240,6 +240,11 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     if not args.smoke:
+        # v0.15：先清理上次崩溃残留的 hosts 屏蔽段，再恢复专注
+        try:
+            bridge.cleanup_stale_site_block()
+        except Exception as exc:  # noqa: BLE001
+            logging.warning("清理残留网站屏蔽失败：%s", exc)
         # v0.14：有未完成的专注先恢复（重新锁定/补记统计），再起看门狗
         try:
             if bridge.restore_session_if_needed():

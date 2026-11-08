@@ -8,7 +8,7 @@ APP_NAME = "深清"
 #: 英文名（v0.4 起对外统一用 Clarity；「身轻」不再展示）
 APP_ALIAS = "Clarity"
 APP_ID = "ShenQing"
-APP_VERSION = "0.14.0"
+APP_VERSION = "0.15.0"
 
 #: GitHub 仓库（自动更新与反馈入口用）
 GITHUB_REPO = "Kryon2025/Clarity"
@@ -39,6 +39,23 @@ DEFAULT_THEME = "solid"
 
 #: 更新日志（最新在前；en 为空时用中文兜底）
 CHANGELOG = [
+    {
+        "version": "0.15.0",
+        "date": "2025-11-08",
+        "tag": "",
+        "items": [
+            "设置新增网址屏蔽：专注期间通过 hosts 屏蔽指定网站（需要管理员权限），支持开关与域名列表",
+            "结束卡片背景支持上传本地图片，默认使用必应每日壁纸，可一键恢复默认",
+            "还清并入档位：清空间档位变为 浅清 / 覆清 / 深清 / 还清，不再单独放按钮",
+            "入场倒计时改为干净的加载环动画（移除全部粒子与游离光点）",
+        ],
+        "items_en": [
+            "Website blocking: blocks chosen sites via the hosts file during focus (requires administrator rights), with a switch and domain list",
+            "Summary card background can use a local image; Bing daily wallpaper is the default with one-click restore",
+            "Huanqing is now a tier: Light / Veil / Deep / Huanqing, no separate button",
+            "Entry countdown is now a clean loading ring (all particles and stray light dots removed)",
+        ],
+    },
     {
         "version": "0.14.0",
         "date": "2025-11-08",

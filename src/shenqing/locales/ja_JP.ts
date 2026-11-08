@@ -887,37 +887,36 @@ Fill in the provider and API key on the left, then send a message.</translation>
         <translation>ShenQing · Entering</translation>
     </message>
     <message>
-        <location filename="../qml/components/EnterCountdown.qml" line="220"/>
+        <location filename="../qml/components/EnterCountdown.qml" line="46"/>
         <source>浅清</source>
         <translation>Light</translation>
     </message>
     <message>
-        <location filename="../qml/components/EnterCountdown.qml" line="221"/>
+        <location filename="../qml/components/EnterCountdown.qml" line="47"/>
         <source>覆清</source>
         <translation>Veil</translation>
     </message>
     <message>
-        <location filename="../qml/components/EnterCountdown.qml" line="222"/>
+        <location filename="../qml/components/EnterCountdown.qml" line="48"/>
         <source>深清</source>
         <translation>ShenQing</translation>
     </message>
     <message>
-        <location filename="../qml/components/EnterCountdown.qml" line="223"/>
+        <location filename="../qml/components/EnterCountdown.qml" line="49"/>
         <source>专注</source>
         <translation>Focus</translation>
     </message>
     <message>
-        <location filename="../qml/components/EnterCountdown.qml" line="535"/>
+        <location filename="../qml/components/EnterCountdown.qml" line="285"/>
         <source>即将进入 · %1</source>
         <translation>Entering · %1</translation>
     </message>
     <message>
-        <location filename="../qml/components/EnterCountdown.qml" line="567"/>
         <source>取消</source>
-        <translation>Cancel</translation>
+        <translation type="vanished">Cancel</translation>
     </message>
     <message>
-        <location filename="../qml/components/EnterCountdown.qml" line="592"/>
+        <location filename="../qml/components/EnterCountdown.qml" line="309"/>
         <source>点击任意位置取消 / Esc</source>
         <translation>Click anywhere to cancel / Esc</translation>
     </message>
@@ -955,89 +954,110 @@ Fill in the provider and API key on the left, then send a message.</translation>
         <translation>Bring your attention back — today wasn&apos;t wasted.</translation>
     </message>
     <message>
-        <location filename="../qml/components/FocusSummary.qml" line="121"/>
+        <location filename="../qml/components/FocusSummary.qml" line="134"/>
+        <location filename="../qml/components/FocusSummary.qml" line="143"/>
         <source>背景已切换</source>
         <translation>Background changed</translation>
     </message>
     <message>
-        <location filename="../qml/components/FocusSummary.qml" line="124"/>
+        <location filename="../qml/components/FocusSummary.qml" line="136"/>
+        <source>缺少背景选择接口（App.pickCardBackground）</source>
+        <translation>Missing background picker API (App.pickCardBackground)</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/FocusSummary.qml" line="145"/>
+        <source>已恢复默认背景</source>
+        <translation>Default background restored</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/FocusSummary.qml" line="149"/>
         <source>来自深清 · %1 · %2 分钟
 %3</source>
         <translation>From ShenQing · %1 · %2 min
 %3</translation>
     </message>
     <message>
-        <location filename="../qml/components/FocusSummary.qml" line="128"/>
+        <location filename="../qml/components/FocusSummary.qml" line="153"/>
         <source>已复制</source>
         <translation>Copied</translation>
     </message>
     <message>
-        <location filename="../qml/components/FocusSummary.qml" line="137"/>
+        <location filename="../qml/components/FocusSummary.qml" line="162"/>
         <source>摘要已复制</source>
         <translation>Summary copied</translation>
     </message>
     <message>
-        <location filename="../qml/components/FocusSummary.qml" line="139"/>
+        <location filename="../qml/components/FocusSummary.qml" line="164"/>
         <source>已发起分享</source>
         <translation>Share started</translation>
     </message>
     <message>
-        <location filename="../qml/components/FocusSummary.qml" line="150"/>
+        <location filename="../qml/components/FocusSummary.qml" line="175"/>
         <source>图片已保存</source>
         <translation>Image saved</translation>
     </message>
     <message>
-        <location filename="../qml/components/FocusSummary.qml" line="158"/>
+        <location filename="../qml/components/FocusSummary.qml" line="183"/>
         <source>图片已保存到数据目录</source>
         <translation>Image saved to the data folder</translation>
     </message>
     <message>
-        <location filename="../qml/components/FocusSummary.qml" line="158"/>
+        <location filename="../qml/components/FocusSummary.qml" line="183"/>
         <source>保存图片失败</source>
         <translation>Failed to save image</translation>
     </message>
     <message>
-        <location filename="../qml/components/FocusSummary.qml" line="160"/>
+        <location filename="../qml/components/FocusSummary.qml" line="185"/>
         <source>保存图片需要数据目录接口</source>
         <translation>Saving images requires the data-folder API</translation>
     </message>
     <message>
-        <location filename="../qml/components/FocusSummary.qml" line="169"/>
+        <location filename="../qml/components/FocusSummary.qml" line="194"/>
         <source>延长专注需要后端接口支持</source>
         <translation>Extending focus requires backend support</translation>
     </message>
     <message>
-        <location filename="../qml/components/FocusSummary.qml" line="448"/>
+        <location filename="../qml/components/FocusSummary.qml" line="473"/>
         <source>来自深清</source>
         <translation>From ShenQing</translation>
     </message>
     <message>
-        <location filename="../qml/components/FocusSummary.qml" line="499"/>
+        <location filename="../qml/components/FocusSummary.qml" line="524"/>
         <source>本次专注</source>
         <translation>This session</translation>
     </message>
     <message>
-        <location filename="../qml/components/FocusSummary.qml" line="508"/>
+        <location filename="../qml/components/FocusSummary.qml" line="533"/>
         <source>点击 %1 次</source>
         <translation>%1 clicks</translation>
     </message>
     <message>
-        <location filename="../qml/components/FocusSummary.qml" line="525"/>
+        <location filename="../qml/components/FocusSummary.qml" line="550"/>
         <source>分钟</source>
         <translation>min</translation>
     </message>
     <message>
-        <location filename="../qml/components/FocusSummary.qml" line="552"/>
+        <location filename="../qml/components/FocusSummary.qml" line="577"/>
         <source>编辑背景</source>
         <translation>Edit background</translation>
     </message>
     <message>
-        <location filename="../qml/components/FocusSummary.qml" line="647"/>
+        <location filename="../qml/components/FocusSummary.qml" line="621"/>
+        <source>从本地选择图片</source>
+        <translation>Choose a local image</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/FocusSummary.qml" line="640"/>
+        <source>恢复默认（必应）</source>
+        <translation>Restore default (Bing)</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/FocusSummary.qml" line="736"/>
         <source>分享</source>
         <translation>Share</translation>
     </message>
     <message>
-        <location filename="../qml/components/FocusSummary.qml" line="674"/>
+        <location filename="../qml/components/FocusSummary.qml" line="763"/>
         <source>延长 20 分钟</source>
         <translation>Extend 20 min</translation>
     </message>
@@ -1699,7 +1719,7 @@ Fill in the provider and API key on the left, then send a message.</translation>
 <context>
     <name>SettingsPage</name>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="562"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="601"/>
         <source>跟随系统</source>
         <translation>Follow system</translation>
     </message>
@@ -1712,12 +1732,12 @@ Fill in the provider and API key on the left, then send a message.</translation>
         <translation type="vanished">Dark</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="341"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="380"/>
         <source>设置</source>
         <translation>Settings</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="349"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="388"/>
         <source>%1（%2）v%3</source>
         <translation>%1 (%2) v%3</translation>
     </message>
@@ -1730,193 +1750,228 @@ Fill in the provider and API key on the left, then send a message.</translation>
         <translation type="vanished">Dark-first liquid glass UI</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="36"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="75"/>
         <source>正在导出备份…</source>
         <translation>Exporting backup…</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="43"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="82"/>
         <source>备份已导出：%1</source>
         <translation>Backup exported: %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="49"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="88"/>
         <source>已取消导出</source>
         <translation>Export cancelled</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="54"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="93"/>
         <source>缺少备份接口（App.exportBackup）</source>
         <translation>Missing backup API (App.exportBackup)</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="60"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="99"/>
         <source>请选择备份文件…</source>
         <translation>Choose a backup file…</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="67"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="106"/>
         <source>已取消导入</source>
         <translation>Import cancelled</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="71"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="110"/>
         <source>缺少备份选择接口（App.pickBackupFile）</source>
         <translation>Missing backup picker API (App.pickBackupFile)</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="83"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="122"/>
         <source>正在导入备份，完成后将自动重启…</source>
         <translation>Importing backup; ShenQing will restart when done…</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="90"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="129"/>
         <source>缺少备份恢复接口（App.restoreBackupFile）</source>
         <translation>Missing backup restore API (App.restoreBackupFile)</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="97"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="119"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="136"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="158"/>
         <source>默认</source>
         <translation>Default</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="107"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="146"/>
         <source>微软雅黑</source>
         <translation>Microsoft YaHei</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="109"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="148"/>
         <source>宋体</source>
         <translation>SimSun</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="164"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="203"/>
         <source>智谱 GLM</source>
         <translation>Zhipu GLM</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="166"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="205"/>
         <source>硅基流动</source>
         <translation>SiliconFlow</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="168"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="207"/>
         <source>自定义</source>
         <translation>Custom</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="183"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="222"/>
         <source>测试中…</source>
         <translation>Testing…</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="184"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="223"/>
         <source>连接成功</source>
         <translation>Connected</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="187"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="226"/>
         <source>连接失败</source>
         <translation>Connection failed</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="189"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="228"/>
         <source>已配置</source>
         <translation>Configured</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="190"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="229"/>
         <source>未配置</source>
         <translation>Not configured</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="252"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="291"/>
         <source>缺少测试接口（App.testAIConnection）</source>
         <translation>Missing test API (App.testAIConnection)</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="386"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="425"/>
         <source>防退出加固</source>
         <translation>Lock hardening</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="394"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="433"/>
         <source>锁定期间隐藏任务栏，并屏蔽 Win、Alt+Tab 等系统快捷键</source>
         <translation>Hides the taskbar while locked and blocks Win, Alt+Tab and other system shortcuts</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="439"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="478"/>
         <source>以管理员身份运行</source>
         <translation>Run as administrator</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="448"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="487"/>
         <source>当前已提权</source>
         <translation>Running elevated</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="458"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="497"/>
         <source>开启后会弹一次 UAC 并以管理员身份重启</source>
         <translation>Prompts UAC once, then restarts with admin rights</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="500"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="539"/>
         <source>最高权限开机自启</source>
         <translation>Elevated autostart</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="508"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="547"/>
         <source>用计划任务在登录时以最高权限启动，不再弹 UAC；需要管理员</source>
         <translation>Starts at logon with highest privileges via a scheduled task (no UAC prompt); requires admin</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="547"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="586"/>
         <source>语言</source>
         <translation>Language</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="563"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="602"/>
         <source>简体中文</source>
         <translation>简体中文</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="587"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="626"/>
         <source>切换后界面会立即更新；托盘菜单在下次启动时生效。</source>
         <translation>The interface updates immediately; the tray menu updates on the next launch.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="613"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="652"/>
         <source>外观</source>
         <translation>Appearance</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="626"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="665"/>
         <source>字号</source>
         <translation>Font size</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="753"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="792"/>
         <source>字号影响整个界面，实时生效；字体与导航方式同样即时生效。</source>
         <translation>Font size affects the whole interface and applies immediately; the font and navigation mode do too.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1222"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="963"/>
+        <source>网址屏蔽</source>
+        <translation>Website blocking</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="979"/>
+        <source>专注期间通过 hosts 屏蔽这些网站，需要管理员权限；开关与列表在锁定开始时生效。</source>
+        <translation>Blocks these sites via the hosts file during focus; requires administrator rights. The switch and list apply when a session starts.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1015"/>
+        <source>例如 bilibili.com</source>
+        <translation>e.g. bilibili.com</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1022"/>
+        <source>添加</source>
+        <translation>Add</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1031"/>
+        <source>已屏蔽 %1 个域名</source>
+        <translation>%1 domains blocked</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1089"/>
+        <source>还没有屏蔽网站，添加一个域名即可。</source>
+        <translation>No sites blocked yet — add a domain.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1325"/>
+        <source>睡眠模式已并入清空间的「还清」档位，可在那里设置作息。</source>
+        <translation>Sleep mode is now the Huanqing tier of the Clarity Space; set your schedule there.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1422"/>
         <source>导入备份并覆盖当前数据？</source>
         <translation>Import a backup and overwrite current data?</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1231"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1431"/>
         <source>导入会覆盖当前设置、空间、白名单、专注统计、应用使用、AI 对话与用量、睡眠与插件数据，并自动重启深清。</source>
         <translation>Importing overwrites current settings, spaces, allowlist, focus stats, app usage, AI chats and usage, sleep and plugin data, then restarts ShenQing.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1251"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1451"/>
         <source>取消</source>
         <translation>Cancel</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1265"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1465"/>
         <source>覆盖并重启</source>
         <translation>Overwrite and restart</translation>
     </message>
@@ -1937,32 +1992,32 @@ Fill in the provider and API key on the left, then send a message.</translation>
         <translation type="vanished">Extra large</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="671"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="710"/>
         <source>字体</source>
         <translation>Font</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="715"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="754"/>
         <source>实时生效，无需重启</source>
         <translation>Takes effect immediately, no restart needed</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="728"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="767"/>
         <source>导航展开方式</source>
         <translation>Navigation display</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="735"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="774"/>
         <source>自动</source>
         <translation>Auto</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="736"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="775"/>
         <source>始终展开</source>
         <translation>Always expanded</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="737"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="776"/>
         <source>仅图标</source>
         <translation>Icons only</translation>
     </message>
@@ -1971,95 +2026,94 @@ Fill in the provider and API key on the left, then send a message.</translation>
         <translation type="vanished">Font size and family only affect the interface; Auto follows the window width.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="834"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="873"/>
         <source>默认专注时长</source>
         <translation>Default focus length</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="845"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="884"/>
         <source>%1 分钟</source>
         <translation>%1 min</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="884"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="923"/>
         <source>开机自启</source>
         <translation>Launch at startup</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="924"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1124"/>
         <source>数据与备份</source>
         <translation>Data &amp; backup</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="947"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1147"/>
         <source>备份包含：设置、空间、白名单、专注统计、应用使用记录、AI 对话与用量、睡眠与插件数据。导入会覆盖当前数据并自动重启深清。</source>
         <translation>A backup includes settings, spaces, allowlist, focus stats, app usage, AI chats and usage, sleep and plugin data. Importing overwrites current data and restarts ShenQing.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="959"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="968"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1159"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1168"/>
         <source>处理中…</source>
         <translation>Processing…</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="959"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1159"/>
         <source>导出备份</source>
         <translation>Export backup</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="968"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1168"/>
         <source>导入备份</source>
         <translation>Import backup</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="979"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1179"/>
         <source>导出为 .zip/.json 备份文件；导入前会二次确认。</source>
         <translation>Export a .zip backup; importing asks for confirmation first.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1005"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1205"/>
         <source>反馈</source>
         <translation>Feedback</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1019"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1219"/>
         <source>功能请求</source>
         <translation>Feature request</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1026"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1226"/>
         <source>Bug 反馈</source>
         <translation>Bug report</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1033"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1233"/>
         <source>参与讨论</source>
         <translation>Join discussion</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1045"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1245"/>
         <source>在 GitHub 仓库 Kryon2025/Clarity 提交功能请求、Bug 反馈或参与讨论。</source>
         <translation>Submit feature requests, bug reports or join discussions in the GitHub repository Kryon2025/Clarity.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1077"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1277"/>
         <source>AI 助手</source>
         <translation>AI assistant</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1083"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1283"/>
         <source>服务商、模型与对话，已移到左侧「AI」页</source>
         <translation>Provider, model and chat moved to the AI page in the left nav</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1095"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1295"/>
         <source>前往 AI 页</source>
         <translation>Go to AI page</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1125"/>
         <source>睡眠模式已移至清空间页顶部「还清 · 睡眠模式」</source>
-        <translation>Sleep mode moved to the Huanqing · Sleep mode entry at the top of the Clarity Space page</translation>
+        <translation type="vanished">Sleep mode moved to the Huanqing · Sleep mode entry at the top of the Clarity Space page</translation>
     </message>
     <message>
         <source>配置服务商与 API Key 后，可在右上角 AI 入口直接提问；Key 只保存在本机。</source>
@@ -2122,17 +2176,17 @@ Fill in the provider and API key on the left, then send a message.</translation>
         <translation type="vanished">Click the clock 10 times to unlock</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1154"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1354"/>
         <source>新手引导</source>
         <translation>Getting started</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1165"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1365"/>
         <source>重新查看引导</source>
         <translation>Review the guide</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1178"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1378"/>
         <source>%1（%2）v%3 · Windows 专注锁机工具
 数据保存在 %APPDATA%/ShenQing/ · 主题可在左侧导航「主题」中切换</source>
         <translation>%1 (%2) v%3 · Windows focus-lock tool
@@ -2174,7 +2228,7 @@ Data: %APPDATA%/ShenQing/ · UI: Liquid Glass v0.2</translation>
 <context>
     <name>ShenQing</name>
     <message>
-        <location filename="../bridge/app_bridge.py" line="371"/>
+        <location filename="../bridge/app_bridge.py" line="375"/>
         <source>插件操作失败</source>
         <extracomment>v0.6：从覆清 dock 启动白名单应用成功（携带 exe 名/路径），供主程序把应用窗口提到遮罩之上 自动更新：后台线程 → 主线程 v0.9 AI：线程池回调 → 主线程（token 防止旧回答覆盖新问题） v0.10 模型列表拉取结果：provider, models, error</extracomment>
         <translation>Plugin action failed</translation>
@@ -2184,7 +2238,7 @@ Data: %APPDATA%/ShenQing/ · UI: Liquid Glass v0.2</translation>
         <translation type="vanished">Other spaces reached the limit (12)</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="441"/>
+        <location filename="../bridge/app_bridge.py" line="445"/>
         <source>已新增空间</source>
         <translation>Space added</translation>
     </message>
@@ -2193,26 +2247,26 @@ Data: %APPDATA%/ShenQing/ · UI: Liquid Glass v0.2</translation>
         <translation type="vanished">The main space cannot be deleted</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="2009"/>
-        <location filename="../bridge/app_bridge.py" line="2238"/>
-        <location filename="../bridge/app_bridge.py" line="2252"/>
-        <location filename="../bridge/app_bridge.py" line="2926"/>
+        <location filename="../bridge/app_bridge.py" line="2032"/>
+        <location filename="../bridge/app_bridge.py" line="2386"/>
+        <location filename="../bridge/app_bridge.py" line="2400"/>
+        <location filename="../bridge/app_bridge.py" line="3082"/>
         <source>已经有正在进行的专注</source>
         <translation>A focus session is already running</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="2235"/>
-        <location filename="../bridge/app_bridge.py" line="2923"/>
+        <location filename="../bridge/app_bridge.py" line="2383"/>
+        <location filename="../bridge/app_bridge.py" line="3079"/>
         <source>空间不存在</source>
         <translation>Space not found</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="2259"/>
+        <location filename="../bridge/app_bridge.py" line="2407"/>
         <source>重度模式不可暂停</source>
         <translation>Heavy mode cannot be paused</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="2262"/>
+        <location filename="../bridge/app_bridge.py" line="2410"/>
         <source>暂停次数已用完</source>
         <translation>No pauses left</translation>
     </message>
@@ -2221,459 +2275,515 @@ Data: %APPDATA%/ShenQing/ · UI: Liquid Glass v0.2</translation>
         <translation type="vanished">Heavy mode cannot end early — wait for the timer</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="2278"/>
+        <location filename="../bridge/app_bridge.py" line="2426"/>
         <source>深清档不可提前结束，等计时走完</source>
         <translation>Deep mode can&apos;t end early — wait for the timer</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="2441"/>
+        <location filename="../bridge/app_bridge.py" line="2589"/>
         <source>不再结束进程，只屏蔽界面与声音</source>
         <translation>Apps are now hidden and muted instead of being closed</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="2443"/>
+        <location filename="../bridge/app_bridge.py" line="2591"/>
         <source>已改为直接结束进程</source>
         <translation>Switched to closing processes directly</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="2462"/>
+        <location filename="../bridge/app_bridge.py" line="2610"/>
         <source>防退出加固已开启</source>
         <translation>Lock hardening enabled</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="2464"/>
+        <location filename="../bridge/app_bridge.py" line="2612"/>
         <source>防退出加固已关闭</source>
         <translation>Lock hardening disabled</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="2476"/>
+        <location filename="../bridge/app_bridge.py" line="2624"/>
         <source>当前已是管理员权限</source>
         <translation>Already running as administrator</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="2478"/>
+        <location filename="../bridge/app_bridge.py" line="2626"/>
         <source>正在请求管理员权限…</source>
         <translation>Requesting administrator rights…</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="2483"/>
+        <location filename="../bridge/app_bridge.py" line="2631"/>
         <source>提权失败：用户取消了 UAC 或策略禁止</source>
         <translation>Elevation failed: UAC was cancelled or blocked by policy</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="2490"/>
+        <location filename="../bridge/app_bridge.py" line="2638"/>
         <source>最高权限自启需要先以管理员身份运行</source>
         <translation>Elevated autostart requires running as administrator first</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="2497"/>
+        <location filename="../bridge/app_bridge.py" line="2645"/>
         <source>设置失败，请检查权限</source>
         <translation>Failed to apply — check permissions</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="2507"/>
+        <location filename="../bridge/app_bridge.py" line="2655"/>
         <source>已开启最高权限自启</source>
         <translation>Elevated autostart enabled</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="2509"/>
+        <location filename="../bridge/app_bridge.py" line="2657"/>
         <source>已关闭最高权限自启</source>
         <translation>Elevated autostart disabled</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="2551"/>
+        <location filename="../bridge/app_bridge.py" line="2699"/>
         <source>跟随系统</source>
         <translation>Follow system</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="2604"/>
+        <location filename="../bridge/app_bridge.py" line="2752"/>
         <source>正在扫描本机应用…</source>
         <translation>Scanning installed apps…</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="2635"/>
+        <location filename="../bridge/app_bridge.py" line="2783"/>
         <source>已开启最高权限自启，普通自启不再需要</source>
         <translation>Elevated autostart is on; the normal autostart is not needed</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1689"/>
-        <location filename="../bridge/app_bridge.py" line="2666"/>
+        <location filename="../bridge/app_bridge.py" line="1708"/>
+        <location filename="../bridge/app_bridge.py" line="2814"/>
         <source>导出失败：{0}</source>
         <translation>Export failed: {0}</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="2670"/>
+        <location filename="../bridge/app_bridge.py" line="2818"/>
         <source>已导出：{0}</source>
         <translation>Exported: {0}</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="472"/>
-        <location filename="../bridge/app_bridge.py" line="2707"/>
+        <location filename="../bridge/app_bridge.py" line="476"/>
+        <location filename="../bridge/app_bridge.py" line="2855"/>
         <source>深清空间名不可修改</source>
         <translation>The Deep space name cannot be changed</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="435"/>
+        <location filename="../bridge/app_bridge.py" line="439"/>
         <source>深清只有一张固定空间，不能新增</source>
         <translation>Deep has one fixed space; adding is not allowed</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="437"/>
+        <location filename="../bridge/app_bridge.py" line="441"/>
         <source>无法新增空间</source>
         <translation>Cannot add a space</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="451"/>
+        <location filename="../bridge/app_bridge.py" line="455"/>
         <source>深清空间不可删除</source>
         <translation>The Deep space cannot be deleted</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="454"/>
+        <location filename="../bridge/app_bridge.py" line="458"/>
         <source>专注中不能删除当前空间</source>
         <translation>Cannot delete the space in use while focusing</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="457"/>
+        <location filename="../bridge/app_bridge.py" line="461"/>
         <source>每档至少保留一个空间</source>
         <translation>Keep at least one space per tier</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="488"/>
-        <location filename="../bridge/app_bridge.py" line="2713"/>
+        <location filename="../bridge/app_bridge.py" line="492"/>
+        <location filename="../bridge/app_bridge.py" line="2861"/>
         <source>深清空间不设置白名单</source>
         <translation>The Deep space has no allowlist</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="710"/>
+        <location filename="../bridge/app_bridge.py" line="714"/>
         <source>已延长 {0} 分钟</source>
         <translation>Extended by {0} min</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="749"/>
+        <location filename="../bridge/app_bridge.py" line="753"/>
         <source>系统将在 1 秒内{0}</source>
         <translation>The system will {0} in 1 second</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="750"/>
+        <location filename="../bridge/app_bridge.py" line="754"/>
         <source>关机</source>
         <translation>Shut down</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="752"/>
+        <location filename="../bridge/app_bridge.py" line="756"/>
         <source>重启</source>
         <translation>Restart</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="756"/>
+        <location filename="../bridge/app_bridge.py" line="760"/>
         <source>电源操作失败</source>
         <translation>Power action failed</translation>
     </message>
     <message>
         <location filename="../bridge/app_bridge.py" line="772"/>
+        <source>未设置作息时间</source>
+        <translation>No schedule set</translation>
+    </message>
+    <message>
+        <location filename="../bridge/app_bridge.py" line="775"/>
+        <source>本月剩余 {0} 次</source>
+        <translation>{0} unlock chances left this month</translation>
+    </message>
+    <message>
+        <location filename="../bridge/app_bridge.py" line="789"/>
         <source>已添加睡眠锁定时间</source>
         <translation>Sleep lock time added</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="774"/>
+        <location filename="../bridge/app_bridge.py" line="791"/>
         <source>时间格式不正确或已存在</source>
         <translation>Invalid time or already exists</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="811"/>
+        <location filename="../bridge/app_bridge.py" line="828"/>
         <source>再点 {0} 次可解锁</source>
         <translation>{0} more clicks to unlock</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="816"/>
+        <location filename="../bridge/app_bridge.py" line="833"/>
         <source>当前没有睡眠锁定</source>
         <translation>No sleep lock is active</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="820"/>
+        <location filename="../bridge/app_bridge.py" line="837"/>
         <source>本月解锁机会已用完</source>
         <translation>No unlock chances left this month</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="826"/>
+        <location filename="../bridge/app_bridge.py" line="843"/>
         <source>已解锁，提前结束本次睡眠锁定</source>
         <translation>Unlocked — this sleep lock ended early</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="839"/>
+        <location filename="../bridge/app_bridge.py" line="856"/>
         <source>睡眠提醒</source>
         <translation>Sleep reminder</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="840"/>
+        <location filename="../bridge/app_bridge.py" line="857"/>
         <source>{0} 分钟后将进入深清锁定（{1}）</source>
         <translation>ShenQing will lock in {0} minutes ({1})</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="857"/>
+        <location filename="../bridge/app_bridge.py" line="874"/>
         <source>睡眠模式：已自动进入深清锁定</source>
         <translation>Sleep mode: ShenQing locked automatically</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1164"/>
+        <location filename="../bridge/app_bridge.py" line="1183"/>
         <source>请先启用并填写 AI 配置</source>
         <translation>Enable AI and fill in the configuration first</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1199"/>
+        <location filename="../bridge/app_bridge.py" line="1218"/>
         <source>AI 连接正常</source>
         <translation>AI connection OK</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1206"/>
+        <location filename="../bridge/app_bridge.py" line="1225"/>
         <source>AI 连接失败：{0}</source>
         <translation>AI connection failed: {0}</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1662"/>
+        <location filename="../bridge/app_bridge.py" line="1681"/>
         <source>导出深清备份</source>
         <translation>Export ShenQing backup</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1664"/>
-        <location filename="../bridge/app_bridge.py" line="1703"/>
+        <location filename="../bridge/app_bridge.py" line="1683"/>
+        <location filename="../bridge/app_bridge.py" line="1722"/>
         <source>深清备份 (*.zip)</source>
         <translation>ShenQing backup (*.zip)</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1684"/>
+        <location filename="../bridge/app_bridge.py" line="1703"/>
         <source>已导出到 {0}</source>
         <translation>Exported to {0}</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1701"/>
+        <location filename="../bridge/app_bridge.py" line="1720"/>
         <source>选择深清备份</source>
         <translation>Choose ShenQing backup</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1721"/>
+        <location filename="../bridge/app_bridge.py" line="1740"/>
         <source>导入备份</source>
         <translation>Import backup</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1722"/>
+        <location filename="../bridge/app_bridge.py" line="1741"/>
         <source>导入会覆盖当前设置与数据，是否继续？</source>
         <translation>Importing overwrites current settings and data. Continue?</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1744"/>
+        <location filename="../bridge/app_bridge.py" line="1763"/>
         <source>恢复失败：{0}</source>
         <translation>Restore failed: {0}</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1749"/>
+        <location filename="../bridge/app_bridge.py" line="1768"/>
         <source>备份已恢复，正在重启深清…</source>
         <translation>Backup restored; restarting ShenQing…</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1988"/>
+        <location filename="../bridge/app_bridge.py" line="2011"/>
         <source>日期格式应为 YYYY-MM-DD</source>
         <translation>Date format should be YYYY-MM-DD</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="2059"/>
+        <location filename="../bridge/app_bridge.py" line="2083"/>
         <source>检测到未完成的专注，已恢复锁定</source>
         <translation>Unfinished focus detected — lock restored</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="2064"/>
+        <location filename="../bridge/app_bridge.py" line="2088"/>
         <source>速启</source>
         <translation>Quick start</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="2195"/>
+        <location filename="../bridge/app_bridge.py" line="2104"/>
+        <source>域名格式不正确</source>
+        <translation>Invalid domain format</translation>
+    </message>
+    <message>
+        <location filename="../bridge/app_bridge.py" line="2108"/>
+        <source>该网站已在屏蔽列表</source>
+        <translation>That site is already blocked</translation>
+    </message>
+    <message>
+        <location filename="../bridge/app_bridge.py" line="2114"/>
+        <source>已添加屏蔽网站：{0}</source>
+        <translation>Blocked site added: {0}</translation>
+    </message>
+    <message>
+        <location filename="../bridge/app_bridge.py" line="2153"/>
+        <source>已屏蔽 {0} 个网站</source>
+        <translation>{0} sites blocked</translation>
+    </message>
+    <message>
+        <location filename="../bridge/app_bridge.py" line="2186"/>
+        <source>选择结束卡片背景</source>
+        <translation>Choose summary card background</translation>
+    </message>
+    <message>
+        <location filename="../bridge/app_bridge.py" line="2188"/>
+        <source>图片 (*.png *.jpg *.jpeg *.webp)</source>
+        <translation>Images (*.png *.jpg *.jpeg *.webp)</translation>
+    </message>
+    <message>
+        <location filename="../bridge/app_bridge.py" line="2197"/>
+        <location filename="../bridge/app_bridge.py" line="2207"/>
+        <source>背景图片无效</source>
+        <translation>Invalid background image</translation>
+    </message>
+    <message>
+        <location filename="../bridge/app_bridge.py" line="2343"/>
         <source>上次专注已完成，已补记统计</source>
         <translation>Previous focus session completed; stats recorded</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="2737"/>
+        <location filename="../bridge/app_bridge.py" line="2884"/>
+        <source>还清</source>
+        <translation>Huanqing</translation>
+    </message>
+    <message>
+        <location filename="../bridge/app_bridge.py" line="2885"/>
+        <source>按作息时间自动锁定</source>
+        <translation>Locks automatically by schedule</translation>
+    </message>
+    <message>
+        <location filename="../bridge/app_bridge.py" line="2893"/>
         <source>只屏蔽黑名单应用的窗口与声音</source>
         <translation>Hides and mutes blacklisted apps only</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="2739"/>
+        <location filename="../bridge/app_bridge.py" line="2895"/>
         <source>屏蔽干扰并显示允许使用的应用 dock</source>
         <translation>Blocks distractions and shows a dock of allowed apps</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="2740"/>
+        <location filename="../bridge/app_bridge.py" line="2896"/>
         <source>白名单之外的应用全部屏蔽，不可提前结束</source>
         <translation>Blocks everything outside the allowlist; cannot end early</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="2939"/>
+        <location filename="../bridge/app_bridge.py" line="3095"/>
         <source>体验次数已用完（每小时最多 5 次）</source>
         <translation>Trial limit reached (5 per hour)</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="2978"/>
+        <location filename="../bridge/app_bridge.py" line="3134"/>
         <source>启动应用失败</source>
         <translation>Failed to launch app</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="3056"/>
+        <location filename="../bridge/app_bridge.py" line="3212"/>
         <source>检查更新失败</source>
         <translation>Failed to check for updates</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="3065"/>
+        <location filename="../bridge/app_bridge.py" line="3221"/>
         <source>发现新版本 {0}，可在关于页更新</source>
         <translation>New version {0} available — update from the About page</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="3097"/>
+        <location filename="../bridge/app_bridge.py" line="3253"/>
         <source>没有可下载的安装包</source>
         <translation>No installer available</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="3129"/>
+        <location filename="../bridge/app_bridge.py" line="3285"/>
         <source>安装包已下载完成</source>
         <translation>Installer downloaded</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="3133"/>
+        <location filename="../bridge/app_bridge.py" line="3289"/>
         <source>下载失败或被取消</source>
         <translation>Download failed or was cancelled</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="3140"/>
+        <location filename="../bridge/app_bridge.py" line="3296"/>
         <source>安装包尚未下载完成</source>
         <translation>Installer is not downloaded yet</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="3152"/>
+        <location filename="../bridge/app_bridge.py" line="3308"/>
         <source>无法启动安装程序</source>
         <translation>Could not launch the installer</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="3155"/>
+        <location filename="../bridge/app_bridge.py" line="3311"/>
         <source>安装程序已启动，安装完成后请重新打开深清</source>
         <translation>Installer started — reopen ShenQing after installation</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="3182"/>
+        <location filename="../bridge/app_bridge.py" line="3338"/>
         <source>空间</source>
         <translation>Spaces</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="3182"/>
+        <location filename="../bridge/app_bridge.py" line="3338"/>
         <source>清空间与专注设置</source>
         <translation>Clarity Space and focus settings</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="3183"/>
+        <location filename="../bridge/app_bridge.py" line="3339"/>
         <source>数据</source>
         <translation>Stats</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="3183"/>
+        <location filename="../bridge/app_bridge.py" line="3339"/>
         <source>专注统计</source>
         <translation>Focus stats</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="3184"/>
+        <location filename="../bridge/app_bridge.py" line="3340"/>
         <source>插件</source>
         <translation>Plugins</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="3184"/>
+        <location filename="../bridge/app_bridge.py" line="3340"/>
         <source>插件管理</source>
         <translation>Plugin management</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="3185"/>
-        <location filename="../bridge/app_bridge.py" line="3209"/>
+        <location filename="../bridge/app_bridge.py" line="3341"/>
+        <location filename="../bridge/app_bridge.py" line="3365"/>
         <source>设置</source>
         <translation>Settings</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="3185"/>
+        <location filename="../bridge/app_bridge.py" line="3341"/>
         <source>偏好设置</source>
         <translation>Preferences</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="3186"/>
+        <location filename="../bridge/app_bridge.py" line="3342"/>
         <source>主题</source>
         <translation>Theme</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="3186"/>
+        <location filename="../bridge/app_bridge.py" line="3342"/>
         <source>纯色 / 浅色 / 液态玻璃</source>
         <translation>Solid / Light / Liquid Glass</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="3204"/>
+        <location filename="../bridge/app_bridge.py" line="3360"/>
         <source>防退出加固</source>
         <translation>Lock hardening</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="3205"/>
+        <location filename="../bridge/app_bridge.py" line="3361"/>
         <source>以管理员身份运行</source>
         <translation>Run as administrator</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="3206"/>
+        <location filename="../bridge/app_bridge.py" line="3362"/>
         <source>最高权限开机自启</source>
         <translation>Elevated autostart</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="3207"/>
+        <location filename="../bridge/app_bridge.py" line="3363"/>
         <source>功能请求与 Bug 反馈</source>
         <translation>Feature requests and bug reports</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="3169"/>
-        <location filename="../bridge/app_bridge.py" line="3222"/>
+        <location filename="../bridge/app_bridge.py" line="3325"/>
+        <location filename="../bridge/app_bridge.py" line="3378"/>
         <source>无法打开浏览器</source>
         <translation>Could not open the browser</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="3241"/>
+        <location filename="../bridge/app_bridge.py" line="3398"/>
         <source>体验结束</source>
         <translation>Trial finished</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="3255"/>
+        <location filename="../bridge/app_bridge.py" line="3412"/>
         <source>本轮专注完成，休息一下</source>
         <translation>Session complete — take a break</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="3257"/>
+        <location filename="../bridge/app_bridge.py" line="3414"/>
         <source>本轮专注已结束</source>
         <translation>Session ended</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="3260"/>
+        <location filename="../bridge/app_bridge.py" line="3417"/>
         <source>专注时间太短，未计入统计</source>
         <translation>Too short to count</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="3274"/>
+        <location filename="../bridge/app_bridge.py" line="3431"/>
         <source>专注完成</source>
         <translation>Focus complete</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="3276"/>
-        <location filename="../bridge/app_bridge.py" line="3284"/>
+        <location filename="../bridge/app_bridge.py" line="3433"/>
+        <location filename="../bridge/app_bridge.py" line="3441"/>
         <source>专注</source>
         <translation>Focus</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="3277"/>
+        <location filename="../bridge/app_bridge.py" line="3434"/>
         <source>休息一下</source>
         <translation>Take a break</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="3282"/>
+        <location filename="../bridge/app_bridge.py" line="3439"/>
         <source>专注结束</source>
         <translation>Focus ended</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="3285"/>
+        <location filename="../bridge/app_bridge.py" line="3442"/>
         <source>{0} 分钟</source>
         <translation>{0} min</translation>
     </message>
@@ -2730,23 +2840,23 @@ Data: %APPDATA%/ShenQing/ · UI: Liquid Glass v0.2</translation>
         <translation>Veil space</translation>
     </message>
     <message>
-        <location filename="../app.py" line="352"/>
+        <location filename="../app.py" line="357"/>
         <source>已默认以最高权限运行，并开启最高权限开机自启</source>
         <extracomment>已知无害的 Qt / RinUI 噪音（不参与冒烟判定）</extracomment>
         <translation>Running with highest privileges by default; elevated autostart enabled</translation>
     </message>
     <message>
-        <location filename="../app.py" line="356"/>
+        <location filename="../app.py" line="361"/>
         <source>已默认以最高权限运行（最高权限自启登记失败，可在设置里重试）</source>
         <translation>Running with highest privileges by default (elevated autostart registration failed; retry in settings)</translation>
     </message>
     <message>
-        <location filename="../app.py" line="360"/>
+        <location filename="../app.py" line="365"/>
         <source>已默认开启管理员模式，并登记最高权限开机自启</source>
         <translation>Admin mode enabled by default; elevated autostart registered</translation>
     </message>
     <message>
-        <location filename="../app.py" line="364"/>
+        <location filename="../app.py" line="369"/>
         <source>已默认开启管理员模式（下次启动会请求提权）</source>
         <translation>Admin mode enabled by default (next launch will request elevation)</translation>
     </message>
@@ -2883,7 +2993,7 @@ Data: %APPDATA%/ShenQing/ · UI: Liquid Glass v0.2</translation>
 <context>
     <name>SpacesPage</name>
     <message>
-        <location filename="../qml/pages/SpacesPage.qml" line="379"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="409"/>
         <source>专注中 · %1 · 剩余 %2</source>
         <translation>Focusing · %1 · %2 left</translation>
     </message>
@@ -2905,7 +3015,7 @@ Data: %APPDATA%/ShenQing/ · UI: Liquid Glass v0.2</translation>
     </message>
     <message>
         <location filename="../qml/pages/SpacesPage.qml" line="29"/>
-        <location filename="../qml/pages/SpacesPage.qml" line="41"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="70"/>
         <source>浅清</source>
         <translation>Light</translation>
     </message>
@@ -2920,7 +3030,7 @@ Data: %APPDATA%/ShenQing/ · UI: Liquid Glass v0.2</translation>
     </message>
     <message>
         <location filename="../qml/pages/SpacesPage.qml" line="30"/>
-        <location filename="../qml/pages/SpacesPage.qml" line="42"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="71"/>
         <source>覆清</source>
         <translation>Veil</translation>
     </message>
@@ -2931,7 +3041,7 @@ Data: %APPDATA%/ShenQing/ · UI: Liquid Glass v0.2</translation>
     </message>
     <message>
         <location filename="../qml/pages/SpacesPage.qml" line="31"/>
-        <location filename="../qml/pages/SpacesPage.qml" line="43"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="72"/>
         <source>深清</source>
         <translation>ShenQing</translation>
     </message>
@@ -2941,93 +3051,138 @@ Data: %APPDATA%/ShenQing/ · UI: Liquid Glass v0.2</translation>
         <translation>Blocks everything outside the allowlist; cannot end early</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SpacesPage.qml" line="91"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="35"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="73"/>
+        <source>还清</source>
+        <translation>Huanqing</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SpacesPage.qml" line="35"/>
+        <source>按作息时间自动锁定</source>
+        <translation>Locks automatically by schedule</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SpacesPage.qml" line="47"/>
+        <source>未设置作息</source>
+        <translation>No schedule</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SpacesPage.qml" line="60"/>
+        <source>本月剩余解锁次数：%1</source>
+        <translation>Unlock chances left this month: %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SpacesPage.qml" line="121"/>
         <source>%1空间</source>
         <translation>%1 space</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SpacesPage.qml" line="97"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="127"/>
         <source>只屏蔽黑名单应用的窗口与声音，其余应用照常使用。</source>
         <translation>Only hides and mutes blacklisted apps; other apps keep working.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SpacesPage.qml" line="98"/>
-        <location filename="../qml/pages/SpacesPage.qml" line="105"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="128"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="135"/>
         <source>可以暂停，也可以提前结束本轮专注。</source>
         <translation>You can pause or end the session early.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SpacesPage.qml" line="99"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="129"/>
         <source>可新增多个浅清空间，单独改名、改时长、设置白名单。</source>
         <translation>You can add several Light spaces, each with its own name, duration and allowlist.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SpacesPage.qml" line="104"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="134"/>
         <source>屏蔽干扰应用，并在屏幕右侧显示白名单应用的 dock。</source>
         <translation>Blocks distracting apps and shows a dock of allowed apps on the right side of the screen.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SpacesPage.qml" line="106"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="136"/>
         <source>可新增多个覆清空间，单独改名、改时长、设置白名单。</source>
         <translation>You can add several Veil spaces, each with its own name, duration and allowlist.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SpacesPage.qml" line="110"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="140"/>
         <source>只显示全屏倒计时，白名单之外的应用全部屏蔽。</source>
         <translation>Shows only a full-screen countdown; everything outside the allowlist is blocked.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SpacesPage.qml" line="111"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="141"/>
         <source>不可暂停、不可提前结束，只能到点自动结束。</source>
         <translation>No pause or early exit — it ends only when the timer runs out.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SpacesPage.qml" line="112"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="142"/>
         <source>深清固定一个空间，不设置白名单，只能改时长。</source>
         <translation>Deep has one fixed space with no allowlist; only the duration can change.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SpacesPage.qml" line="380"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="410"/>
         <source>每个档位可建多个空间，各自保存时长与白名单</source>
         <translation>Each tier can hold several spaces, each with its own duration and allowlist</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SpacesPage.qml" line="415"/>
-        <source>还清 · 睡眠模式</source>
-        <translation>Huanqing · Sleep mode</translation>
+        <location filename="../qml/pages/SpacesPage.qml" line="532"/>
+        <source>还清（睡眠模式）</source>
+        <translation>Huanqing (Sleep mode)</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SpacesPage.qml" line="912"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="541"/>
+        <source>按作息时间自动进入深清锁定。还清不需要手动开始，到点会替你合上今天。</source>
+        <translation>Enters a ShenQing lock by schedule. Huanqing needs no manual start — it closes the day for you.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SpacesPage.qml" line="553"/>
+        <source>作息时间</source>
+        <translation>Schedule</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SpacesPage.qml" line="570"/>
+        <source>解锁次数</source>
+        <translation>Unlock chances</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SpacesPage.qml" line="583"/>
+        <source>设置作息</source>
+        <translation>Set schedule</translation>
+    </message>
+    <message>
+        <source>还清 · 睡眠模式</source>
+        <translation type="vanished">Huanqing · Sleep mode</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SpacesPage.qml" line="984"/>
         <source>%1 分钟（最短即体验）</source>
         <translation>%1 min (minimum, a quick trial)</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SpacesPage.qml" line="954"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="1026"/>
         <source>深清固定不含白名单</source>
         <translation>Deep is fixed and has no allowlist</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SpacesPage.qml" line="956"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="1028"/>
         <source>白名单 · %1 个应用</source>
         <translation>Allowlist · %1 apps</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SpacesPage.qml" line="957"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="1029"/>
         <source>白名单 · 未设置</source>
         <translation>Allowlist · not set</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SpacesPage.qml" line="1123"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="1195"/>
         <source>新增空间</source>
         <translation>New space</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SpacesPage.qml" line="1144"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="1216"/>
         <source>「浅清」「覆清」可以新增多个空间，各自保存名称、锁定时长与白名单；「深清」固定一个空间，不可新增或删除，只能改时长，且不设置白名单。</source>
         <translation>Light and Veil can hold several spaces, each with its own name, lock duration and allowlist; Deep has one fixed space that cannot be added or removed — only its duration can change, and it has no allowlist.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SpacesPage.qml" line="1276"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="1348"/>
         <source>点击空白处或按 Esc 关闭</source>
         <translation>Click outside or press Esc to close</translation>
     </message>
@@ -3048,7 +3203,7 @@ Data: %APPDATA%/ShenQing/ · UI: Liquid Glass v0.2</translation>
         <translation type="vanished">Deep space</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SpacesPage.qml" line="369"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="399"/>
         <source>空间</source>
         <translation>Spaces</translation>
     </message>
@@ -3093,12 +3248,12 @@ Data: %APPDATA%/ShenQing/ · UI: Liquid Glass v0.2</translation>
         <translation type="vanished">%1 · %2 min</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SpacesPage.qml" line="1017"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="1089"/>
         <source>开始深清</source>
         <translation>Start Deep</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SpacesPage.qml" line="1017"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="1089"/>
         <source>开始</source>
         <translation>Start</translation>
     </message>
@@ -3151,8 +3306,8 @@ Data: %APPDATA%/ShenQing/ · UI: Liquid Glass v0.2</translation>
         <translation type="vanished">min</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SpacesPage.qml" line="844"/>
-        <location filename="../qml/pages/SpacesPage.qml" line="921"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="916"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="993"/>
         <source>%1 分钟</source>
         <translation>%1 min</translation>
     </message>

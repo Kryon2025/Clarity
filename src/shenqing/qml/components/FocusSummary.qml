@@ -44,7 +44,15 @@ Window {
                                     ? String(overlay.summary.quote)
                                     : qsTr("把注意力收回来，今天也算没有白过。")
     readonly property string avatarUrl: (overlay.summary.avatarUrl !== undefined) ? String(overlay.summary.avatarUrl) : ""
-    readonly property string wallpaperUrl: (overlay.summary.wallpaperUrl !== undefined) ? String(overlay.summary.wallpaperUrl) : ""
+    property bool bgMenuOpen: false
+    readonly property string wallpaperUrl: {
+        if (overlay.summary.wallpaperUrl !== undefined && String(overlay.summary.wallpaperUrl) !== "")
+            return String(overlay.summary.wallpaperUrl)
+        if (typeof App !== "undefined" && App.cardBackgroundUrl !== undefined
+                && String(App.cardBackgroundUrl) !== "")
+            return String(App.cardBackgroundUrl)
+        return ""
+    }
     readonly property int minutes: (overlay.summary.minutes !== undefined)
                                    ? Math.max(1, Math.round(Number(overlay.summary.minutes))) : 1
     readonly property int clicks: (overlay.summary.clicks !== undefined)
@@ -117,8 +125,25 @@ Window {
         hideAnim.restart()
     }
     function editBackground() {
-        overlay.bgStyle = (overlay.bgStyle + 1) % 4
-        overlay.showToast(qsTr("背景已切换"))
+        overlay.bgMenuOpen = !overlay.bgMenuOpen
+    }
+    function chooseLocalBackground() {
+        overlay.bgMenuOpen = false
+        if (typeof App !== "undefined" && typeof App.pickCardBackground === "function") {
+            App.pickCardBackground()
+            overlay.showToast(qsTr("背景已切换"))
+        } else {
+            overlay.showToast(qsTr("缺少背景选择接口（App.pickCardBackground）"))
+        }
+    }
+    function resetBackground() {
+        overlay.bgMenuOpen = false
+        if (typeof App !== "undefined" && typeof App.clearCardBackground === "function") {
+            App.clearCardBackground()
+            overlay.showToast(qsTr("背景已切换"))
+        } else {
+            overlay.showToast(qsTr("已恢复默认背景"))
+        }
     }
     function copyTextSummary() {
         var text = qsTr("来自深清 · %1 · %2 分钟\n%3").arg(overlay.displaySpace).arg(overlay.minutes).arg(overlay.quote)
@@ -560,6 +585,70 @@ Window {
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: overlay.editBackground()
+                }
+            }
+
+            // 背景选择菜单（本地图片 / 恢复默认必应）
+            Item {
+                id: bgMenu
+                visible: overlay.bgMenuOpen
+                z: 30
+                width: 176
+                anchors.right: editBgButton.right
+                anchors.top: editBgButton.bottom
+                anchors.topMargin: 6
+                height: bgMenuColumn.height + 8
+                Rectangle {
+                    anchors.fill: parent
+                    radius: 12
+                    color: "#F20E2A38"
+                    border.width: 1
+                    border.color: "#40FFFFFF"
+                }
+                Column {
+                    id: bgMenuColumn
+                    x: 5
+                    y: 4
+                    width: parent.width - 10
+                    spacing: 2
+                    Item {
+                        width: parent.width
+                        height: 32
+                        Text {
+                            anchors.left: parent.left
+                            anchors.leftMargin: 9
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: qsTr("从本地选择图片")
+                            color: AppTheme.textPrimary
+                            font.pixelSize: AppTheme.fs(11)
+                            font.family: AppTheme.fontFamily
+                        }
+                        MouseArea {
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: overlay.chooseLocalBackground()
+                        }
+                    }
+                    Item {
+                        width: parent.width
+                        height: 32
+                        Text {
+                            anchors.left: parent.left
+                            anchors.leftMargin: 9
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: qsTr("恢复默认（必应）")
+                            color: AppTheme.textSecondary
+                            font.pixelSize: AppTheme.fs(11)
+                            font.family: AppTheme.fontFamily
+                        }
+                        MouseArea {
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: overlay.resetBackground()
+                        }
+                    }
                 }
             }
         }

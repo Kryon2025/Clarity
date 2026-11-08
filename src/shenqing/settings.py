@@ -44,7 +44,10 @@ DEFAULTS: dict[str, Any] = {
     "cooldown_minutes": 5,      # 提前结束后再次开始前的冷却
     "pin_enabled": False,
     "pin": "",                  # 明文仅作占位，正式版改哈希
-    "hosts_block_enabled": False,  # 网站屏蔽（写 hosts，需要管理员权限）
+    "hosts_block_enabled": False,  # 旧版占位开关（保留兼容，不再使用）
+    "blocked_sites": [],           # 专注期间屏蔽的网站域名（v0.15）
+    "site_block_enabled": True,    # 是否启用 hosts 网站屏蔽
+    "card_background": "",         # 结束卡片背景：空=必应每日壁纸；否则本地图片绝对路径
 }
 
 

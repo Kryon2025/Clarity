@@ -23,13 +23,42 @@ Item {
 
     signal whitelistRequested(string mode, string spaceId)
 
-    readonly property var modeList: (typeof App !== "undefined" && App.modes && App.modes.length > 0)
-                                    ? App.modes
-                                    : [
-                                          { value: "light", label: qsTr("浅清"), desc: qsTr("只屏蔽黑名单应用的窗口与声音") },
-                                          { value: "medium", label: qsTr("覆清"), desc: qsTr("屏蔽干扰并显示允许使用的应用 dock") },
-                                          { value: "heavy", label: qsTr("深清"), desc: qsTr("白名单之外的应用全部屏蔽，不可提前结束") }
-                                      ]
+    readonly property var modeList: {
+        var base = (typeof App !== "undefined" && App.modes && App.modes.length > 0)
+                   ? App.modes.slice() : [
+                         { value: "light", label: qsTr("浅清"), desc: qsTr("只屏蔽黑名单应用的窗口与声音") },
+                         { value: "medium", label: qsTr("覆清"), desc: qsTr("屏蔽干扰并显示允许使用的应用 dock") },
+                         { value: "heavy", label: qsTr("深清"), desc: qsTr("白名单之外的应用全部屏蔽，不可提前结束") }
+                     ]
+        for (var i = 0; i < base.length; i++)
+            if (String(base[i].value) === "sleep") return base
+        base.push({ value: "sleep", label: qsTr("还清"), desc: qsTr("按作息时间自动锁定") })
+        return base
+    }
+
+    readonly property bool sleepMode: page.activeMode === "sleep"
+    readonly property var sleepSummary: (typeof App !== "undefined" && App.sleepModeSummary !== undefined
+                                        && App.sleepModeSummary !== null) ? App.sleepModeSummary : ({})
+    readonly property string sleepTimesText: {
+        var times = page.sleepSummary.times !== undefined ? page.sleepSummary.times
+                    : (page.sleepSummary.schedules !== undefined ? page.sleepSummary.schedules
+                       : ((typeof App !== "undefined" && App.sleepSchedules !== undefined) ? App.sleepSchedules : []))
+        if (times === undefined || times === null || times.length === undefined || times.length === 0)
+            return qsTr("未设置作息")
+        var out = []
+        for (var i = 0; i < times.length; i++) {
+            var item = times[i]
+            out.push(item !== null && item.time !== undefined ? String(item.time) : String(item))
+        }
+        return out.join(" / ")
+    }
+    readonly property string sleepUnlockText: {
+        if (page.sleepSummary.unlockChanceLabel !== undefined)
+            return String(page.sleepSummary.unlockChanceLabel)
+        if (typeof App !== "undefined" && App.unlockChanceLabel !== undefined)
+            return String(App.unlockChanceLabel)
+        return qsTr("本月剩余解锁次数：%1").arg(2)
+    }
 
     readonly property bool busy: (typeof App !== "undefined" && App.busy === true)
 
@@ -41,6 +70,7 @@ Item {
         if (value === "light") return qsTr("浅清")
         if (value === "medium") return qsTr("覆清")
         if (value === "heavy") return qsTr("深清")
+        if (value === "sleep") return qsTr("还清")
         return String(value)
     }
 
@@ -58,7 +88,7 @@ Item {
     // 展开滑块的空间 id（"" 表示都收起）；同一时间只展开一张
     property string expandedSpaceId: ""
 
-    readonly property bool addEnabled: page.activeMode !== "heavy"
+    readonly property bool addEnabled: page.activeMode !== "heavy" && page.activeMode !== "sleep"
 
     // 只有「新增空间」触发的短窗口内，新建卡片才做入场动画（避免切标签时所有卡片乱入）
     property bool entryAnimationEnabled: false
@@ -291,7 +321,7 @@ Item {
     // ---------- 档位标签 ----------
     function selectMode(mode) {
         var value = String(mode)
-        if (value !== "light" && value !== "medium" && value !== "heavy") return
+        if (value !== "light" && value !== "medium" && value !== "heavy" && value !== "sleep") return
         if (page.activeMode === value) return
         page.expandedSpaceId = ""
         page.playCardsIn()
@@ -384,48 +414,6 @@ Item {
                     }
                 }
 
-                // v0.13 睡眠模式入口（从设置页移到清空间）
-                Item {
-                    id: sleepEntry
-                    objectName: "SleepEntry"
-                    anchors.right: parent.right
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: sleepEntryLabel.implicitWidth + 42
-                    height: 34
-
-                    Rectangle {
-                        anchors.fill: parent
-                        radius: 17
-                        color: sleepEntryArea.containsMouse ? AppTheme.accentSoft : AppTheme.cardBg
-                        border.width: 1
-                        border.color: sleepEntryArea.containsMouse ? AppTheme.accent : AppTheme.cardBorder
-                    }
-                    Row {
-                        anchors.centerIn: parent
-                        spacing: 7
-                        Glyph {
-                            anchors.verticalCenter: parent.verticalCenter
-                            kind: "moon"
-                            size: 14
-                            color: AppTheme.accent
-                        }
-                        Text {
-                            id: sleepEntryLabel
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: qsTr("还清 · 睡眠模式")
-                            color: AppTheme.textSecondary
-                            font.pixelSize: AppTheme.fs(12)
-                            font.family: AppTheme.fontFamily
-                        }
-                    }
-                    MouseArea {
-                        id: sleepEntryArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: sleepSheet.open()
-                    }
-                }
             }
 
     // ---------- 浏览器式标签页：浅清 / 覆清 / 深清（固定顶部） ----------
@@ -519,8 +507,92 @@ Item {
                 }
             }
 
+    // ---------- 还清 tab 内容：按作息自动锁定，不提供手动开始 ----------
+    GlassCard {
+        visible: page.sleepMode
+        x: page.contentX
+        y: tabBar.y + tabBar.height + 16
+        width: page.contentWidth
+        height: 224
+        radius: 22
+        interactive: false
+        glassSource: page.glassSource
+
+        Column {
+            x: 24
+            y: 20
+            width: parent.width - 48
+            spacing: 14
+            Row {
+                width: parent.width
+                spacing: 9
+                Glyph { anchors.verticalCenter: parent.verticalCenter; kind: "moon"; size: 18; color: AppTheme.accent }
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: qsTr("还清（睡眠模式）")
+                    color: AppTheme.textPrimary
+                    font.pixelSize: AppTheme.fs(20)
+                    font.weight: Font.Bold
+                    font.family: AppTheme.fontFamily
+                }
+            }
+            Text {
+                width: parent.width
+                text: qsTr("按作息时间自动进入深清锁定。还清不需要手动开始，到点会替你合上今天。")
+                color: AppTheme.textSecondary
+                font.pixelSize: AppTheme.fs(12)
+                font.family: AppTheme.fontFamily
+                wrapMode: Text.WordWrap
+            }
+            Rectangle { width: parent.width; height: 1; color: AppTheme.divider }
+            Row {
+                width: parent.width
+                spacing: 12
+                Text {
+                    width: 72
+                    text: qsTr("作息时间")
+                    color: AppTheme.textTertiary
+                    font.pixelSize: AppTheme.fs(11)
+                    font.family: AppTheme.fontFamily
+                }
+                Text {
+                    text: page.sleepTimesText
+                    color: AppTheme.textPrimary
+                    font.pixelSize: AppTheme.fs(14)
+                    font.family: AppTheme.fontFamily
+                }
+            }
+            Row {
+                width: parent.width
+                spacing: 12
+                Text {
+                    width: 72
+                    text: qsTr("解锁次数")
+                    color: AppTheme.textTertiary
+                    font.pixelSize: AppTheme.fs(11)
+                    font.family: AppTheme.fontFamily
+                }
+                Text {
+                    text: page.sleepUnlockText
+                    color: AppTheme.textSecondary
+                    font.pixelSize: AppTheme.fs(12)
+                    font.family: AppTheme.fontFamily
+                }
+            }
+            GlassButton {
+                text: qsTr("设置作息")
+                tone: "light"
+                fontSize: AppTheme.fs(12)
+                padH: 20
+                minHeight: 34
+                onClicked: sleepSheet.open()
+            }
+        }
+    }
+
     // ---------- 可滚动区域（从标签栏下方开始，标签永远不动） ----------
     Flickable {
+        visible: !page.sleepMode
         id: flick
         objectName: "SpaceFlick"
         x: page.contentX
