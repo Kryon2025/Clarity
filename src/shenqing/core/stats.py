@@ -54,6 +54,8 @@ class StatsStore:
         *,
         when: datetime | None = None,
         started_at: datetime | None = None,
+        clicks: int = 0,
+        recovered: bool = False,
     ) -> None:
         now = when or datetime.now()
         start = started_at or now
@@ -67,6 +69,8 @@ class StatsStore:
                 "completed": bool(completed),
                 "interruptions": int(interruptions),
                 "space": str(space or ""),
+                "clicks": max(0, int(clicks)),
+                "recovered": bool(recovered),
             }
         )
         self.save()
@@ -83,6 +87,15 @@ class StatsStore:
     def sessions_on(self, day: date | None = None) -> list[dict[str, Any]]:
         key = (day or date.today()).isoformat()
         return [dict(s) for s in self._sessions if s.get("date") == key]
+
+    def clicks_on(self, day: date | None = None) -> int:
+        """今天所有专注的鼠标点击数。"""
+        return sum(
+            int(session.get("clicks", 0) or 0) for session in self.sessions_on(day)
+        )
+
+    def last_session(self) -> dict[str, Any]:
+        return dict(self._sessions[-1]) if self._sessions else {}
 
     def today_sessions(self, today: date | None = None) -> int:
         """今天完成的专注次数（供 UI 今日专注卡片/连续打卡）。"""

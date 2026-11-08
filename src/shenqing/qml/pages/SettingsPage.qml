@@ -19,6 +19,78 @@ Item {
     property string newSleepTime: "23:30"
     property int clockClickCount: 0
 
+    // ---------- v0.14 数据与备份 ----------
+    property bool backupBusyLocal: false
+    property bool backupConfirmOpen: false
+    property string backupPendingPath: ""
+    property string backupStatus: ""
+    property string backupStatusKind: "idle"
+    readonly property bool backupBusy: backupBusyLocal
+                                         || ((typeof App !== "undefined" && App.backupBusy !== undefined)
+                                             ? App.backupBusy === true : false)
+    readonly property string backupError: (typeof App !== "undefined" && App.lastBackupError !== undefined)
+                                          ? String(App.lastBackupError) : ""
+    function exportBackup() {
+        if (page.backupBusy) return
+        page.backupStatusKind = "busy"
+        page.backupStatus = qsTr("正在导出备份…")
+        page.backupBusyLocal = true
+        if (typeof App !== "undefined" && typeof App.exportBackup === "function") {
+            var path = App.exportBackup()
+            page.backupBusyLocal = false
+            if (typeof path === "string" && path !== "") {
+                page.backupStatusKind = "ok"
+                page.backupStatus = qsTr("备份已导出：%1").arg(path)
+            } else if (page.backupError !== "") {
+                page.backupStatusKind = "error"
+                page.backupStatus = page.backupError
+            } else {
+                page.backupStatusKind = "idle"
+                page.backupStatus = qsTr("已取消导出")
+            }
+        } else {
+            page.backupBusyLocal = false
+            page.backupStatusKind = "error"
+            page.backupStatus = qsTr("缺少备份接口（App.exportBackup）")
+        }
+    }
+    function importBackup() {
+        if (page.backupBusy) return
+        page.backupStatusKind = "busy"
+        page.backupStatus = qsTr("请选择备份文件…")
+        if (typeof App !== "undefined" && typeof App.pickBackupFile === "function") {
+            var path = App.pickBackupFile()
+            if (typeof path === "string" && path !== "") {
+                page.askRestore(path)
+            } else {
+                page.backupStatusKind = "idle"
+                page.backupStatus = qsTr("已取消导入")
+            }
+        } else {
+            page.backupStatusKind = "error"
+            page.backupStatus = qsTr("缺少备份选择接口（App.pickBackupFile）")
+        }
+    }
+    function askRestore(path) {
+        page.backupPendingPath = String(path)
+        page.backupConfirmOpen = true
+    }
+    function confirmRestore() {
+        if (page.backupPendingPath === "") return
+        if (typeof App !== "undefined" && typeof App.restoreBackupFile === "function") {
+            page.backupBusyLocal = true
+            page.backupStatusKind = "busy"
+            page.backupStatus = qsTr("正在导入备份，完成后将自动重启…")
+            page.backupConfirmOpen = false
+            App.restoreBackupFile(page.backupPendingPath)
+            page.backupBusyLocal = false
+        } else {
+            page.backupConfirmOpen = false
+            page.backupStatusKind = "error"
+            page.backupStatus = qsTr("缺少备份恢复接口（App.restoreBackupFile）")
+        }
+    }
+
     // ---------- v0.12 外观：字号 / 字体 / 导航展开方式 ----------
     property bool fontMenuOpen: false
     readonly property var fontFamilyList: {
@@ -547,7 +619,7 @@ Item {
 
                     Row {
                         width: parent.width
-                        spacing: 10
+                        spacing: 8
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
                             width: 88
@@ -556,22 +628,37 @@ Item {
                             font.pixelSize: AppTheme.fs(12)
                             font.family: AppTheme.fontFamily
                         }
-                        Repeater {
-                            model: [
-                                { value: 0.85, label: qsTr("小") },
-                                { value: 1.0, label: qsTr("标准") },
-                                { value: 1.15, label: qsTr("大") },
-                                { value: 1.3, label: qsTr("特大") }
-                            ]
-                            delegate: GlassButton {
-                                text: modelData.label
-                                tone: Math.abs(page.currentFontScale - Number(modelData.value)) < 0.03 ? "light" : "ghost"
-                                fontSize: AppTheme.fs(12)
-                                padH: 16
-                                minHeight: 32
-                                selected: Math.abs(page.currentFontScale - Number(modelData.value)) < 0.03
-                                onClicked: page.setFontScale(modelData.value)
-                            }
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: "A 小"
+                            color: AppTheme.textTertiary
+                            font.pixelSize: AppTheme.fs(10)
+                            font.family: AppTheme.fontFamily
+                        }
+                        GlassSlider {
+                            width: parent.width - 88 - 34 - 34 - 48 - 40
+                            anchors.verticalCenter: parent.verticalCenter
+                            from: 0.8
+                            to: 1.4
+                            step: 0.05
+                            value: page.currentFontScale
+                            onMoved: (value) => page.setFontScale(value)
+                        }
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: "A 大"
+                            color: AppTheme.textSecondary
+                            font.pixelSize: AppTheme.fs(12)
+                            font.family: AppTheme.fontFamily
+                        }
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 48
+                            horizontalAlignment: Text.AlignRight
+                            text: Math.round(page.currentFontScale * 100) + "%"
+                            color: AppTheme.accent
+                            font.pixelSize: AppTheme.fs(12)
+                            font.family: C.monoFont
                         }
                     }
 
@@ -663,7 +750,7 @@ Item {
 
                     Text {
                         width: parent.width
-                        text: qsTr("字号与字体只影响界面显示；导航方式自动时会跟随窗口宽度。")
+                        text: qsTr("字号影响整个界面，实时生效；字体与导航方式同样即时生效。")
                         color: AppTheme.textTertiary
                         font.pixelSize: AppTheme.fs(10)
                         font.family: AppTheme.fontFamily
@@ -802,6 +889,98 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                             checked: App.autostartEnabled
                             onClicked: App.setAutostart(!App.autostartEnabled)
+                        }
+                    }
+                }
+            }
+
+            // ---------- v0.14 数据与备份 ----------
+            GlassCard {
+                width: parent.width
+                implicitHeight: backupColumn.implicitHeight + 36
+                height: implicitHeight
+                radius: 20
+                interactive: false
+                glassSource: page.glassSource
+
+                Column {
+                    id: backupColumn
+                    x: 20
+                    y: 18
+                    width: parent.width - 40
+                    spacing: 10
+
+                    Row {
+                        width: parent.width
+                        spacing: 9
+                        Glyph {
+                            anchors.verticalCenter: parent.verticalCenter
+                            kind: "download"
+                            size: 15
+                            color: AppTheme.accent
+                        }
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: qsTr("数据与备份")
+                            color: AppTheme.textPrimary
+                            font.pixelSize: AppTheme.fs(15)
+                            font.weight: Font.DemiBold
+                            font.family: AppTheme.fontFamily
+                        }
+                        Item { width: parent.width - 320; height: 1 }
+                        Text {
+                            width: 300
+                            horizontalAlignment: Text.AlignRight
+                            text: page.backupStatus
+                            color: page.backupStatusKind === "error" ? AppTheme.danger
+                                  : (page.backupStatusKind === "ok" ? AppTheme.accent : AppTheme.textTertiary)
+                            font.pixelSize: AppTheme.fs(10)
+                            font.family: AppTheme.fontFamily
+                            wrapMode: Text.WordWrap
+                            maximumLineCount: 2
+                            elide: Text.ElideMiddle
+                        }
+                    }
+
+                    Text {
+                        width: parent.width
+                        text: qsTr("备份包含：设置、空间、白名单、专注统计、应用使用记录、AI 对话与用量、睡眠与插件数据。导入会覆盖当前数据并自动重启深清。")
+                        color: AppTheme.textTertiary
+                        font.pixelSize: AppTheme.fs(10)
+                        font.family: AppTheme.fontFamily
+                        wrapMode: Text.WordWrap
+                        lineHeight: 1.35
+                    }
+
+                    Row {
+                        width: parent.width
+                        spacing: 10
+                        GlassButton {
+                            text: page.backupBusy ? qsTr("处理中…") : qsTr("导出备份")
+                            tone: "tinted"
+                            fontSize: AppTheme.fs(12)
+                            padH: 18
+                            minHeight: 34
+                            enabled: !page.backupBusy
+                            onClicked: page.exportBackup()
+                        }
+                        GlassButton {
+                            text: page.backupBusy ? qsTr("处理中…") : qsTr("导入备份")
+                            tone: "ghost"
+                            fontSize: AppTheme.fs(12)
+                            padH: 18
+                            minHeight: 34
+                            enabled: !page.backupBusy
+                            onClicked: page.importBackup()
+                        }
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: parent.width - 260
+                            text: page.backupError !== "" ? page.backupError : qsTr("导出为 .zip/.json 备份文件；导入前会二次确认。")
+                            color: page.backupError !== "" ? AppTheme.danger : AppTheme.textTertiary
+                            font.pixelSize: AppTheme.fs(10)
+                            font.family: AppTheme.fontFamily
+                            wrapMode: Text.WordWrap
                         }
                     }
                 }
@@ -1004,6 +1183,101 @@ Item {
             }
 
             Item { width: parent.width; height: 2 }
+        }
+    }
+
+    // ---------- v0.14 导入备份二次确认 ----------
+    Item {
+        id: backupConfirmLayer
+        objectName: "BackupConfirmLayer"
+        anchors.fill: parent
+        z: 85
+        visible: opacity > 0.01
+        opacity: page.backupConfirmOpen ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
+
+        Rectangle { anchors.fill: parent; color: "#B3040A10" }
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.AllButtons
+            onClicked: page.backupConfirmOpen = false
+        }
+        Rectangle {
+            width: Math.min(460, page.width - 80)
+            height: confirmBackupColumn.height + 44
+            anchors.centerIn: parent
+            radius: 20
+            color: AppTheme.cardBg
+            border.width: 1
+            border.color: AppTheme.cardBorderStrong
+            MouseArea { anchors.fill: parent; acceptedButtons: Qt.AllButtons; onClicked: {} }
+            Column {
+                id: confirmBackupColumn
+                x: 22
+                y: 20
+                width: parent.width - 44
+                spacing: 14
+                Text {
+                    width: parent.width
+                    text: qsTr("导入备份并覆盖当前数据？")
+                    color: AppTheme.textPrimary
+                    font.pixelSize: AppTheme.fs(16)
+                    font.weight: Font.Bold
+                    font.family: AppTheme.fontFamily
+                    wrapMode: Text.WordWrap
+                }
+                Text {
+                    width: parent.width
+                    text: qsTr("导入会覆盖当前设置、空间、白名单、专注统计、应用使用、AI 对话与用量、睡眠与插件数据，并自动重启深清。")
+                    color: AppTheme.textSecondary
+                    font.pixelSize: AppTheme.fs(11)
+                    font.family: AppTheme.fontFamily
+                    wrapMode: Text.WordWrap
+                    lineHeight: 1.4
+                }
+                Text {
+                    width: parent.width
+                    text: page.backupPendingPath
+                    color: AppTheme.textTertiary
+                    font.pixelSize: AppTheme.fs(9)
+                    font.family: AppTheme.fontFamily
+                    elide: Text.ElideMiddle
+                }
+                Row {
+                    width: parent.width
+                    spacing: 10
+                    Item { width: parent.width - 230; height: 1 }
+                    GlassButton {
+                        text: qsTr("取消")
+                        tone: "ghost"
+                        fontSize: AppTheme.fs(12)
+                        padH: 18
+                        minHeight: 34
+                        onClicked: page.backupConfirmOpen = false
+                    }
+                    Rectangle {
+                        width: 118
+                        height: 34
+                        radius: 17
+                        color: confirmBackupArea.containsMouse ? "#F06870" : AppTheme.danger
+                        Text {
+                            anchors.centerIn: parent
+                            text: qsTr("覆盖并重启")
+                            color: "#FFFFFF"
+                            font.pixelSize: AppTheme.fs(12)
+                            font.weight: Font.DemiBold
+                            font.family: AppTheme.fontFamily
+                        }
+                        MouseArea {
+                            id: confirmBackupArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: page.confirmRestore()
+                        }
+                    }
+                }
+            }
         }
     }
 

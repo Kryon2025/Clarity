@@ -79,6 +79,8 @@ Window {
         return ""
     }
 
+    readonly property int sessionClicks: (typeof App !== "undefined" && App.sessionClicks !== undefined)
+                                          ? Number(App.sessionClicks) : 0
     readonly property var dockApps: App.dockApps !== undefined ? App.dockApps : []
     readonly property int dockCount: overlay.dockApps !== null && overlay.dockApps !== undefined
                                     ? overlay.dockApps.length : 0
@@ -1067,6 +1069,31 @@ Window {
                         }
                     }
                 }
+            }
+        }
+
+        // ---------- 本次专注点击次数 ----------
+        Item {
+            z: 3
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.bottom: parent.bottom
+            anchors.bottomMargin: 26
+            width: clicksLabel.implicitWidth + 26
+            height: 26
+            Rectangle {
+                anchors.fill: parent
+                radius: 13
+                color: AppTheme.glass ? "#26040A10" : "#66040A10"
+                border.width: 1
+                border.color: AppTheme.glass ? "#33FFFFFF" : AppTheme.cardBorder
+            }
+            Text {
+                id: clicksLabel
+                anchors.centerIn: parent
+                text: qsTr("点击 %1 次").arg(overlay.sessionClicks)
+                color: AppTheme.textSecondary
+                font.pixelSize: AppTheme.fs(11)
+                font.family: AppTheme.fontFamily
             }
         }
 

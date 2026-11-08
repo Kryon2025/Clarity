@@ -240,6 +240,12 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     if not args.smoke:
+        # v0.14：有未完成的专注先恢复（重新锁定/补记统计），再起看门狗
+        try:
+            if bridge.restore_session_if_needed():
+                logging.info("已恢复未完成的专注会话")
+        except Exception as exc:  # noqa: BLE001 - 恢复失败不能阻止启动
+            logging.warning("恢复未完成专注失败：%s", exc)
         # 保活：写 keeper.json 并起独立看门狗；正常退出时结束看门狗
         if keeper.start_keeper():
             logging.info("保活看门狗已启动")

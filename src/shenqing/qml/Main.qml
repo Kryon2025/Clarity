@@ -404,7 +404,9 @@ FluentWindow {
                 endMs: endMs,
                 quote: (typeof App.dailyQuote !== "undefined" && App.dailyQuote !== null) ? String(App.dailyQuote) : "",
                 avatarUrl: (typeof App.userAvatarUrl !== "undefined" && App.userAvatarUrl !== null) ? String(App.userAvatarUrl) : "",
-                wallpaperUrl: (typeof App.bingWallpaperUrl !== "undefined" && App.bingWallpaperUrl !== null) ? String(App.bingWallpaperUrl) : ""
+                wallpaperUrl: (typeof App.bingWallpaperUrl !== "undefined" && App.bingWallpaperUrl !== null) ? String(App.bingWallpaperUrl) : "",
+                clicks: (typeof App.lastSessionClicks !== "undefined") ? Number(App.lastSessionClicks)
+                        : ((info !== null && info.clicks !== undefined) ? Number(info.clicks) : 0)
             }
             var card = (typeof App.todayFocusCard !== "undefined" && App.todayFocusCard !== null)
                        ? App.todayFocusCard : null

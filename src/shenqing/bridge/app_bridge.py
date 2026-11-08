@@ -55,6 +55,8 @@ from ..core.stats import StatsStore
 from ..services import elevation, power, timesync, updater
 from ..services import ai as ai_service
 from ..services import app_usage
+from ..services import backup as backup_service
+from ..services import click_counter
 from ..services import sleep_mode, system_control, wallpaper
 from ..services.autostart import AutostartManager
 from ..services.lock_hardening import LockHardening
@@ -127,6 +129,7 @@ class AppBridge(QObject):
     aiModelsChanged = Signal()
     aiChatsChanged = Signal()
     aiUsageChanged = Signal()
+    backupChanged = Signal()
     languageChanged = Signal(str)
     _catalogScanned = Signal(list)
     #: 自动更新：后台线程 → 主线程
@@ -205,6 +208,16 @@ class AppBridge(QObject):
         )
         self._app_usage_date = ""
         self._app_usage_hourly_range = "today"
+        # v0.14 备份/恢复
+        self._backup_busy = False
+        self._last_backup_path = ""
+        self._last_backup_error = ""
+        # v0.14 专注恢复 + 点击计数
+        self._session_state_path = app_data_dir() / "session_state.json"
+        self._session_clicks = 0
+        self._last_session_clicks = 0
+        self._click_counter = click_counter.ClickCounter(self)
+        self._click_counter.changed.connect(self._on_click_count_changed)
         self._volume = -1
         self._sleep_lock_active = False
         self._clock_clicks: deque[float] = deque()
@@ -677,12 +690,14 @@ class AppBridge(QObject):
         total_minutes = round(
             sum(float(item.get("minutes", 0) or 0) for item in sessions), 1
         )
+        total_clicks = sum(int(item.get("clicks", 0) or 0) for item in sessions)
         return {
             "date": day.isoformat(),
             "timeRange": time_range,
             "spaceName": space_name,
             "minutes": total_minutes,
             "sessions": len(sessions),
+            "clicks": total_clicks,
             "quote": QUOTES[day.toordinal() % len(QUOTES)] if QUOTES else "",
         }
 
@@ -690,6 +705,7 @@ class AppBridge(QObject):
     def extendSession(self, minutes: int) -> bool:
         if not self._session.extend(minutes):
             return False
+        self._write_session_state()
         self.toast.emit(
             QCoreApplication.translate("ShenQing", "已延长 {0} 分钟").format(int(minutes))
         )
@@ -1613,8 +1629,161 @@ class AppBridge(QObject):
             for item in app_usage.CATEGORIES
         ]
 
+    # ================= v0.14 备份 / 恢复 =================
+    @Property(bool, notify=backupChanged)
+    def backupBusy(self) -> bool:
+        return bool(self._backup_busy)
+
+    @Property(str, notify=backupChanged)
+    def lastBackupPath(self) -> str:
+        return self._last_backup_path
+
+    @Property(str, notify=backupChanged)
+    def lastBackupError(self) -> str:
+        return self._last_backup_error
+
+    def _set_backup_state(
+        self, busy: bool, path: str = "", error: str = ""
+    ) -> None:
+        self._backup_busy = bool(busy)
+        self._last_backup_path = str(path or "")
+        self._last_backup_error = str(error or "")
+        self.backupChanged.emit()
+
+    @Slot(result=str)
+    def exportBackup(self) -> str:
+        """弹保存对话框导出备份；返回实际路径（取消/失败返回空串）。"""
+        from PySide6.QtWidgets import QFileDialog
+
+        try:
+            default_path = str(Path.home() / backup_service.default_backup_name())
+            selected, _filter = QFileDialog.getSaveFileName(
+                None,
+                QCoreApplication.translate("ShenQing", "导出深清备份"),
+                default_path,
+                QCoreApplication.translate("ShenQing", "深清备份 (*.zip)"),
+            )
+        except Exception as exc:  # noqa: BLE001 - 无 GUI 环境
+            logger.warning("打开导出对话框失败：%s", exc)
+            return ""
+        if not selected:
+            return ""
+        return selected if self.exportBackupTo(selected) else ""
+
+    @Slot(str, result=bool)
+    def exportBackupTo(self, path: str) -> bool:
+        text = str(path or "").strip()
+        if not text:
+            self._set_backup_state(False, "", "未选择保存路径")
+            return False
+        self._set_backup_state(True)
+        ok, message = backup_service.create_backup(text)
+        if ok:
+            self._set_backup_state(False, text)
+            self.toast.emit(
+                QCoreApplication.translate("ShenQing", "已导出到 {0}").format(text)
+            )
+        else:
+            self._set_backup_state(False, "", message)
+            self.toast.emit(
+                QCoreApplication.translate("ShenQing", "导出失败：{0}").format(message)
+            )
+        return ok
+
+    @Slot(result=str)
+    def pickBackupFile(self) -> str:
+        """只选备份文件（覆盖确认交给 QML）。"""
+        from PySide6.QtWidgets import QFileDialog
+
+        try:
+            selected, _filter = QFileDialog.getOpenFileName(
+                None,
+                QCoreApplication.translate("ShenQing", "选择深清备份"),
+                str(Path.home()),
+                QCoreApplication.translate("ShenQing", "深清备份 (*.zip)"),
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("打开导入对话框失败：%s", exc)
+            return ""
+        return str(selected or "")
+
+    @Slot(result=bool)
+    def importBackup(self) -> bool:
+        """选文件 + 二次确认 + 恢复（QML 也可只调 pickBackupFile/restoreBackupFile）。"""
+        path = self.pickBackupFile()
+        if not path:
+            return False
+        try:
+            from PySide6.QtWidgets import QMessageBox
+
+            answer = QMessageBox.question(
+                None,
+                QCoreApplication.translate("ShenQing", "导入备份"),
+                QCoreApplication.translate(
+                    "ShenQing", "导入会覆盖当前设置与数据，是否继续？"
+                ),
+            )
+            if answer != QMessageBox.StandardButton.Yes:
+                return False
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("确认导入失败：%s", exc)
+            return False
+        return self.restoreBackupFile(path)
+
+    @Slot(str, result=bool)
+    def restoreBackupFile(self, path: str) -> bool:
+        text = str(path or "").strip()
+        if not text:
+            self._set_backup_state(False, "", "未选择备份文件")
+            return False
+        self._set_backup_state(True)
+        ok, message = backup_service.restore_backup(text)
+        if not ok:
+            self._set_backup_state(False, "", message)
+            self.toast.emit(
+                QCoreApplication.translate("ShenQing", "恢复失败：{0}").format(message)
+            )
+            return False
+        self._set_backup_state(False, text)
+        self.toast.emit(
+            QCoreApplication.translate("ShenQing", "备份已恢复，正在重启深清…")
+        )
+        self._restart_after_restore()
+        return True
+
+    def _restart_after_restore(self) -> bool:
+        """恢复后：停看门狗 → 重新拉起应用 → 退出当前进程。"""
+        started = False
+        try:
+            from ..services import keeper
+
+            keeper.stop_keeper()
+            from PySide6.QtCore import QProcess
+
+            command = list(keeper.main_command())
+            if command:
+                program = command[0]
+                args = command[1:]
+                if "--restarted" not in args:
+                    args.append("--restarted")
+                started = bool(
+                    QProcess.startDetached(
+                        program, args, keeper.working_directory()
+                    )
+                )
+        except Exception as exc:  # noqa: BLE001 - 重启失败也要避免留在旧状态
+            logger.warning("恢复后重启应用失败：%s", exc)
+        application = QCoreApplication.instance()
+        if application is not None:
+            QTimer.singleShot(300, application.quit)
+        return started
+
     # ================= 服务退出清理 =================
     def _shutdown_services(self) -> None:
+        try:
+            self._click_counter.stop()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("停止点击统计失败：%s", exc)
         try:
             self._app_usage.shutdown()
         except Exception as exc:  # noqa: BLE001
@@ -1687,6 +1856,7 @@ class AppBridge(QObject):
             "minutes": float(item.get("minutes", 0) or 0),
             "startMs": int(start_dt.timestamp() * 1000) if start_dt else 0,
             "endMs": int(end_dt.timestamp() * 1000) if end_dt else 0,
+            "clicks": int(item.get("clicks", 0) or 0),
             "quote": QUOTES[day.toordinal() % len(QUOTES)] if QUOTES else "",
             "avatarUrl": self.userAvatarUrl,
             "wallpaperUrl": self.bingWallpaperUrl,
@@ -1827,6 +1997,12 @@ class AppBridge(QObject):
         minutes: int,
         *,
         trial: bool = False,
+        seconds: int | None = None,
+        persist_state: bool = True,
+        end_at_ms: int | None = None,
+        started_at_ms: int | None = None,
+        paused: bool = False,
+        recovered: bool = False,
     ) -> None:
         """以某张空间为载体开始一轮专注（时长/白名单取该空间，档位由调用方决定）。"""
         if self._session.state is not SessionState.IDLE:
@@ -1853,10 +2029,35 @@ class AppBridge(QObject):
         )
         self._guard.set_interval(int(self._settings.get("guard_interval_ms", 1000)))
         self._guard.start()
-        self._session_started_at = timesync.now()
+        if started_at_ms:
+            try:
+                self._session_started_at = datetime.fromtimestamp(
+                    int(started_at_ms) / 1000.0
+                ).astimezone()
+            except (OverflowError, OSError, ValueError):
+                self._session_started_at = timesync.now()
+        else:
+            self._session_started_at = timesync.now()
         power.keep_awake()
-        self._session.start(int(minutes), int(self._settings.get("pause_limit", 2)))
+        pause_limit = int(self._settings.get("pause_limit", 2))
+        if seconds is not None:
+            self._session.start_seconds(
+                max(1, int(seconds)),
+                pause_limit,
+                total_seconds=max(1, int(minutes)) * 60 if minutes else None,
+                paused=bool(paused),
+            )
+        else:
+            self._session.start(int(minutes), pause_limit)
+        # 点击计数从 0 开始（会话中统计全局左键点击）
+        self._reset_click_tracking()
         self.lockedChanged.emit()
+        if persist_state and not trial:
+            self._write_session_state(end_at_ms=end_at_ms)
+        if recovered:
+            self.toast.emit(
+                QCoreApplication.translate("ShenQing", "检测到未完成的专注，已恢复锁定")
+            )
         payload = (
             self._space_view(space)
             if space
@@ -1865,6 +2066,166 @@ class AppBridge(QObject):
         payload["level"] = level
         payload["trial"] = bool(trial)
         self._dispatch("session_start", payload)
+
+    # ================= v0.14 点击计数 / 专注恢复 =================
+    @Property(int, notify=tickChanged)
+    def sessionClicks(self) -> int:
+        if self.busy:
+            return int(self._session_clicks)
+        return int(self._last_session_clicks)
+
+    @Property(int, notify=statsChanged)
+    def todayClicks(self) -> int:
+        return int(self._stats.clicks_on(timesync.today()))
+
+    @Property(int, notify=statsChanged)
+    def lastSessionClicks(self) -> int:
+        stored = int(self._stats.last_session().get("clicks", 0) or 0)
+        return int(self._last_session_clicks or stored)
+
+    def _reset_click_tracking(self) -> None:
+        self._session_clicks = 0
+        try:
+            if os.environ.get("SHENQING_NO_SCAN") == "1":
+                # 冒烟/单测环境不安装全局鼠标钩子
+                self._click_counter.reset()
+            else:
+                self._click_counter.start()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("启动点击统计失败：%s", exc)
+        self.tickChanged.emit()
+
+    def _stop_click_tracking(self) -> int:
+        try:
+            clicks = int(self._click_counter.stop())
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("停止点击统计失败：%s", exc)
+            clicks = int(self._session_clicks)
+        self._session_clicks = clicks
+        self._last_session_clicks = clicks
+        return clicks
+
+    def _on_click_count_changed(self, count: int) -> None:
+        self._session_clicks = int(count)
+        if self.busy:
+            self.tickChanged.emit()
+
+    # ---------- 会话状态持久化（崩溃/被杀恢复） ----------
+    def _write_session_state(self, end_at_ms: int | None = None) -> None:
+        try:
+            now = timesync.now()
+            remaining = max(0, int(self._session.remaining))
+            end_at = int(end_at_ms) if end_at_ms else int(now.timestamp() * 1000) + remaining * 1000
+            payload = {
+                "spaceId": self._active_space_id,
+                "mode": self._session_level,
+                "endAt": end_at,
+                "startedAt": int(self._session_started_at.timestamp() * 1000),
+                "planSeconds": int(self._session.total),
+                "paused": self._session.state is SessionState.PAUSED,
+                "remainingSeconds": remaining,
+            }
+            self._session_state_path.parent.mkdir(parents=True, exist_ok=True)
+            self._session_state_path.write_text(
+                json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
+        except Exception as exc:  # noqa: BLE001 - 状态持久化失败不能影响专注
+            logger.warning("写入会话状态失败：%s", exc)
+
+    def _delete_session_state(self) -> None:
+        try:
+            self._session_state_path.unlink()
+        except OSError:
+            pass
+
+    def _read_session_state(self) -> dict | None:
+        try:
+            data = json.loads(self._session_state_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError, ValueError):
+            return None
+        return data if isinstance(data, dict) else None
+
+    def restore_session_if_needed(self) -> bool:
+        """启动时恢复未完成的专注：未到期重新锁定，已到期补记统计并清理。"""
+        state = self._read_session_state()
+        if not state:
+            return False
+        try:
+            end_at = int(state.get("endAt") or 0)
+            started_at = int(state.get("startedAt") or 0)
+            plan_seconds = int(state.get("planSeconds") or 0)
+        except (TypeError, ValueError):
+            self._delete_session_state()
+            return False
+        if end_at <= 0:
+            self._delete_session_state()
+            return False
+        level = str(state.get("mode") or self.lockLevel)
+        now = timesync.now()
+        if int(now.timestamp() * 1000) >= end_at:
+            # 已到期：按原时长补记统计，不锁屏
+            minutes = round(plan_seconds / 60.0, 1)
+            if minutes <= 0 and started_at:
+                minutes = round(max(0, end_at - started_at) / 60000.0, 1)
+            space = self._spaces.get(str(state.get("spaceId") or ""))
+            if space is None:
+                space = self._spaces.get_by_mode(level)
+            space_name = str(space.get("name")) if space else ""
+            try:
+                ended_at = datetime.fromtimestamp(end_at / 1000.0).astimezone()
+                started_dt = (
+                    datetime.fromtimestamp(started_at / 1000.0).astimezone()
+                    if started_at
+                    else ended_at - timedelta(minutes=minutes)
+                )
+                if minutes >= 1:
+                    self._stats.record(
+                        minutes,
+                        level,
+                        True,
+                        0,
+                        space=space_name,
+                        when=ended_at,
+                        started_at=started_dt,
+                        clicks=0,
+                        recovered=True,
+                    )
+                    self.statsChanged.emit()
+                    self.toast.emit(
+                        QCoreApplication.translate(
+                            "ShenQing", "上次专注已完成，已补记统计"
+                        )
+                    )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("补记恢复会话统计失败：%s", exc)
+            self._delete_session_state()
+            self.stateChanged.emit()
+            return False
+        # 未到期：恢复锁定
+        space = self._spaces.get(str(state.get("spaceId") or ""))
+        if space is None:
+            space = self._spaces.get_by_mode(level)
+        remaining = max(1, int(round((end_at - int(now.timestamp() * 1000)) / 1000.0)))
+        if bool(state.get("paused")):
+            try:
+                remaining = max(1, int(state.get("remainingSeconds") or remaining))
+            except (TypeError, ValueError):
+                pass
+        minutes = max(1, int(round(plan_seconds / 60.0))) if plan_seconds else max(
+            1, int(round(remaining / 60.0))
+        )
+        self._begin_space_session(
+            space,
+            level,
+            minutes,
+            seconds=remaining,
+            persist_state=True,
+            end_at_ms=end_at,
+            started_at_ms=started_at or None,
+            paused=bool(state.get("paused")),
+            recovered=True,
+        )
+        return True
 
     @Slot(str)
     def startSpace(self, space_id: str) -> None:
@@ -1899,10 +2260,14 @@ class AppBridge(QObject):
             return
         if not self._session.pause():
             self.toast.emit(QCoreApplication.translate("ShenQing", "暂停次数已用完"))
+            return
+        if self._session.state is SessionState.PAUSED:
+            self._write_session_state()
 
     @Slot()
     def resumeSession(self) -> None:
-        self._session.resume()
+        if self._session.resume():
+            self._write_session_state()
 
     @Slot()
     def stopSession(self) -> None:
@@ -2862,6 +3227,8 @@ class AppBridge(QObject):
         self._dispatch("tick", int(remaining))
 
     def _on_finished(self, elapsed_seconds: int, completed: bool, pauses: int) -> None:
+        clicks = self._stop_click_tracking()
+        self._delete_session_state()
         self._guard.stop()
         power.allow_sleep()
         self._sleep_lock_active = False
@@ -2881,6 +3248,7 @@ class AppBridge(QObject):
                 space=space_name,
                 when=timesync.now(),
                 started_at=self._session_started_at,
+                clicks=clicks,
             )
             self.statsChanged.emit()
             self.toast.emit(
@@ -2897,6 +3265,7 @@ class AppBridge(QObject):
             "minutes": round(minutes, 1),
             "completed": bool(completed),
             "pauses": int(pauses),
+            "clicks": int(clicks),
         }
         self._dispatch("session_end", summary)
         try:
@@ -2921,6 +3290,8 @@ class AppBridge(QObject):
         self._active_space_id = ""
         self._session_level = ""
         self._trial_active = False
+        self._last_session_clicks = clicks
+        self.tickChanged.emit()
         self.stateChanged.emit()
         self.lockedChanged.emit()
 

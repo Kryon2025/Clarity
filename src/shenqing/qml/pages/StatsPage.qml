@@ -92,6 +92,10 @@ Item {
                                          ? Number(App.todayMinutes) : 0
     readonly property int streakDays: (typeof App !== "undefined" && App.streakDays !== undefined)
                                       ? Number(App.streakDays) : 0
+    property int demoTodayClicks: -1
+    readonly property int todayClicks: page.demoTodayClicks >= 0 ? page.demoTodayClicks
+                                       : ((typeof App !== "undefined" && App.todayClicks !== undefined)
+                                          ? Number(App.todayClicks) : 0)
     readonly property var focusCard: (typeof App !== "undefined" && App.todayFocusCard !== undefined
                                       && App.todayFocusCard !== null) ? App.todayFocusCard : ({})
     readonly property var recentSessions: (typeof App !== "undefined" && App.recentSessions !== undefined
@@ -429,6 +433,39 @@ Item {
                                 opacity: 0.75
                             }
                         }
+                    }
+                }
+            }
+
+            // ---------- 今日点击 ----------
+            Item {
+                visible: page.section === 0
+                width: parent.width
+                height: 26
+                Row {
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 7
+                    Glyph {
+                        anchors.verticalCenter: parent.verticalCenter
+                        kind: "waveBars"
+                        size: 13
+                        color: AppTheme.accent
+                    }
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: qsTr("今日点击")
+                        color: AppTheme.textTertiary
+                        font.pixelSize: AppTheme.fs(11)
+                        font.family: AppTheme.fontFamily
+                    }
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: qsTr("%1 次").arg(page.todayClicks)
+                        color: AppTheme.textPrimary
+                        font.pixelSize: AppTheme.fs(13)
+                        font.weight: Font.DemiBold
+                        font.family: AppTheme.fontFamily
                     }
                 }
             }

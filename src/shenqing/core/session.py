@@ -80,15 +80,27 @@ class SessionController(QObject):
 
     # ---- 控制 ----
     def start(self, minutes: int, pause_limit: int = 2) -> None:
+        self.start_seconds(max(1, int(minutes)) * 60, pause_limit)
+
+    def start_seconds(
+        self,
+        seconds: int,
+        pause_limit: int = 2,
+        *,
+        total_seconds: int | None = None,
+        paused: bool = False,
+    ) -> None:
+        """按秒开始会话（崩溃恢复用）：可指定原始总时长并直接进入暂停状态。"""
         if self._state is not SessionState.IDLE:
             return
-        self._total = max(1, int(minutes)) * 60
-        self._remaining = self._total
+        self._remaining = max(1, int(seconds))
+        self._total = max(self._remaining, int(total_seconds or self._remaining))
         self._pauses = 0
         self._pause_limit = max(0, int(pause_limit))
-        self._state = SessionState.RUNNING
+        self._state = SessionState.PAUSED if paused else SessionState.RUNNING
         self._last_tick_at = time.monotonic()
-        self._timer.start()
+        if not paused:
+            self._timer.start()
         self.stateChanged.emit()
         self.tick.emit(self._remaining)
 

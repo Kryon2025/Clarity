@@ -8,7 +8,7 @@ APP_NAME = "深清"
 #: 英文名（v0.4 起对外统一用 Clarity；「身轻」不再展示）
 APP_ALIAS = "Clarity"
 APP_ID = "ShenQing"
-APP_VERSION = "0.13.0"
+APP_VERSION = "0.14.0"
 
 #: GitHub 仓库（自动更新与反馈入口用）
 GITHUB_REPO = "Kryon2025/Clarity"
@@ -39,6 +39,25 @@ DEFAULT_THEME = "solid"
 
 #: 更新日志（最新在前；en 为空时用中文兜底）
 CHANGELOG = [
+    {
+        "version": "0.14.0",
+        "date": "2025-11-08",
+        "tag": "",
+        "items": [
+            "设置新增数据与备份：一键导出/导入备份（含设置、空间、统计、应用使用、AI 对话、睡眠与插件数据），导入前二次确认并自动重启",
+            "字号改为 CW2 风格滑块（80%–140%，实时预览）",
+            "专注被关掉后重新打开会自动恢复锁定；已完成则补记统计",
+            "统计本次专注鼠标点击次数，锁屏、结束卡片与数据页均可查看",
+            "新增「卡皮巴拉敲木鱼」遮罩组件插件",
+        ],
+        "items_en": [
+            "Settings gained Data & backup: export/import a backup (settings, spaces, stats, app usage, AI chats, sleep and plugin data) with confirmation and automatic restart",
+            "Font size is now a CW2-style slider (80%–140%, live preview)",
+            "If ShenQing is closed during focus, reopening it restores the lock automatically; completed sessions are recorded",
+            "Per-session mouse click counting, shown on the lock screen, summary card and stats page",
+            "New Capybara wooden-fish overlay widget plugin",
+        ],
+    },
     {
         "version": "0.13.0",
         "date": "2025-11-07",

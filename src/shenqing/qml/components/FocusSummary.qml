@@ -47,6 +47,8 @@ Window {
     readonly property string wallpaperUrl: (overlay.summary.wallpaperUrl !== undefined) ? String(overlay.summary.wallpaperUrl) : ""
     readonly property int minutes: (overlay.summary.minutes !== undefined)
                                    ? Math.max(1, Math.round(Number(overlay.summary.minutes))) : 1
+    readonly property int clicks: (overlay.summary.clicks !== undefined)
+                                  ? Math.max(0, Math.round(Number(overlay.summary.clicks))) : 0
     readonly property string dateRange: overlay.formatRange()
     readonly property int cardWidth: Math.min(520, Math.round(overlay.width * 0.34))
     readonly property int cardHeight: Math.round(overlay.cardWidth * 1.30)
@@ -499,6 +501,14 @@ Window {
                     font.pixelSize: AppTheme.fs(12)
                     font.family: AppTheme.fontFamily
                     font.letterSpacing: 1
+                }
+
+                Text {
+                    visible: overlay.clicks > 0
+                    text: qsTr("点击 %1 次").arg(overlay.clicks)
+                    color: "#8FB7C6"
+                    font.pixelSize: AppTheme.fs(11)
+                    font.family: AppTheme.fontFamily
                 }
 
                 Row {
