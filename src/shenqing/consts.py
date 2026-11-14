@@ -8,7 +8,7 @@ APP_NAME = "深清"
 #: 英文名（v0.4 起对外统一用 Clarity；「身轻」不再展示）
 APP_ALIAS = "Clarity"
 APP_ID = "ShenQing"
-APP_VERSION = "0.18.0"
+APP_VERSION = "0.18.1"
 
 #: v0.18 自定义主题 id 前缀：theme_mode = "custom:<id>"
 CUSTOM_THEME_PREFIX = "custom:"
@@ -74,6 +74,15 @@ MAX_FONT_FAMILIES = 200
 
 #: 更新日志（最新在前；en 为空时用中文兜底）
 CHANGELOG = [
+    {
+        "version": "0.18.1",
+        "date": "2025-11-14",
+        "tag": "",
+        "items": [
+            "新手引导改为普通窗口（居中、可移动），不再全屏显示",
+        ],
+        "items_en": ["Getting-started guide is now a normal centered window instead of fullscreen"],
+    },
     {
         "version": "0.18.0",
         "date": "2025-11-14",

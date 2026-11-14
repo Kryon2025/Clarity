@@ -13,8 +13,11 @@ Window {
     objectName: "Onboarding"
     title: qsTr("深清 · 新手引导")
     property bool animationsEnabled: true
-    width: Screen.width > 0 ? Screen.width : 1280
-    height: Screen.height > 0 ? Screen.height : 800
+    // v0.18.1：引导改为普通窗口（不再全屏），居中显示
+    width: Math.min(1120, Math.max(760, (Screen.width > 0 ? Screen.width : 1280) - 160))
+    height: Math.min(720, Math.max(560, (Screen.height > 0 ? Screen.height : 800) - 120))
+    x: Screen.width > 0 ? Math.round((Screen.width - width) / 2) : 80
+    y: Screen.height > 0 ? Math.round((Screen.height - height) / 2) : 60
     property bool showing: false
     property int pageIndex: 0
     readonly property int pageCount: 6
@@ -28,8 +31,8 @@ Window {
     readonly property bool backendDone: overlay.hasBackendDone ? App.onboardingDone === true : false
     onNeedsOnboardingValueChanged: if (overlay.needsOnboardingValue && !overlay.showing) overlay.showPages()
 
-    visibility: overlay.showing ? Window.FullScreen : Window.Hidden
-    flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
+    visibility: overlay.showing ? Window.Windowed : Window.Hidden
+    flags: Qt.Window | Qt.WindowStaysOnTopHint
     color: "transparent"
 
     function showPages() {
