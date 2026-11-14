@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 import "../theme"
 import "../components"
 import "../components/Constants.js" as C
@@ -360,10 +361,30 @@ Item {
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 
+        // 细滚动条：可拖动，空闲淡出，内容不足一屏时隐藏
+        ScrollBar.vertical: ScrollBar {
+            id: settingsScroll
+            policy: ScrollBar.AsNeeded
+            interactive: true
+            width: 8
+            anchors.right: parent.right
+            anchors.rightMargin: 6
+            contentItem: Rectangle {
+                implicitWidth: 6
+                radius: 3
+                color: settingsScroll.pressed
+                       ? AppTheme.accent
+                       : (settingsScroll.hovered ? AppTheme.textSecondary : AppTheme.textTertiary)
+                opacity: settingsScroll.active || settingsScroll.pressed ? 0.85 : 0.35
+                Behavior on opacity { NumberAnimation { duration: 140 } }
+            }
+            background: Item {}
+        }
+
         Column {
             id: pageColumn
-            width: Math.min(flick.width - 96, 780)
-            x: (flick.width - width) / 2
+            width: Math.max(320, Math.min(flick.width - 96, 780))
+            x: Math.max(24, (flick.width - width) / 2)
             y: 26
             spacing: 16
 
@@ -769,7 +790,7 @@ Item {
                         }
                         Item {
                             id: fontField
-                            width: 240
+                            width: Math.max(120, Math.min(240, parent.width - 72 - 10 - 190))
                             height: 32
                             Rectangle {
                                 anchors.fill: parent

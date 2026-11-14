@@ -36,9 +36,9 @@ QtObject {
 
     // ---------- 背景 ----------
     // 非海洋：v0.16.3 之前的深海渐变；海洋：上浅下深的深海渐变
-    readonly property color bgTop: ocean ? "#123F52" : (light ? "#F1F6F8" : "#04121C")
-    readonly property color bgMid: ocean ? "#0C2E3D" : (light ? "#E4EEF1" : "#061B26")
-    readonly property color bgBottom: ocean ? "#071E29" : (light ? "#D5E5E9" : "#0A2A36")
+    readonly property color bgTop: ocean ? "#123F52" : (light ? "#F1F6F8" : "#061C26")
+    readonly property color bgMid: ocean ? "#0C2E3D" : (light ? "#E4EEF1" : "#071F2A")
+    readonly property color bgBottom: ocean ? "#071E29" : (light ? "#D5E5E9" : "#08222E")
     // 三段渐变实际取色：非海洋沿用旧顺序（0=bgMid / 0.55=bgTop / 1=bgBottom），海洋为上浅下深
     readonly property color bgStart: ocean ? bgTop : bgMid
     readonly property color bgCenter: ocean ? bgMid : bgTop

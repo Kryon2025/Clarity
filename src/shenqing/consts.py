@@ -8,7 +8,7 @@ APP_NAME = "深清"
 #: 英文名（v0.4 起对外统一用 Clarity；「身轻」不再展示）
 APP_ALIAS = "Clarity"
 APP_ID = "ShenQing"
-APP_VERSION = "0.17.0"
+APP_VERSION = "0.17.1"
 
 #: GitHub 仓库（自动更新与反馈入口用）
 GITHUB_REPO = "Kryon2025/Clarity"
@@ -71,6 +71,19 @@ MAX_FONT_FAMILIES = 200
 
 #: 更新日志（最新在前；en 为空时用中文兜底）
 CHANGELOG = [
+    {
+        "version": "0.17.1",
+        "date": "2025-11-14",
+        "tag": "",
+        "items": [
+            "设置页：新增可拖动细滚动条，卡片与字体行在窄窗口不再被裁切",
+            "默认背景改为近均匀深色，滚到底部不再明显发黑",
+        ],
+        "items_en": [
+            "Settings: draggable slim scrollbar; cards and the font row no longer clip in narrow windows",
+            "Default background is now near-uniform dark, so the bottom no longer looks darker",
+        ],
+    },
     {
         "version": "0.17.0",
         "date": "2025-11-14",
