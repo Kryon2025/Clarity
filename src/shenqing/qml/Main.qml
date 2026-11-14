@@ -705,9 +705,10 @@ FluentWindow {
                                                           ? "#FFFFFF"
                                                           : (AppTheme.glass ? "#9AA8C4" : AppTheme.textSecondary)
                         readonly property int iconSize: navItem.secondary ? 18 : 20
-                        readonly property int labelSize: win.navExpanded
+                        // 字号跟全局字号缩放（v0.17.4：左侧导航列也参与字体调整）
+                        readonly property int labelSize: AppTheme.fs(win.navExpanded
                                                         ? (navItem.secondary ? 11 : 12)
-                                                        : (navItem.secondary ? 10 : 11)
+                                                        : (navItem.secondary ? 10 : 11))
 
                         Timer {
                             id: navLongPress
