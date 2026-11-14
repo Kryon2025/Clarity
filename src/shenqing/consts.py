@@ -8,7 +8,7 @@ APP_NAME = "深清"
 #: 英文名（v0.4 起对外统一用 Clarity；「身轻」不再展示）
 APP_ALIAS = "Clarity"
 APP_ID = "ShenQing"
-APP_VERSION = "0.16.1"
+APP_VERSION = "0.16.2"
 
 #: GitHub 仓库（自动更新与反馈入口用）
 GITHUB_REPO = "Kryon2025/Clarity"
@@ -39,6 +39,15 @@ DEFAULT_THEME = "solid"
 
 #: 更新日志（最新在前；en 为空时用中文兜底）
 CHANGELOG = [
+    {
+        "version": "0.16.2",
+        "date": "2025-11-14",
+        "tag": "",
+        "items": [
+            "安装程序改为全中文界面（不再出现英文向导页）",
+        ],
+        "items_en": ["Installer is now fully Chinese (no English wizard pages)"],
+    },
     {
         "version": "0.16.1",
         "date": "2025-11-14",

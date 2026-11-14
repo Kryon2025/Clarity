@@ -3,7 +3,7 @@
 ; 前置：先运行 PyInstaller（onedir）生成 dist\深清\深清.exe
 
 #ifndef AppVersion
-  #define AppVersion "0.16.1"
+  #define AppVersion "0.16.2"
 #endif
 #define AppName "深清"
 #define AppNameEn "Clarity"
@@ -36,17 +36,9 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 CloseApplications=yes
 RestartApplications=no
-; 中文界面（安装器没自带中文语言文件时自动回退英文）
-#define ChineseLangPath AddBackslash(CompilerPath) + "Languages\ChineseSimplified.isl"
-#if FileExists(ChineseLangPath)
-  #define ChineseLang "compiler:Languages\ChineseSimplified.isl"
-#endif
-
+; 全中文安装界面：Inno 自带语言包不含中文，使用仓库内附带的简体中文语言文件
 [Languages]
-#ifdef ChineseLang
-Name: "chinesesimp"; MessagesFile: "{#ChineseLang}"
-#endif
-Name: "english"; MessagesFile: "compiler:Default.isl"
+Name: "chinesesimp"; MessagesFile: "ChineseSimplified.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: "附加任务:"; Flags: checkedonce
