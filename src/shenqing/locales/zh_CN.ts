@@ -26,8 +26,8 @@
     <message>
         <location filename="../qml/pages/AIPage.qml" line="53"/>
         <location filename="../qml/pages/AIPage.qml" line="75"/>
-        <location filename="../qml/pages/AIPage.qml" line="438"/>
-        <location filename="../qml/pages/AIPage.qml" line="883"/>
+        <location filename="../qml/pages/AIPage.qml" line="452"/>
+        <location filename="../qml/pages/AIPage.qml" line="897"/>
         <source>免配置</source>
         <translation>免配置</translation>
     </message>
@@ -38,7 +38,7 @@
     </message>
     <message>
         <location filename="../qml/pages/AIPage.qml" line="118"/>
-        <location filename="../qml/pages/AIPage.qml" line="904"/>
+        <location filename="../qml/pages/AIPage.qml" line="918"/>
         <source>正在获取模型列表…</source>
         <translation>正在获取模型列表…</translation>
     </message>
@@ -58,94 +58,94 @@
         <translation>上次回复 %1 tokens · %2%3（估算）</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="293"/>
+        <location filename="../qml/pages/AIPage.qml" line="307"/>
         <source>对话、历史与用量都在这里</source>
         <translation>对话、历史与用量都在这里</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="308"/>
+        <location filename="../qml/pages/AIPage.qml" line="322"/>
         <source>今日 %1 tokens · %2%3（估算）</source>
         <translation>今日 %1 tokens · %2%3（估算）</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="352"/>
+        <location filename="../qml/pages/AIPage.qml" line="366"/>
         <source>新会话</source>
         <translation>新会话</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="374"/>
+        <location filename="../qml/pages/AIPage.qml" line="388"/>
         <source>还没有会话，点右侧「新对话」开始</source>
         <translation>还没有会话，点右侧「新对话」开始</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="389"/>
+        <location filename="../qml/pages/AIPage.qml" line="403"/>
         <source>＋ 新对话</source>
         <translation>＋ 新对话</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="446"/>
-        <location filename="../qml/pages/AIPage.qml" line="456"/>
+        <location filename="../qml/pages/AIPage.qml" line="460"/>
+        <location filename="../qml/pages/AIPage.qml" line="470"/>
         <source>思考</source>
         <translation>思考</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="446"/>
-        <location filename="../qml/pages/AIPage.qml" line="463"/>
+        <location filename="../qml/pages/AIPage.qml" line="460"/>
+        <location filename="../qml/pages/AIPage.qml" line="477"/>
         <source>联网</source>
         <translation>联网</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="531"/>
+        <location filename="../qml/pages/AIPage.qml" line="545"/>
         <source>思考过程</source>
         <translation>思考过程</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="568"/>
+        <location filename="../qml/pages/AIPage.qml" line="582"/>
         <source>%1 tokens</source>
         <translation>%1 tokens</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="604"/>
+        <location filename="../qml/pages/AIPage.qml" line="618"/>
         <source>空会话：问问专注方法，或让它帮你整理今天的任务。</source>
         <translation>空会话：问问专注方法，或让它帮你整理今天的任务。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="605"/>
+        <location filename="../qml/pages/AIPage.qml" line="619"/>
         <source>还没有配置 AI。点右上角齿轮填写服务商与 Key，或选择「免费直连（免配置）」。</source>
         <translation>还没有配置 AI。点右上角齿轮填写服务商与 Key，或选择「免费直连（免配置）」。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="646"/>
+        <location filename="../qml/pages/AIPage.qml" line="660"/>
         <source>请先配置 AI</source>
         <translation>请先配置 AI</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="697"/>
+        <location filename="../qml/pages/AIPage.qml" line="711"/>
         <source>免配置服务商：无需 API Key，选好模型即可直接对话。</source>
         <translation>免配置服务商：无需 API Key，选好模型即可直接对话。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="698"/>
+        <location filename="../qml/pages/AIPage.qml" line="712"/>
         <source>Key 只保存在本机；模型列表可自动获取。</source>
         <translation>Key 只保存在本机；模型列表可自动获取。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="829"/>
+        <location filename="../qml/pages/AIPage.qml" line="843"/>
         <source>测试中…</source>
         <translation>测试中…</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="849"/>
+        <location filename="../qml/pages/AIPage.qml" line="863"/>
         <source>用量统计：今日 %1 tokens · %2%3（估算）</source>
         <translation>用量统计：今日 %1 tokens · %2%3（估算）</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="859"/>
+        <location filename="../qml/pages/AIPage.qml" line="873"/>
         <source>重置</source>
         <translation>重置</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="904"/>
+        <location filename="../qml/pages/AIPage.qml" line="918"/>
         <source>暂无可用模型</source>
         <translation>暂无可用模型</translation>
     </message>
@@ -154,7 +154,7 @@
         <translation type="vanished">连接成功</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="835"/>
+        <location filename="../qml/pages/AIPage.qml" line="849"/>
         <source>连接失败</source>
         <translation>连接失败</translation>
     </message>
@@ -177,7 +177,7 @@
         <translation>缺少测试接口（App.testAIConnection）</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="292"/>
+        <location filename="../qml/pages/AIPage.qml" line="306"/>
         <source>AI</source>
         <translation>AI</translation>
     </message>
@@ -186,7 +186,7 @@
         <translation type="vanished">配置服务商与模型，然后在右侧直接对话</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="688"/>
+        <location filename="../qml/pages/AIPage.qml" line="702"/>
         <source>AI 设置</source>
         <translation>AI 设置</translation>
     </message>
@@ -195,47 +195,47 @@
         <translation type="vanished">Key 只保存在本机；模型列表可自动获取，也可手动输入。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="707"/>
+        <location filename="../qml/pages/AIPage.qml" line="721"/>
         <source>服务商</source>
         <translation>服务商</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="724"/>
+        <location filename="../qml/pages/AIPage.qml" line="738"/>
         <source>模型</source>
         <translation>模型</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="750"/>
+        <location filename="../qml/pages/AIPage.qml" line="764"/>
         <source>获取中</source>
         <translation>获取中</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="750"/>
+        <location filename="../qml/pages/AIPage.qml" line="764"/>
         <source>刷新</source>
         <translation>刷新</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="767"/>
+        <location filename="../qml/pages/AIPage.qml" line="781"/>
         <source>API Base</source>
         <translation>API Base</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="791"/>
+        <location filename="../qml/pages/AIPage.qml" line="805"/>
         <source>API Key</source>
         <translation>API Key</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="813"/>
+        <location filename="../qml/pages/AIPage.qml" line="827"/>
         <source>已保存，留空不修改</source>
         <translation>已保存，留空不修改</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="813"/>
+        <location filename="../qml/pages/AIPage.qml" line="827"/>
         <source>输入 API Key</source>
         <translation>输入 API Key</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="829"/>
+        <location filename="../qml/pages/AIPage.qml" line="843"/>
         <source>测试连接</source>
         <translation>测试连接</translation>
     </message>
@@ -258,12 +258,12 @@
 请在左侧填写服务商与 API Key，然后发送消息。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="577"/>
+        <location filename="../qml/pages/AIPage.qml" line="591"/>
         <source>思考中…</source>
         <translation>思考中…</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="595"/>
+        <location filename="../qml/pages/AIPage.qml" line="609"/>
         <source>AI 请求失败</source>
         <translation>AI 请求失败</translation>
     </message>
@@ -272,7 +272,7 @@
         <translation type="vanished">把问题交给深清：可以问专注方法、帮你整理思路，或随便聊聊。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="646"/>
+        <location filename="../qml/pages/AIPage.qml" line="660"/>
         <source>问点什么…（Enter 发送）</source>
         <translation>问点什么…（Enter 发送）</translation>
     </message>
@@ -281,7 +281,7 @@
         <translation type="vanished">请先在左侧配置 AI</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="657"/>
+        <location filename="../qml/pages/AIPage.qml" line="671"/>
         <source>发送</source>
         <translation>发送</translation>
     </message>
@@ -890,7 +890,7 @@
         <translation>专注</translation>
     </message>
     <message>
-        <location filename="../qml/components/EnterCountdown.qml" line="285"/>
+        <location filename="../qml/components/EnterCountdown.qml" line="293"/>
         <source>即将进入 · %1</source>
         <translation>即将进入 · %1</translation>
     </message>
@@ -899,7 +899,7 @@
         <translation type="vanished">取消</translation>
     </message>
     <message>
-        <location filename="../qml/components/EnterCountdown.qml" line="309"/>
+        <location filename="../qml/components/EnterCountdown.qml" line="317"/>
         <source>点击任意位置取消 / Esc</source>
         <translation>点击任意位置取消 / Esc</translation>
     </message>
@@ -1000,47 +1000,47 @@
         <translation>延长专注需要后端接口支持</translation>
     </message>
     <message>
-        <location filename="../qml/components/FocusSummary.qml" line="473"/>
+        <location filename="../qml/components/FocusSummary.qml" line="487"/>
         <source>来自深清</source>
         <translation>来自深清</translation>
     </message>
     <message>
-        <location filename="../qml/components/FocusSummary.qml" line="524"/>
+        <location filename="../qml/components/FocusSummary.qml" line="538"/>
         <source>本次专注</source>
         <translation>本次专注</translation>
     </message>
     <message>
-        <location filename="../qml/components/FocusSummary.qml" line="533"/>
+        <location filename="../qml/components/FocusSummary.qml" line="547"/>
         <source>点击 %1 次</source>
         <translation>点击 %1 次</translation>
     </message>
     <message>
-        <location filename="../qml/components/FocusSummary.qml" line="550"/>
+        <location filename="../qml/components/FocusSummary.qml" line="564"/>
         <source>分钟</source>
         <translation>分钟</translation>
     </message>
     <message>
-        <location filename="../qml/components/FocusSummary.qml" line="577"/>
+        <location filename="../qml/components/FocusSummary.qml" line="591"/>
         <source>编辑背景</source>
         <translation>编辑背景</translation>
     </message>
     <message>
-        <location filename="../qml/components/FocusSummary.qml" line="621"/>
+        <location filename="../qml/components/FocusSummary.qml" line="635"/>
         <source>从本地选择图片</source>
         <translation>从本地选择图片</translation>
     </message>
     <message>
-        <location filename="../qml/components/FocusSummary.qml" line="640"/>
+        <location filename="../qml/components/FocusSummary.qml" line="654"/>
         <source>恢复默认（必应）</source>
         <translation>恢复默认（必应）</translation>
     </message>
     <message>
-        <location filename="../qml/components/FocusSummary.qml" line="736"/>
+        <location filename="../qml/components/FocusSummary.qml" line="750"/>
         <source>分享</source>
         <translation>分享</translation>
     </message>
     <message>
-        <location filename="../qml/components/FocusSummary.qml" line="763"/>
+        <location filename="../qml/components/FocusSummary.qml" line="777"/>
         <source>延长 20 分钟</source>
         <translation>延长 20 分钟</translation>
     </message>
@@ -1147,108 +1147,108 @@
         <translation>0 天</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="550"/>
+        <location filename="../qml/components/LockOverlay.qml" line="558"/>
         <source>预览</source>
         <translation>预览</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="633"/>
+        <location filename="../qml/components/LockOverlay.qml" line="641"/>
         <source>预览 · %1档</source>
         <translation>预览 · %1档</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="634"/>
+        <location filename="../qml/components/LockOverlay.qml" line="642"/>
         <source>专注中</source>
         <translation>专注中</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="725"/>
+        <location filename="../qml/components/LockOverlay.qml" line="733"/>
         <source>本档不可暂停，也不可提前结束</source>
         <translation>本档不可暂停，也不可提前结束</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1154"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1162"/>
         <source>点击 %1 次</source>
         <translation>点击 %1 次</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1242"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1250"/>
         <source>声音与电源</source>
         <translation>声音与电源</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1262"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1270"/>
         <source>系统音量</source>
         <translation>系统音量</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1293"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1301"/>
         <source>当前系统不支持音量调节</source>
         <translation>当前系统不支持音量调节</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1305"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1313"/>
         <source>关机</source>
         <translation>关机</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1313"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1321"/>
         <source>重启</source>
         <translation>重启</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1322"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1330"/>
         <source>关闭</source>
         <translation>关闭</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1333"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1341"/>
         <source>关机 / 重启会先弹出确认，避免误触。</source>
         <translation>关机 / 重启会先弹出确认，避免误触。</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1362"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1370"/>
         <source>确认关机？</source>
         <translation>确认关机？</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1362"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1370"/>
         <source>确认重启？</source>
         <translation>确认重启？</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1370"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1378"/>
         <source>系统会立即执行该操作，未保存的工作可能丢失。</source>
         <translation>系统会立即执行该操作，未保存的工作可能丢失。</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1381"/>
-        <location filename="../qml/components/LockOverlay.qml" line="1501"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1389"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1509"/>
         <source>取消</source>
         <translation>取消</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1395"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1403"/>
         <source>确认执行</source>
         <translation>确认执行</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1468"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1476"/>
         <source>确认退出本次专注？</source>
         <translation>确认退出本次专注？</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1478"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1486"/>
         <source>你连续点击了 10 次时间显示。确认后将立即结束本次专注，本轮不算完整完成。</source>
         <translation>你连续点击了 10 次时间显示。确认后将立即结束本次专注，本轮不算完整完成。</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1488"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1496"/>
         <source>如果只是误触，点「取消」继续专注。</source>
         <translation>如果只是误触，点「取消」继续专注。</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1515"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1523"/>
         <source>确认退出</source>
         <translation>确认退出</translation>
     </message>
@@ -1266,17 +1266,17 @@
         <translation>把这件事做完，再抬头。</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="713"/>
+        <location filename="../qml/components/LockOverlay.qml" line="721"/>
         <source>预览剩余 · 不计入专注统计</source>
         <translation>预览剩余 · 不计入专注统计</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="714"/>
+        <location filename="../qml/components/LockOverlay.qml" line="722"/>
         <source>剩余 · 已完成 %1%</source>
         <translation>剩余 · 已完成 %1%</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="722"/>
+        <location filename="../qml/components/LockOverlay.qml" line="730"/>
         <source>10 秒假倒计时，仅用于预览遮罩效果</source>
         <translation>10 秒假倒计时，仅用于预览遮罩效果</translation>
     </message>
@@ -1285,7 +1285,7 @@
         <translation type="vanished">点击右下角「结束预览」退出</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="723"/>
+        <location filename="../qml/components/LockOverlay.qml" line="731"/>
         <source>体验模式 · 可提前结束</source>
         <translation>体验模式 · 可提前结束</translation>
     </message>
@@ -1294,67 +1294,67 @@
         <translation type="vanished">本轮结束后窗口自动关闭</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="726"/>
+        <location filename="../qml/components/LockOverlay.qml" line="734"/>
         <source>可以暂停，但时间不会等你</source>
         <translation>可以暂停，但时间不会等你</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="776"/>
+        <location filename="../qml/components/LockOverlay.qml" line="784"/>
         <source>组件</source>
         <translation>组件</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="799"/>
+        <location filename="../qml/components/LockOverlay.qml" line="807"/>
         <source>＋ 添加组件</source>
         <translation>＋ 添加组件</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="974"/>
+        <location filename="../qml/components/LockOverlay.qml" line="982"/>
         <source>预览 · %1</source>
         <translation>预览 · %1</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="975"/>
+        <location filename="../qml/components/LockOverlay.qml" line="983"/>
         <source>专注中 · 剩余 %1</source>
         <translation>专注中 · 剩余 %1</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="977"/>
+        <location filename="../qml/components/LockOverlay.qml" line="985"/>
         <source>%1 · 已完成 %2%</source>
         <translation>%1 · 已完成 %2%</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="978"/>
+        <location filename="../qml/components/LockOverlay.qml" line="986"/>
         <source>已完成 %1%</source>
         <translation>已完成 %1%</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1038"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1046"/>
         <source>未设置允许使用的应用</source>
         <translation>未设置允许使用的应用</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1172"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1180"/>
         <source>结束预览</source>
         <translation>结束预览</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1183"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1191"/>
         <source>继续</source>
         <translation>继续</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1183"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1191"/>
         <source>暂停</source>
         <translation>暂停</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1198"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1206"/>
         <source>提前结束</source>
         <translation>提前结束</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1198"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1206"/>
         <source>结束体验</source>
         <translation>结束体验</translation>
     </message>
@@ -1367,42 +1367,42 @@
         <translation>%1（%2）</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="140"/>
+        <location filename="../qml/Main.qml" line="142"/>
         <source>空间</source>
         <translation>空间</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="141"/>
+        <location filename="../qml/Main.qml" line="143"/>
         <source>数据</source>
         <translation>数据</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="142"/>
+        <location filename="../qml/Main.qml" line="144"/>
         <source>AI</source>
         <translation>AI</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="143"/>
+        <location filename="../qml/Main.qml" line="145"/>
         <source>插件</source>
         <translation>插件</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="144"/>
+        <location filename="../qml/Main.qml" line="146"/>
         <source>主题</source>
         <translation>主题</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="147"/>
+        <location filename="../qml/Main.qml" line="149"/>
         <source>更新</source>
         <translation>更新</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="149"/>
+        <location filename="../qml/Main.qml" line="151"/>
         <source>关于</source>
         <translation>关于</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="1208"/>
+        <location filename="../qml/Main.qml" line="1215"/>
         <source>搜索空间 / 主题 / 插件</source>
         <translation>搜索空间 / 主题 / 插件</translation>
     </message>
@@ -1467,12 +1467,12 @@
         <translation type="vanished">搜索空间、主题、插件或设置</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="1296"/>
+        <location filename="../qml/Main.qml" line="1303"/>
         <source>没有找到匹配结果</source>
         <translation>没有找到匹配结果</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="148"/>
+        <location filename="../qml/Main.qml" line="150"/>
         <source>设置</source>
         <translation>设置</translation>
     </message>
@@ -1564,23 +1564,23 @@
         <translation>简体中文</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="270"/>
-        <location filename="../qml/components/Onboarding.qml" line="541"/>
+        <location filename="../qml/components/Onboarding.qml" line="279"/>
+        <location filename="../qml/components/Onboarding.qml" line="550"/>
         <source>深清</source>
         <translation>深清</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="279"/>
+        <location filename="../qml/components/Onboarding.qml" line="288"/>
         <source>新手引导</source>
         <translation>新手引导</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="289"/>
+        <location filename="../qml/components/Onboarding.qml" line="298"/>
         <source>%1 / %2</source>
         <translation>%1 / %2</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="336"/>
+        <location filename="../qml/components/Onboarding.qml" line="345"/>
         <source>欢迎使用深清</source>
         <translation>欢迎使用深清</translation>
     </message>
@@ -1589,7 +1589,7 @@
         <translation type="vanished">选好模式与时长，时间没到不开门。深清会帮你把注意力收回来。</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="358"/>
+        <location filename="../qml/components/Onboarding.qml" line="367"/>
         <source>三档空间</source>
         <translation>三档空间</translation>
     </message>
@@ -1598,7 +1598,7 @@
         <translation type="vanished">浅清只屏蔽黑名单应用；覆清额外显示白名单 dock；深清只留倒计时，不可提前结束。</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="414"/>
+        <location filename="../qml/components/Onboarding.qml" line="423"/>
         <source>主题</source>
         <translation>主题</translation>
     </message>
@@ -1615,7 +1615,7 @@
         <translation type="vanished">插件可以给深清加功能：番茄同步、专注统计，或自定义遮罩小组件。</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="784"/>
+        <location filename="../qml/components/Onboarding.qml" line="793"/>
         <source>准备好了</source>
         <translation>准备好了</translation>
     </message>
@@ -1624,193 +1624,193 @@
         <translation type="vanished">开始第一轮专注吧。数据与设置都保存在本机，随时可以在设置里重新查看引导。</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="824"/>
+        <location filename="../qml/components/Onboarding.qml" line="833"/>
         <source>跳过</source>
         <translation>跳过</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="865"/>
+        <location filename="../qml/components/Onboarding.qml" line="874"/>
         <source>上一步</source>
         <translation>上一步</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="803"/>
-        <location filename="../qml/components/Onboarding.qml" line="874"/>
+        <location filename="../qml/components/Onboarding.qml" line="812"/>
+        <location filename="../qml/components/Onboarding.qml" line="883"/>
         <source>进入深清</source>
         <translation>进入深清</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="347"/>
+        <location filename="../qml/components/Onboarding.qml" line="356"/>
         <source>选好模式与时长，时间没到不开门。深清会帮你把注意力收回来，专注记录都保存在本机。</source>
         <translation>选好模式与时长，时间没到不开门。深清会帮你把注意力收回来，专注记录都保存在本机。</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="358"/>
+        <location filename="../qml/components/Onboarding.qml" line="367"/>
         <source>还清作息</source>
         <translation>还清作息</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="358"/>
+        <location filename="../qml/components/Onboarding.qml" line="367"/>
         <source>清番番茄钟</source>
         <translation>清番番茄钟</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="389"/>
+        <location filename="../qml/components/Onboarding.qml" line="398"/>
         <source>先调成你喜欢的样子</source>
         <translation>先调成你喜欢的样子</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="399"/>
+        <location filename="../qml/components/Onboarding.qml" line="408"/>
         <source>下面每一项都会立即生效，之后也可以在「设置」里继续调整。</source>
         <translation>下面每一项都会立即生效，之后也可以在「设置」里继续调整。</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="439"/>
+        <location filename="../qml/components/Onboarding.qml" line="448"/>
         <source>字号</source>
         <translation>字号</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="464"/>
+        <location filename="../qml/components/Onboarding.qml" line="473"/>
         <source>导航</source>
         <translation>导航</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="489"/>
+        <location filename="../qml/components/Onboarding.qml" line="498"/>
         <source>语言</source>
         <translation>语言</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="519"/>
+        <location filename="../qml/components/Onboarding.qml" line="528"/>
         <source>三档空间，各有边界</source>
         <translation>三档空间，各有边界</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="528"/>
+        <location filename="../qml/components/Onboarding.qml" line="537"/>
         <source>每个档位可以建多个空间，各自保存时长与白名单。</source>
         <translation>每个档位可以建多个空间，各自保存时长与白名单。</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="539"/>
+        <location filename="../qml/components/Onboarding.qml" line="548"/>
         <source>浅清</source>
         <translation>浅清</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="539"/>
+        <location filename="../qml/components/Onboarding.qml" line="548"/>
         <source>只屏蔽黑名单应用的窗口与声音。可以暂停，适合轻量专注。</source>
         <translation>只屏蔽黑名单应用的窗口与声音。可以暂停，适合轻量专注。</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="540"/>
+        <location filename="../qml/components/Onboarding.qml" line="549"/>
         <source>覆清</source>
         <translation>覆清</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="540"/>
+        <location filename="../qml/components/Onboarding.qml" line="549"/>
         <source>屏蔽干扰，同时显示白名单 dock。不可暂停，也不可提前结束。</source>
         <translation>屏蔽干扰，同时显示白名单 dock。不可暂停，也不可提前结束。</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="541"/>
+        <location filename="../qml/components/Onboarding.qml" line="550"/>
         <source>白名单之外全部屏蔽，只保留倒计时。连点时间 10 次才能确认退出。</source>
         <translation>白名单之外全部屏蔽，只保留倒计时。连点时间 10 次才能确认退出。</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="598"/>
+        <location filename="../qml/components/Onboarding.qml" line="607"/>
         <source>还清到点，清番计时</source>
         <translation>还清到点，清番计时</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="607"/>
+        <location filename="../qml/components/Onboarding.qml" line="616"/>
         <source>除了三档专注，深清还有两种更轻的节奏。</source>
         <translation>除了三档专注，深清还有两种更轻的节奏。</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="618"/>
+        <location filename="../qml/components/Onboarding.qml" line="627"/>
         <source>还清（睡眠模式）</source>
         <translation>还清（睡眠模式）</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="619"/>
+        <location filename="../qml/components/Onboarding.qml" line="628"/>
         <source>按作息时间自动进入深清锁定，到点替你合上今天。可设置作息时间与每月解锁次数。</source>
         <translation>按作息时间自动进入深清锁定，到点替你合上今天。可设置作息时间与每月解锁次数。</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="620"/>
+        <location filename="../qml/components/Onboarding.qml" line="629"/>
         <source>在「空间 → 还清」里设置作息</source>
         <translation>在「空间 → 还清」里设置作息</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="621"/>
+        <location filename="../qml/components/Onboarding.qml" line="630"/>
         <source>清番（置顶番茄钟）</source>
         <translation>清番（置顶番茄钟）</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="622"/>
+        <location filename="../qml/components/Onboarding.qml" line="631"/>
         <source>25 分钟专注 + 5 分钟休息，每 4 轮长休息。无边框置顶小窗，可随时暂停或关闭。</source>
         <translation>25 分钟专注 + 5 分钟休息，每 4 轮长休息。无边框置顶小窗，可随时暂停或关闭。</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="623"/>
+        <location filename="../qml/components/Onboarding.qml" line="632"/>
         <source>在「空间」页右上角打开清番</source>
         <translation>在「空间」页右上角打开清番</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="690"/>
+        <location filename="../qml/components/Onboarding.qml" line="699"/>
         <source>插件扩展深清</source>
         <translation>插件扩展深清</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="699"/>
+        <location filename="../qml/components/Onboarding.qml" line="708"/>
         <source>内置插件开箱可用；第三方插件可以给遮罩加组件或接入自己的统计。</source>
         <translation>内置插件开箱可用；第三方插件可以给遮罩加组件或接入自己的统计。</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="711"/>
+        <location filename="../qml/components/Onboarding.qml" line="720"/>
         <source>卡皮巴拉敲木鱼</source>
         <translation>卡皮巴拉敲木鱼</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="711"/>
+        <location filename="../qml/components/Onboarding.qml" line="720"/>
         <source>专注遮罩右下角的小木鱼，敲一敲攒功德。</source>
         <translation>专注遮罩右下角的小木鱼，敲一敲攒功德。</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="712"/>
+        <location filename="../qml/components/Onboarding.qml" line="721"/>
         <source>番茄同步</source>
         <translation>番茄同步</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="712"/>
+        <location filename="../qml/components/Onboarding.qml" line="721"/>
         <source>把清番的专注次数同步到今日统计。</source>
         <translation>把清番的专注次数同步到今日统计。</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="713"/>
+        <location filename="../qml/components/Onboarding.qml" line="722"/>
         <source>专注统计</source>
         <translation>专注统计</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="713"/>
+        <location filename="../qml/components/Onboarding.qml" line="722"/>
         <source>汇总累计专注次数与时长。</source>
         <translation>汇总累计专注次数与时长。</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="714"/>
+        <location filename="../qml/components/Onboarding.qml" line="723"/>
         <source>第三方插件</source>
         <translation>第三方插件</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="714"/>
+        <location filename="../qml/components/Onboarding.qml" line="723"/>
         <source>可在「插件」页启用、停用与查看插件设置。</source>
         <translation>可在「插件」页启用、停用与查看插件设置。</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="794"/>
+        <location filename="../qml/components/Onboarding.qml" line="803"/>
         <source>开始第一轮专注吧。引导可以随时在「设置 → 新手引导」里重新打开。</source>
         <translation>开始第一轮专注吧。引导可以随时在「设置 → 新手引导」里重新打开。</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="874"/>
+        <location filename="../qml/components/Onboarding.qml" line="883"/>
         <source>下一步</source>
         <translation>下一步</translation>
     </message>
@@ -1956,17 +1956,17 @@
     </message>
     <message>
         <location filename="../qml/QuickPanel.qml" line="159"/>
-        <location filename="../qml/QuickPanel.qml" line="361"/>
+        <location filename="../qml/QuickPanel.qml" line="375"/>
         <source>深清</source>
         <translation>深清</translation>
     </message>
     <message>
-        <location filename="../qml/QuickPanel.qml" line="675"/>
+        <location filename="../qml/QuickPanel.qml" line="689"/>
         <source>重启</source>
         <translation>重启</translation>
     </message>
     <message>
-        <location filename="../qml/QuickPanel.qml" line="713"/>
+        <location filename="../qml/QuickPanel.qml" line="727"/>
         <source>重启为管理员</source>
         <translation>重启为管理员</translation>
     </message>
@@ -1975,7 +1975,7 @@
         <translation type="vanished">打开主界面</translation>
     </message>
     <message>
-        <location filename="../qml/QuickPanel.qml" line="386"/>
+        <location filename="../qml/QuickPanel.qml" line="400"/>
         <source>专注档位</source>
         <translation>专注档位</translation>
     </message>
@@ -2008,22 +2008,22 @@
         <translation type="vanished">全屏锁机</translation>
     </message>
     <message>
-        <location filename="../qml/QuickPanel.qml" line="518"/>
+        <location filename="../qml/QuickPanel.qml" line="532"/>
         <source>空间</source>
         <translation>空间</translation>
     </message>
     <message>
-        <location filename="../qml/QuickPanel.qml" line="581"/>
+        <location filename="../qml/QuickPanel.qml" line="595"/>
         <source>清空间</source>
         <translation>清空间</translation>
     </message>
     <message>
-        <location filename="../qml/QuickPanel.qml" line="589"/>
+        <location filename="../qml/QuickPanel.qml" line="603"/>
         <source>%1 分钟</source>
         <translation>%1 分钟</translation>
     </message>
     <message>
-        <location filename="../qml/QuickPanel.qml" line="598"/>
+        <location filename="../qml/QuickPanel.qml" line="612"/>
         <source>点击以「%1」开始专注</source>
         <translation>点击以「%1」开始专注</translation>
     </message>
@@ -2039,7 +2039,7 @@
 <context>
     <name>SettingsPage</name>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="600"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="614"/>
         <source>跟随系统</source>
         <translation>跟随系统</translation>
     </message>
@@ -2052,12 +2052,12 @@
         <translation type="vanished">深色</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="379"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="393"/>
         <source>设置</source>
         <translation>设置</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="387"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="401"/>
         <source>%1（%2）v%3</source>
         <translation>%1（%2）v%3</translation>
     </message>
@@ -2176,122 +2176,122 @@
         <translation>缺少测试接口（App.testAIConnection）</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="424"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="438"/>
         <source>防退出加固</source>
         <translation>防退出加固</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="432"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="446"/>
         <source>锁定期间隐藏任务栏，并屏蔽 Win、Alt+Tab 等系统快捷键</source>
         <translation>锁定期间隐藏任务栏，并屏蔽 Win、Alt+Tab 等系统快捷键</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="477"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="491"/>
         <source>以管理员身份运行</source>
         <translation>以管理员身份运行</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="486"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="500"/>
         <source>当前已提权</source>
         <translation>当前已提权</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="496"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="510"/>
         <source>开启后会弹一次 UAC 并以管理员身份重启</source>
         <translation>开启后会弹一次 UAC 并以管理员身份重启</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="538"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="552"/>
         <source>最高权限开机自启</source>
         <translation>最高权限开机自启</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="546"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="560"/>
         <source>用计划任务在登录时以最高权限启动，不再弹 UAC；需要管理员</source>
         <translation>用计划任务在登录时以最高权限启动，不再弹 UAC；需要管理员</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="585"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="599"/>
         <source>语言</source>
         <translation>语言</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="601"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="615"/>
         <source>简体中文</source>
         <translation>简体中文</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="625"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="639"/>
         <source>切换后界面会立即更新；托盘菜单在下次启动时生效。</source>
         <translation>切换后界面会立即更新；托盘菜单在下次启动时生效。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="651"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="665"/>
         <source>外观</source>
         <translation>外观</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="664"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="678"/>
         <source>字号</source>
         <translation>字号</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="791"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="805"/>
         <source>字号影响整个界面，实时生效；字体与导航方式同样即时生效。</source>
         <translation>字号影响整个界面，实时生效；字体与导航方式同样即时生效。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="907"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="921"/>
         <source>网址屏蔽</source>
         <translation>网址屏蔽</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="923"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="937"/>
         <source>专注期间通过 hosts 屏蔽这些网站，需要管理员权限；开关与列表在锁定开始时生效。</source>
         <translation>专注期间通过 hosts 屏蔽这些网站，需要管理员权限；开关与列表在锁定开始时生效。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="959"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="973"/>
         <source>例如 bilibili.com</source>
         <translation>例如 bilibili.com</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="966"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="980"/>
         <source>添加</source>
         <translation>添加</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="975"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="989"/>
         <source>已屏蔽 %1 个域名</source>
         <translation>已屏蔽 %1 个域名</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1033"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1047"/>
         <source>还没有屏蔽网站，添加一个域名即可。</source>
         <translation>还没有屏蔽网站，添加一个域名即可。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1269"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1283"/>
         <source>睡眠模式已并入清空间的「还清」档位，可在那里设置作息。</source>
         <translation>睡眠模式已并入清空间的「还清」档位，可在那里设置作息。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1366"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1380"/>
         <source>导入备份并覆盖当前数据？</source>
         <translation>导入备份并覆盖当前数据？</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1375"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1389"/>
         <source>导入会覆盖当前设置、空间、白名单、专注统计、应用使用、AI 对话与用量、睡眠与插件数据，并自动重启深清。</source>
         <translation>导入会覆盖当前设置、空间、白名单、专注统计、应用使用、AI 对话与用量、睡眠与插件数据，并自动重启深清。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1395"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1409"/>
         <source>取消</source>
         <translation>取消</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1409"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1423"/>
         <source>覆盖并重启</source>
         <translation>覆盖并重启</translation>
     </message>
@@ -2312,32 +2312,32 @@
         <translation type="vanished">特大</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="709"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="723"/>
         <source>字体</source>
         <translation>字体</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="753"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="767"/>
         <source>实时生效，无需重启</source>
         <translation>实时生效，无需重启</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="766"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="780"/>
         <source>导航展开方式</source>
         <translation>导航展开方式</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="773"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="787"/>
         <source>自动</source>
         <translation>自动</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="774"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="788"/>
         <source>始终展开</source>
         <translation>始终展开</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="775"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="789"/>
         <source>仅图标</source>
         <translation>仅图标</translation>
     </message>
@@ -2346,88 +2346,88 @@
         <translation type="vanished">字号与字体只影响界面显示；导航方式自动时会跟随窗口宽度。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="817"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="831"/>
         <source>默认专注时长</source>
         <translation>默认专注时长</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="828"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="842"/>
         <source>%1 分钟</source>
         <translation>%1 分钟</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="867"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="881"/>
         <source>开机自启</source>
         <translation>开机自启</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1068"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1082"/>
         <source>数据与备份</source>
         <translation>数据与备份</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1091"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1105"/>
         <source>备份包含：设置、空间、白名单、专注统计、应用使用记录、AI 对话与用量、睡眠与插件数据。导入会覆盖当前数据并自动重启深清。</source>
         <translation>备份包含：设置、空间、白名单、专注统计、应用使用记录、AI 对话与用量、睡眠与插件数据。导入会覆盖当前数据并自动重启深清。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1103"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="1112"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1117"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1126"/>
         <source>处理中…</source>
         <translation>处理中…</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1103"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1117"/>
         <source>导出备份</source>
         <translation>导出备份</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1112"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1126"/>
         <source>导入备份</source>
         <translation>导入备份</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1123"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1137"/>
         <source>导出为 .zip/.json 备份文件；导入前会二次确认。</source>
         <translation>导出为 .zip/.json 备份文件；导入前会二次确认。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1149"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1163"/>
         <source>反馈</source>
         <translation>反馈</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1163"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1177"/>
         <source>功能请求</source>
         <translation>功能请求</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1170"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1184"/>
         <source>Bug 反馈</source>
         <translation>Bug 反馈</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1177"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1191"/>
         <source>参与讨论</source>
         <translation>参与讨论</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1189"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1203"/>
         <source>在 GitHub 仓库 Kryon2025/Clarity 提交功能请求、Bug 反馈或参与讨论。</source>
         <translation>在 GitHub 仓库 Kryon2025/Clarity 提交功能请求、Bug 反馈或参与讨论。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1221"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1235"/>
         <source>AI 助手</source>
         <translation>AI 助手</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1227"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1241"/>
         <source>服务商、模型与对话，已移到左侧「AI」页</source>
         <translation>服务商、模型与对话，已移到左侧「AI」页</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1239"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1253"/>
         <source>前往 AI 页</source>
         <translation>前往 AI 页</translation>
     </message>
@@ -2496,17 +2496,17 @@
         <translation type="vanished">连续点击时钟 10 次解锁</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1298"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1312"/>
         <source>新手引导</source>
         <translation>新手引导</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1309"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1323"/>
         <source>重新查看引导</source>
         <translation>重新查看引导</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1322"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1336"/>
         <source>%1（%2）v%3 · Windows 专注锁机工具
 数据保存在 %APPDATA%/ShenQing/ · 主题可在左侧导航「主题」中切换</source>
         <translation>%1（%2）v%3 · Windows 专注锁机工具
@@ -3370,7 +3370,7 @@
 <context>
     <name>SpacesPage</name>
     <message>
-        <location filename="../qml/pages/SpacesPage.qml" line="411"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="425"/>
         <source>专注中 · %1 · 剩余 %2</source>
         <translation>专注中 · %1 · 剩余 %2</translation>
     </message>
@@ -3495,37 +3495,37 @@
         <translation>深清固定一个空间，不设置白名单，只能改时长。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SpacesPage.qml" line="412"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="426"/>
         <source>每个档位可建多个空间，各自保存时长与白名单</source>
         <translation>每个档位可建多个空间，各自保存时长与白名单</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SpacesPage.qml" line="452"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="466"/>
         <source>清番 · 置顶番茄钟</source>
         <translation>清番 · 置顶番茄钟</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SpacesPage.qml" line="582"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="596"/>
         <source>还清（睡眠模式）</source>
         <translation>还清（睡眠模式）</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SpacesPage.qml" line="591"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="605"/>
         <source>按作息时间自动进入深清锁定。还清不需要手动开始，到点会替你合上今天。</source>
         <translation>按作息时间自动进入深清锁定。还清不需要手动开始，到点会替你合上今天。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SpacesPage.qml" line="603"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="617"/>
         <source>作息时间</source>
         <translation>作息时间</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SpacesPage.qml" line="620"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="634"/>
         <source>解锁次数</source>
         <translation>解锁次数</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SpacesPage.qml" line="633"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="647"/>
         <source>设置作息</source>
         <translation>设置作息</translation>
     </message>
@@ -3534,37 +3534,37 @@
         <translation type="vanished">还清 · 睡眠模式</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SpacesPage.qml" line="1034"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="1048"/>
         <source>%1 分钟（最短即体验）</source>
         <translation>%1 分钟（最短即体验）</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SpacesPage.qml" line="1076"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="1090"/>
         <source>深清固定不含白名单</source>
         <translation>深清固定不含白名单</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SpacesPage.qml" line="1078"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="1092"/>
         <source>白名单 · %1 个应用</source>
         <translation>白名单 · %1 个应用</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SpacesPage.qml" line="1079"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="1093"/>
         <source>白名单 · 未设置</source>
         <translation>白名单 · 未设置</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SpacesPage.qml" line="1245"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="1259"/>
         <source>新增空间</source>
         <translation>新增空间</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SpacesPage.qml" line="1266"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="1280"/>
         <source>「浅清」「覆清」可以新增多个空间，各自保存名称、锁定时长与白名单；「深清」固定一个空间，不可新增或删除，只能改时长，且不设置白名单。</source>
         <translation>「浅清」「覆清」可以新增多个空间，各自保存名称、锁定时长与白名单；「深清」固定一个空间，不可新增或删除，只能改时长，且不设置白名单。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SpacesPage.qml" line="1398"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="1412"/>
         <source>点击空白处或按 Esc 关闭</source>
         <translation>点击空白处或按 Esc 关闭</translation>
     </message>
@@ -3585,7 +3585,7 @@
         <translation type="vanished">深清空间</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SpacesPage.qml" line="401"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="415"/>
         <source>空间</source>
         <translation>空间</translation>
     </message>
@@ -3630,12 +3630,12 @@
         <translation type="vanished">%1 · %2 分钟</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SpacesPage.qml" line="1139"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="1153"/>
         <source>开始深清</source>
         <translation>开始深清</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SpacesPage.qml" line="1139"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="1153"/>
         <source>开始</source>
         <translation>开始</translation>
     </message>
@@ -3688,8 +3688,8 @@
         <translation type="vanished">分钟</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SpacesPage.qml" line="966"/>
-        <location filename="../qml/pages/SpacesPage.qml" line="1043"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="980"/>
+        <location filename="../qml/pages/SpacesPage.qml" line="1057"/>
         <source>%1 分钟</source>
         <translation>%1 分钟</translation>
     </message>
@@ -3745,7 +3745,7 @@
 <context>
     <name>StatsPage</name>
     <message>
-        <location filename="../qml/pages/StatsPage.qml" line="291"/>
+        <location filename="../qml/pages/StatsPage.qml" line="305"/>
         <source>数据</source>
         <translation>数据</translation>
     </message>
@@ -3807,144 +3807,144 @@
         <translation>其他</translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatsPage.qml" line="299"/>
+        <location filename="../qml/pages/StatsPage.qml" line="313"/>
         <source>Patina · 看得见的专注，才守得住</source>
         <translation>Patina · 看得见的专注，才守得住</translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatsPage.qml" line="320"/>
+        <location filename="../qml/pages/StatsPage.qml" line="334"/>
         <source>近 7 天 · %1 分钟</source>
         <translation>近 7 天 · %1 分钟</translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatsPage.qml" line="335"/>
+        <location filename="../qml/pages/StatsPage.qml" line="349"/>
         <source>概览</source>
         <translation>概览</translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatsPage.qml" line="336"/>
+        <location filename="../qml/pages/StatsPage.qml" line="350"/>
         <source>应用</source>
         <translation>应用</translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatsPage.qml" line="337"/>
+        <location filename="../qml/pages/StatsPage.qml" line="351"/>
         <source>分类</source>
         <translation>分类</translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatsPage.qml" line="338"/>
-        <location filename="../qml/pages/StatsPage.qml" line="988"/>
+        <location filename="../qml/pages/StatsPage.qml" line="352"/>
+        <location filename="../qml/pages/StatsPage.qml" line="1002"/>
         <source>热力图</source>
         <translation>热力图</translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatsPage.qml" line="339"/>
+        <location filename="../qml/pages/StatsPage.qml" line="353"/>
         <source>会话</source>
         <translation>会话</translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatsPage.qml" line="457"/>
+        <location filename="../qml/pages/StatsPage.qml" line="471"/>
         <source>今日点击</source>
         <translation>今日点击</translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatsPage.qml" line="464"/>
+        <location filename="../qml/pages/StatsPage.qml" line="478"/>
         <source>%1 次</source>
         <translation>%1 次</translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatsPage.qml" line="491"/>
+        <location filename="../qml/pages/StatsPage.qml" line="505"/>
         <source>最近 7 天</source>
         <translation>最近 7 天</translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatsPage.qml" line="499"/>
+        <location filename="../qml/pages/StatsPage.qml" line="513"/>
         <source>合计 %1 分钟</source>
         <translation>合计 %1 分钟</translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatsPage.qml" line="588"/>
+        <location filename="../qml/pages/StatsPage.qml" line="602"/>
         <source>应用使用时长</source>
         <translation>应用使用时长</translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatsPage.qml" line="603"/>
+        <location filename="../qml/pages/StatsPage.qml" line="617"/>
         <source>今日</source>
         <translation>今日</translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatsPage.qml" line="603"/>
+        <location filename="../qml/pages/StatsPage.qml" line="617"/>
         <source>本周</source>
         <translation>本周</translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatsPage.qml" line="772"/>
+        <location filename="../qml/pages/StatsPage.qml" line="786"/>
         <source>还没有应用使用记录，开始一轮专注吧</source>
         <translation>还没有应用使用记录，开始一轮专注吧</translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatsPage.qml" line="801"/>
+        <location filename="../qml/pages/StatsPage.qml" line="815"/>
         <source>应用分类</source>
         <translation>应用分类</translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatsPage.qml" line="809"/>
+        <location filename="../qml/pages/StatsPage.qml" line="823"/>
         <source>选中分类会立即保存；可恢复自动分类</source>
         <translation>选中分类会立即保存；可恢复自动分类</translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatsPage.qml" line="939"/>
+        <location filename="../qml/pages/StatsPage.qml" line="953"/>
         <source>恢复自动</source>
         <translation>恢复自动</translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatsPage.qml" line="959"/>
+        <location filename="../qml/pages/StatsPage.qml" line="973"/>
         <source>还没有应用记录，开始一轮专注吧</source>
         <translation>还没有应用记录，开始一轮专注吧</translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatsPage.qml" line="996"/>
+        <location filename="../qml/pages/StatsPage.qml" line="1010"/>
         <source>最近 90 天 · 按分钟色阶</source>
         <translation>最近 90 天 · 按分钟色阶</translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatsPage.qml" line="1024"/>
+        <location filename="../qml/pages/StatsPage.qml" line="1038"/>
         <source>少</source>
         <translation>少</translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatsPage.qml" line="1039"/>
+        <location filename="../qml/pages/StatsPage.qml" line="1053"/>
         <source>多</source>
         <translation>多</translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatsPage.qml" line="1048"/>
+        <location filename="../qml/pages/StatsPage.qml" line="1062"/>
         <source>最近 90 天还没有应用使用记录</source>
         <translation>最近 90 天还没有应用使用记录</translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatsPage.qml" line="1057"/>
+        <location filename="../qml/pages/StatsPage.qml" line="1071"/>
         <source>24 小时分布</source>
         <translation>24 小时分布</translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatsPage.qml" line="1124"/>
+        <location filename="../qml/pages/StatsPage.qml" line="1138"/>
         <source>最近会话</source>
         <translation>最近会话</translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatsPage.qml" line="1132"/>
+        <location filename="../qml/pages/StatsPage.qml" line="1146"/>
         <source>今日 %1 次</source>
         <translation>今日 %1 次</translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatsPage.qml" line="1176"/>
+        <location filename="../qml/pages/StatsPage.qml" line="1190"/>
         <source>专注</source>
         <translation>专注</translation>
     </message>
     <message>
         <location filename="../qml/pages/StatsPage.qml" line="85"/>
-        <location filename="../qml/pages/StatsPage.qml" line="1185"/>
+        <location filename="../qml/pages/StatsPage.qml" line="1199"/>
         <source>%1 分钟</source>
         <translation>%1 分钟</translation>
     </message>
@@ -3954,22 +3954,22 @@
         <translation>%1 小时 %2 分钟</translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatsPage.qml" line="1186"/>
+        <location filename="../qml/pages/StatsPage.qml" line="1200"/>
         <source>完成</source>
         <translation>完成</translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatsPage.qml" line="1198"/>
+        <location filename="../qml/pages/StatsPage.qml" line="1212"/>
         <source>还没有专注记录，开始一轮吧。</source>
         <translation>还没有专注记录，开始一轮吧。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatsPage.qml" line="1207"/>
+        <location filename="../qml/pages/StatsPage.qml" line="1221"/>
         <source>更早的会话明细将在后续版本提供。</source>
         <translation>更早的会话明细将在后续版本提供。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatsPage.qml" line="1217"/>
+        <location filename="../qml/pages/StatsPage.qml" line="1231"/>
         <source>Patina · 统计卡片与图表结构已就绪，等待补充更多细节。</source>
         <translation>Patina · 统计卡片与图表结构已就绪，等待补充更多细节。</translation>
     </message>
@@ -4038,32 +4038,32 @@
         <translation>折射玻璃与拖拽高光（实验性）</translation>
     </message>
     <message>
-        <location filename="../qml/pages/ThemesPage.qml" line="72"/>
+        <location filename="../qml/pages/ThemesPage.qml" line="86"/>
         <source>主题</source>
         <translation>主题</translation>
     </message>
     <message>
-        <location filename="../qml/pages/ThemesPage.qml" line="80"/>
+        <location filename="../qml/pages/ThemesPage.qml" line="94"/>
         <source>外观风格会立即生效；顶栏、导航与卡片都会跟着切换</source>
         <translation>外观风格会立即生效；顶栏、导航与卡片都会跟着切换</translation>
     </message>
     <message>
-        <location filename="../qml/pages/ThemesPage.qml" line="101"/>
+        <location filename="../qml/pages/ThemesPage.qml" line="115"/>
         <source>当前：%1</source>
         <translation>当前：%1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/ThemesPage.qml" line="291"/>
+        <location filename="../qml/pages/ThemesPage.qml" line="305"/>
         <source>实验性</source>
         <translation>实验性</translation>
     </message>
     <message>
-        <location filename="../qml/pages/ThemesPage.qml" line="311"/>
+        <location filename="../qml/pages/ThemesPage.qml" line="325"/>
         <source>使用中</source>
         <translation>使用中</translation>
     </message>
     <message>
-        <location filename="../qml/pages/ThemesPage.qml" line="330"/>
+        <location filename="../qml/pages/ThemesPage.qml" line="344"/>
         <source>低配设备建议使用纯色，性能更稳</source>
         <translation>低配设备建议使用纯色，性能更稳</translation>
     </message>
