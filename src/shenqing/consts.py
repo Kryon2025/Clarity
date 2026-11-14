@@ -8,7 +8,7 @@ APP_NAME = "深清"
 #: 英文名（v0.4 起对外统一用 Clarity；「身轻」不再展示）
 APP_ALIAS = "Clarity"
 APP_ID = "ShenQing"
-APP_VERSION = "0.18.2"
+APP_VERSION = "0.18.3"
 
 #: v0.18 自定义主题 id 前缀：theme_mode = "custom:<id>"
 CUSTOM_THEME_PREFIX = "custom:"
@@ -74,6 +74,16 @@ MAX_FONT_FAMILIES = 200
 
 #: 更新日志（最新在前；en 为空时用中文兜底）
 CHANGELOG = [
+    {
+        "version": "0.18.3",
+        "date": "2025-11-14",
+        "tag": "",
+        "items": [
+            "修复 --store 启动参数与重复启动切换商店页（改为通过桥接信号通知 QML 打开商店）",
+            "开发调试：SHENQING_INSTANCE_SUFFIX 支持独立实例，便于演示/截图",
+        ],
+        "items_en": ["Fixed --store and second-launch store switching via a bridge signal; added SHENQING_INSTANCE_SUFFIX for isolated demo instances"],
+    },
     {
         "version": "0.18.2",
         "date": "2025-11-14",

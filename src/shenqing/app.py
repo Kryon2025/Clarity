@@ -89,6 +89,7 @@ def _parse_args(argv: list[str]) -> tuple[argparse.Namespace, list[str]]:
 #: 主实例监听的本地套接字名
 SINGLE_INSTANCE_NAME = f"{APP_ID}-SingleInstance"
 #: 第二个实例发给主实例的消息：激活主界面
+SINGLE_INSTANCE_NAME = f"{APP_ID}-SingleInstance{os.environ.get('SHENQING_INSTANCE_SUFFIX', '')}"
 SHOW_MAIN_MESSAGE = "show-main"
 STORE_MESSAGE_PREFIX = "show-store:"
 
@@ -238,7 +239,8 @@ def _single_instance_lock(
     首次失败时主动清理一次陈旧锁，避免保活变成「反复拉起又退出」。
     v0.17：等待期间顺带尝试连接已有主实例（notify 返回 True 时立即结束等待）。
     """
-    lock = QLockFile(str(app_data_dir() / "shenqing.lock"))
+    suffix = os.environ.get("SHENQING_INSTANCE_SUFFIX", "")
+    lock = QLockFile(str(app_data_dir() / f"shenqing{suffix}.lock"))
     lock.setStaleLockTime(0)
     for attempt in range(max(1, retries)):
         if lock.tryLock(100):
@@ -325,7 +327,7 @@ def _raise_window(root) -> None:  # noqa: ANN001
             pass
 
 
-def _open_store_page(window, kind: str) -> bool:  # noqa: ANN001
+def _open_store_page(window, kind: str, bridge=None) -> bool:  # noqa: ANN001
     """v0.18：打开商店页（kind: theme / plugin）。"""
     root = getattr(window, "root_window", None) if window is not None else None
     if root is None:
@@ -338,17 +340,14 @@ def _open_store_page(window, kind: str) -> bool:  # noqa: ANN001
     except (RuntimeError, AttributeError, TypeError):
         pass
     try:
-        from PySide6.QtCore import Q_ARG, QMetaObject, Qt
-
-        QMetaObject.invokeMethod(
-            root,
-            "openStorePage",
-            Qt.ConnectionType.DirectConnection,
-            Q_ARG("QVariant", kind),
-        )
+        if bridge is not None and hasattr(bridge, "storePageRequested"):
+            bridge.storePageRequested.emit(kind)
+            return True
+        root.setProperty("storeKind", kind)
+        root.setProperty("showStorePage", True)
         return True
     except (RuntimeError, AttributeError, TypeError) as exc:  # noqa: BLE001
-        logging.warning("打开商店页失败：%s", exc)
+        print(f"打开商店页失败：{exc}", file=sys.stderr)
         return False
 
 
@@ -474,7 +473,7 @@ def main(argv: list[str] | None = None) -> int:
         if main_window["window"] is None:
             pending_store["value"] = str(kind or "")
             return
-        _open_store_page(main_window["window"], str(kind or ""))
+        _open_store_page(main_window["window"], str(kind or ""), main_window.get("bridge"))
 
     should_start, instance_server = acquire_single_instance(args)
     if not should_start:
@@ -546,9 +545,10 @@ def main(argv: list[str] | None = None) -> int:
         pending_show_main["value"] = False
         _activate_main_window(window, bridge)
     initial_store = pending_store["value"] or str(getattr(args, "store", "") or "")
+    logging.info("initial_store=%r argv=%r", initial_store, sys.argv)
     if initial_store:
         pending_store["value"] = ""
-        QTimer.singleShot(700, lambda kind=initial_store: _open_store_page(window, kind))
+        QTimer.singleShot(700, lambda kind=initial_store: _open_store_page(window, kind, bridge))
 
     tray: TrayController | None = None
     quick_panel: QuickPanelController | None = None

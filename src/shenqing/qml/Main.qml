@@ -1568,6 +1568,8 @@ FluentWindow {
     Connections {
         target: (typeof App !== "undefined") ? App : null
         function onLockedChanged() { win.checkFocusSession() }
+        // v0.18：宿主（命令行/单实例消息）请求打开商店页
+        function onStorePageRequested(kind) { win.openStorePage(kind) }
     }
 
     // ---------- v0.17 单实例 / 速启「打开主界面」 ----------

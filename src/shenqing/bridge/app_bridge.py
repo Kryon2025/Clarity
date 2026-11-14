@@ -158,6 +158,8 @@ class AppBridge(QObject):
     onboardingFinished = Signal()
     #: v0.16 清番番茄钟状态变化
     pomodoroChanged = Signal()
+    #: v0.18 宿主请求打开商店页（theme/plugin）
+    storePageRequested = Signal(str)
     #: v0.18 自定义主题包（商店安装）列表变化
     customThemesChanged = Signal()
     #: v0.18 商店目录 / 状态变化
@@ -366,6 +368,11 @@ class AppBridge(QObject):
             except OSError:
                 continue
         return ""
+
+    @Slot(str)
+    def requestStorePage(self, kind: str) -> None:
+        """v0.18：宿主（命令行/单实例消息）请求打开主题或插件商店。"""
+        self.storePageRequested.emit("plugin" if str(kind) == "plugin" else "theme")
 
     @Property(str, constant=True)
     def controlPanelIconUrl(self) -> str:

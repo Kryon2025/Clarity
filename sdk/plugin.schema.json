@@ -57,6 +57,30 @@
       "type": "boolean",
       "description": "首次安装是否默认启用。false 表示安装后默认停用（写入宿主 disabled_plugins），用户可在插件页手动启用。",
       "default": true
+    },
+    "mobile": {
+      "type": "object",
+      "description": "供 AI 沟通桥接 / Android 手机端读取的只读元数据；手机端不执行插件代码。",
+      "properties": {
+        "summary": { "type": "string", "maxLength": 200 },
+        "metrics": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["key", "label"],
+            "properties": {
+              "key": { "type": "string", "maxLength": 64 },
+              "label": { "type": "string", "maxLength": 40 },
+              "value": { "type": ["string", "number", "boolean"] },
+              "source": { "type": "string", "description": "例如 settings.history" },
+              "aggregate": { "enum": ["today_count", "today_minutes", "count"] },
+              "unit": { "type": "string", "maxLength": 16 }
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": true
     }
   },
   "additionalProperties": true
