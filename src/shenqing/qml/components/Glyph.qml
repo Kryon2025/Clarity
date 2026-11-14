@@ -368,6 +368,28 @@ Canvas {
             ctx.stroke()
             glyph.rrect(ctx, 13, 13, 7.2, 7.2, 2.2)
             ctx.stroke()
+        } else if (kind === "globe") {
+            // 地球：圆 + 赤道 + 经线 + 两条纬线（网页管理入口）
+            ctx.beginPath()
+            ctx.arc(12, 12, 8.4, 0, Math.PI * 2)
+            ctx.stroke()
+            ctx.beginPath()
+            ctx.moveTo(3.6, 12)
+            ctx.lineTo(20.4, 12)
+            ctx.stroke()
+            ctx.beginPath()
+            ctx.moveTo(12, 3.6)
+            ctx.bezierCurveTo(8.0, 7.2, 8.0, 16.8, 12, 20.4)
+            ctx.bezierCurveTo(16.0, 16.8, 16.0, 7.2, 12, 3.6)
+            ctx.stroke()
+            ctx.beginPath()
+            ctx.moveTo(5.2, 7.6)
+            ctx.bezierCurveTo(8.6, 9.4, 15.4, 9.4, 18.8, 7.6)
+            ctx.stroke()
+            ctx.beginPath()
+            ctx.moveTo(5.2, 16.4)
+            ctx.bezierCurveTo(8.6, 14.6, 15.4, 14.6, 18.8, 16.4)
+            ctx.stroke()
         } else if (kind === "volume" || kind === "mute") {
             // 音量 / 静音：喇叭 + 声波（静音换成叉号）
             ctx.beginPath()

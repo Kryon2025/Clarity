@@ -25,6 +25,15 @@ Item {
     readonly property string noticesUrl: repoUrl + "/blob/main/THIRD_PARTY_NOTICES.md"
     readonly property string changelogUrl: repoUrl + "/blob/main/CHANGELOG.md"
 
+    // ---------- v0.20 网页管理（设置页开启开关后，底部补一行地址小字） ----------
+    readonly property bool webAdminEnabledValue: (typeof App !== "undefined" && App.webAdminEnabled !== undefined)
+                                                  ? App.webAdminEnabled === true : false
+    readonly property string webAdminUrlValue: (typeof App !== "undefined" && App.webAdminUrl !== undefined
+                                                && App.webAdminUrl !== null) ? String(App.webAdminUrl) : ""
+    readonly property string webAdminUrlDisplay: (page.webAdminUrlValue !== "")
+                                                 ? page.webAdminUrlValue
+                                                 : qsTr("尚未获取到访问地址")
+
     // ---------- 更新日志 ----------
     // 展开状态按版本号记录（语言切换重建列表时仍保留）
     property var expandedVersions: ({})
@@ -740,6 +749,19 @@ Item {
                 font.pixelSize: AppTheme.fs(11)
                 font.family: AppTheme.fontFamily
                 wrapMode: Text.WordWrap
+            }
+
+            // ---------- v0.20 网页管理地址（仅开关开启时显示） ----------
+            Text {
+                objectName: "WebAdminFooterText"
+                visible: page.webAdminEnabledValue
+                width: parent.width
+                text: qsTr("网页管理地址：%1").arg(page.webAdminUrlDisplay)
+                color: AppTheme.textTertiary
+                font.pixelSize: AppTheme.fs(11)
+                font.family: AppTheme.fontFamily
+                wrapMode: Text.WordWrap
+                lineHeight: 1.35
             }
 
             Item { width: parent.width; height: 2 }

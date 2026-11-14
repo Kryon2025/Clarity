@@ -612,6 +612,13 @@ def main(argv: list[str] | None = None) -> int:
                 logging.info("已恢复未完成的专注会话")
         except Exception as exc:  # noqa: BLE001 - 恢复失败不能阻止启动
             logging.warning("恢复未完成专注失败：%s", exc)
+        # v0.19 网页管理：按设置启动本地管理页（服务只监听 127.0.0.1）
+        if bool(settings.get("web_admin_enabled", False)):
+            if bridge.startWebAdmin():
+                logging.info("网页管理地址：%s", bridge.webAdminUrl)
+            else:
+                logging.warning("网页管理启动失败：%s", bridge.webAdminError)
+        app.aboutToQuit.connect(bridge.stopWebAdmin)
         # 保活：写 keeper.json 并起独立看门狗；正常退出时结束看门狗
         if keeper.start_keeper():
             logging.info("保活看门狗已启动")

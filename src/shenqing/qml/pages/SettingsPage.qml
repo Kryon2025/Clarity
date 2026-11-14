@@ -59,6 +59,80 @@ Item {
         }
     }
 
+    // ---------- v0.20 网页管理 ----------
+    // 后端接口按契约：App.webAdminEnabled / setWebAdminEnabled(bool) / webAdminUrl /
+    // openWebAdmin() / regenerateWebAdminToken()。全部用 typeof 兜底：
+    // 缺哪个就把哪个列在卡片里，界面仍可操作（开关退回本地状态）。
+    property bool webAdminLocalEnabled: false
+    property bool webAdminCopied: false
+    property string webAdminStatus: ""
+    property string webAdminStatusKind: "idle"
+    readonly property bool webAdminEnabledValue: (typeof App !== "undefined" && App.webAdminEnabled !== undefined)
+                                                  ? App.webAdminEnabled === true : page.webAdminLocalEnabled
+    readonly property string webAdminUrlValue: (typeof App !== "undefined" && App.webAdminUrl !== undefined
+                                                && App.webAdminUrl !== null) ? String(App.webAdminUrl) : ""
+    readonly property string webAdminUrlDisplay: (page.webAdminUrlValue !== "")
+                                                 ? page.webAdminUrlValue
+                                                 : (page.webAdminEnabledValue ? qsTr("尚未获取到访问地址")
+                                                                              : qsTr("开启后这里显示管理页地址"))
+    readonly property string webAdminErrorText: (typeof App !== "undefined" && App.webAdminError !== undefined
+                                                 && App.webAdminError !== null) ? String(App.webAdminError) : ""
+    readonly property var webAdminMissingApis: {
+        var missing = []
+        if (typeof App === "undefined") return ["App"]
+        if (App.webAdminEnabled === undefined) missing.push("App.webAdminEnabled")
+        if (typeof App.setWebAdminEnabled !== "function") missing.push("App.setWebAdminEnabled")
+        if (App.webAdminUrl === undefined) missing.push("App.webAdminUrl")
+        if (typeof App.openWebAdmin !== "function") missing.push("App.openWebAdmin")
+        if (typeof App.regenerateWebAdminToken !== "function")
+            missing.push("App.regenerateWebAdminToken")
+        return missing
+    }
+    readonly property string webAdminMissingText: page.webAdminMissingApis.length > 0
+                                                 ? page.webAdminMissingApis.join("、") : ""
+    function toggleWebAdmin() {
+        page.webAdminStatusKind = "idle"
+        page.webAdminStatus = ""
+        if (typeof App !== "undefined" && typeof App.setWebAdminEnabled === "function")
+            App.setWebAdminEnabled(!page.webAdminEnabledValue)
+        else
+            page.webAdminLocalEnabled = !page.webAdminLocalEnabled
+    }
+    function openWebAdminPage() {
+        if (typeof App !== "undefined" && typeof App.openWebAdmin === "function") {
+            App.openWebAdmin()
+            page.webAdminStatusKind = "ok"
+            page.webAdminStatus = qsTr("已在默认浏览器中打开管理页")
+        } else {
+            page.webAdminStatusKind = "error"
+            page.webAdminStatus = qsTr("缺少接口（App.openWebAdmin）")
+        }
+    }
+    function regenerateWebAdminToken() {
+        if (typeof App !== "undefined" && typeof App.regenerateWebAdminToken === "function") {
+            App.regenerateWebAdminToken()
+            page.webAdminStatusKind = "ok"
+            page.webAdminStatus = qsTr("访问令牌已重新生成，旧地址已失效")
+        } else {
+            page.webAdminStatusKind = "error"
+            page.webAdminStatus = qsTr("缺少接口（App.regenerateWebAdminToken）")
+        }
+    }
+    function copyWebAdminUrl() {
+        if (page.webAdminUrlValue === "") return
+        webAdminClipHelper.text = page.webAdminUrlValue
+        webAdminClipHelper.selectAll()
+        webAdminClipHelper.copy()
+        page.webAdminCopied = true
+        webAdminCopyTimer.restart()
+    }
+    Timer {
+        id: webAdminCopyTimer
+        interval: 1600
+        repeat: false
+        onTriggered: page.webAdminCopied = false
+    }
+
     // ---------- v0.14 数据与备份 ----------
     property bool backupBusyLocal: false
     property bool backupConfirmOpen: false
@@ -955,6 +1029,211 @@ Item {
                 }
             }
 
+            // ---------- v0.20 网页管理（CW2 式：浏览器打开管理页） ----------
+            GlassCard {
+                id: webAdminCard
+                objectName: "WebAdminCard"
+                width: parent.width
+                implicitHeight: webAdminColumn.implicitHeight + 36
+                height: implicitHeight
+                radius: 20
+                interactive: false
+                glassSource: page.glassSource
+
+                Column {
+                    id: webAdminColumn
+                    x: 20
+                    y: 18
+                    width: parent.width - 40
+                    spacing: 10
+
+                    Row {
+                        width: parent.width
+                        spacing: 9
+
+                        Glyph {
+                            anchors.verticalCenter: parent.verticalCenter
+                            kind: "globe"
+                            size: 15
+                            color: AppTheme.accent
+                        }
+
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: qsTr("网页管理")
+                            color: AppTheme.textPrimary
+                            font.pixelSize: AppTheme.fs(15)
+                            font.weight: Font.DemiBold
+                            font.family: AppTheme.fontFamily
+                        }
+
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: page.webAdminEnabledValue ? qsTr("已开启") : qsTr("已关闭")
+                            color: page.webAdminEnabledValue ? AppTheme.accent : AppTheme.textTertiary
+                            font.pixelSize: AppTheme.fs(11)
+                            font.family: AppTheme.fontFamily
+                        }
+
+                        Item { width: Math.max(0, parent.width - 300); height: 1 }
+
+                        GlassSwitch {
+                            objectName: "WebAdminSwitch"
+                            anchors.verticalCenter: parent.verticalCenter
+                            checked: page.webAdminEnabledValue
+                            onClicked: page.toggleWebAdmin()
+                        }
+                    }
+
+                    Text {
+                        width: parent.width
+                        text: qsTr("开启后可用本机浏览器打开管理页，查看空间、设置与专注统计。")
+                        color: AppTheme.textSecondary
+                        font.pixelSize: AppTheme.fs(11)
+                        font.family: AppTheme.fontFamily
+                        wrapMode: Text.WordWrap
+                        lineHeight: 1.35
+                    }
+
+                    // 地址：只读，可选中复制（URL 里带访问令牌）
+                    Item {
+                        id: webAdminUrlField
+                        objectName: "WebAdminUrlField"
+                        width: parent.width
+                        height: 34
+
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: 9
+                            color: AppTheme.cardBgAlt
+                            border.width: 1
+                            border.color: webAdminUrlInput.activeFocus ? AppTheme.accent : AppTheme.cardBorder
+                        }
+
+                        TextInput {
+                            id: webAdminUrlInput
+                            objectName: "WebAdminUrlEdit"
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.top: parent.top
+                            anchors.bottom: parent.bottom
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
+                            verticalAlignment: TextInput.AlignVCenter
+                            readOnly: true
+                            selectByMouse: true
+                            activeFocusOnPress: true
+                            mouseSelectionMode: TextInput.SelectCharacters
+                            cursorVisible: false
+                            clip: true
+                            text: page.webAdminUrlValue
+                            color: AppTheme.textPrimary
+                            selectionColor: AppTheme.accentSoft
+                            selectedTextColor: "#FFFFFF"
+                            font.pixelSize: AppTheme.fs(11)
+                            font.family: C.monoFont
+                        }
+
+                        Text {
+                            anchors.left: parent.left
+                            anchors.leftMargin: 12
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: page.webAdminUrlValue === ""
+                            text: page.webAdminUrlDisplay
+                            color: AppTheme.textTertiary
+                            font.pixelSize: AppTheme.fs(11)
+                            font.family: AppTheme.fontFamily
+                        }
+                    }
+
+                    Row {
+                        width: parent.width
+                        spacing: 10
+
+                        GlassButton {
+                            objectName: "WebAdminOpenButton"
+                            text: qsTr("打开浏览器管理页")
+                            tone: "tinted"
+                            fontSize: AppTheme.fs(12)
+                            padH: 18
+                            minHeight: 34
+                            enabled: page.webAdminEnabledValue
+                            onClicked: page.openWebAdminPage()
+                        }
+
+                        GlassButton {
+                            objectName: "WebAdminRegenButton"
+                            text: qsTr("重新生成访问令牌")
+                            tone: "ghost"
+                            fontSize: AppTheme.fs(12)
+                            padH: 18
+                            minHeight: 34
+                            enabled: page.webAdminEnabledValue
+                            onClicked: page.regenerateWebAdminToken()
+                        }
+
+                        GlassButton {
+                            objectName: "WebAdminCopyButton"
+                            text: page.webAdminCopied ? qsTr("已复制") : qsTr("复制地址")
+                            tone: "ghost"
+                            fontSize: AppTheme.fs(12)
+                            padH: 16
+                            minHeight: 34
+                            enabled: page.webAdminUrlValue !== ""
+                            onClicked: page.copyWebAdminUrl()
+                        }
+                    }
+
+                    // 操作反馈
+                    Text {
+                        objectName: "WebAdminStatusText"
+                        width: parent.width
+                        visible: page.webAdminStatus !== ""
+                        text: page.webAdminStatus
+                        color: page.webAdminStatusKind === "error" ? AppTheme.danger : AppTheme.accent
+                        font.pixelSize: AppTheme.fs(10)
+                        font.family: AppTheme.fontFamily
+                        wrapMode: Text.WordWrap
+                    }
+
+                    // 服务错误（例如端口被占用）
+                    Text {
+                        objectName: "WebAdminErrorText"
+                        width: parent.width
+                        visible: page.webAdminErrorText !== ""
+                        text: qsTr("服务错误：%1").arg(page.webAdminErrorText)
+                        color: AppTheme.danger
+                        font.pixelSize: AppTheme.fs(10)
+                        font.family: AppTheme.fontFamily
+                        wrapMode: Text.WordWrap
+                        lineHeight: 1.3
+                    }
+
+                    // 接口缺失兜底：缺哪个列哪个
+                    Text {
+                        objectName: "WebAdminMissingText"
+                        width: parent.width
+                        visible: page.webAdminMissingApis.length > 0
+                        text: qsTr("缺少接口：%1（界面已用本地状态兜底）").arg(page.webAdminMissingText)
+                        color: AppTheme.danger
+                        font.pixelSize: AppTheme.fs(10)
+                        font.family: AppTheme.fontFamily
+                        wrapMode: Text.WordWrap
+                        lineHeight: 1.3
+                    }
+
+                    Text {
+                        width: parent.width
+                        text: qsTr("仅本机（127.0.0.1）可访问；地址里带有访问令牌，请勿外传；手机与其他设备暂不支持。")
+                        color: AppTheme.textTertiary
+                        font.pixelSize: AppTheme.fs(10)
+                        font.family: AppTheme.fontFamily
+                        wrapMode: Text.WordWrap
+                        lineHeight: 1.35
+                    }
+                }
+            }
+
             // ---------- v0.15 网址屏蔽 ----------
             GlassCard {
                 width: parent.width
@@ -1404,6 +1683,19 @@ Item {
                 lineHeight: 1.4
             }
 
+            // ---------- v0.20 网页管理地址（开关开启时的一行小字） ----------
+            Text {
+                objectName: "WebAdminFooterText"
+                visible: page.webAdminEnabledValue
+                width: parent.width
+                text: qsTr("网页管理地址：%1").arg(page.webAdminUrlDisplay)
+                color: AppTheme.textTertiary
+                font.pixelSize: AppTheme.fs(11)
+                font.family: AppTheme.fontFamily
+                wrapMode: Text.WordWrap
+                lineHeight: 1.35
+            }
+
             Item { width: parent.width; height: 2 }
         }
     }
@@ -1517,6 +1809,14 @@ Item {
         minPopupHeight: 120
         previewFontFamily: true
         onSelected: (value) => page.setFontFamily(String(value))
+    }
+
+    // v0.20 网页管理地址复制用的隐藏剪贴板助手
+    TextEdit {
+        id: webAdminClipHelper
+        visible: false
+        width: 1
+        height: 1
     }
 
 }

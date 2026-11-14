@@ -57,7 +57,7 @@ from ..core.guard import ProcessGuard
 from ..core.session import SessionController, SessionState
 from ..core.spaces import SpaceManager
 from ..core.stats import StatsStore
-from ..services import elevation, power, store, timesync, updater
+from ..services import elevation, power, store, timesync, updater, webadmin
 from ..services import ai as ai_service
 from ..services import app_usage
 from ..services import backup as backup_service
@@ -166,6 +166,8 @@ class AppBridge(QObject):
     storeChanged = Signal()
     #: v0.18 某个 item 的评论变化（携带 item id）
     storeCommentsChanged = Signal(str)
+    #: v0.19 网页管理状态变化（开关 / 地址 / 错误）
+    webAdminChanged = Signal()
 
     def __init__(
         self,
@@ -285,6 +287,11 @@ class AppBridge(QObject):
                 )
             except Exception as exc:  # noqa: BLE001
                 logger.warning("插件通知通道挂接失败：%s", exc)
+
+        # v0.19：网页管理（浏览器里管理深清）——app.py 启动时按设置拉起
+        self._web_admin = webadmin.WebAdminService(
+            self._settings, self._build_web_admin_host()
+        )
 
         self._media = MediaSmtcService(self)
         self._media.changed.connect(self._on_media_changed)
@@ -1897,12 +1904,194 @@ class AppBridge(QObject):
             QTimer.singleShot(300, application.quit)
         return started
 
+    # ================= v0.19：网页管理（浏览器里管理深清） =================
+    def _build_web_admin_host(self) -> webadmin.WebAdminHost:
+        """把主程序能力注入网页管理服务（默认实现只够脱离 GUI 的单测）。"""
+        return webadmin.WebAdminHost(
+            self._settings,
+            self._spaces,
+            self._stats,
+            store_service=self._store,
+            plugins_provider=lambda: self.plugins,
+            store_items_provider=lambda: self._store.items(),
+            session_snapshot=self._web_admin_session,
+            session_start=self._web_admin_start_session,
+            session_stop=self._web_admin_stop_session,
+            install_store_item=self._web_admin_install_item,
+            on_settings_changed=self._on_web_admin_setting,
+            on_spaces_changed=self.spacesChanged.emit,
+        )
+
+    def _web_admin_session(self) -> dict:
+        """当前专注状态（管理页概览卡片用）。"""
+        space = self._spaces.get(self._active_space_id) if self._active_space_id else None
+        return {
+            "state": str(self.state),
+            "remainingSeconds": int(self.remainingSeconds),
+            "spaceName": str(space.get("name", "")) if space else "",
+            "level": str(self._session_level or ""),
+        }
+
+    def _web_admin_start_session(
+        self, mode: str, minutes: object, space_id: str
+    ) -> tuple[bool, str]:
+        """网页端开始专注：立即开始（不像桌面端还有 10 秒倒计时）。"""
+        if self._session.state is not SessionState.IDLE:
+            return False, "已经有正在进行的专注"
+        space = self._spaces.get(space_id) if space_id else self._spaces.get_by_mode(mode)
+        if space is None:
+            return False, "空间不存在"
+        level = str(space.get("mode") or mode or "")
+        if level not in {item.value for item in LockLevel}:
+            return False, "档位不正确"
+        try:
+            value = int(minutes) if minutes not in (None, "") else int(space.get("minutes") or 25)
+        except (TypeError, ValueError):
+            return False, "时长不正确"
+        value = max(SPACE_MIN_MINUTES, min(SPACE_MAX_MINUTES, value))
+        self._begin_space_session(space, level, value, trial=False)
+        return True, f"已开始专注（{value} 分钟）"
+
+    def _web_admin_stop_session(self) -> tuple[bool, str]:
+        """网页端结束专注：和桌面端一样受档位约束（覆清 / 深清不可提前结束）。"""
+        if self._session.state is SessionState.IDLE:
+            return False, "当前没有正在进行的专注"
+        self.stopSession()
+        if self._session.state is not SessionState.IDLE:
+            return False, "当前档位不可提前结束，等计时走完"
+        return True, "已结束专注"
+
+    def _web_admin_install_item(self, item_id: str) -> tuple[bool, str]:
+        """网页端安装商店条目（主题复用 installCustomTheme，插件复用安装流程）。"""
+        item = self._store.get(item_id)
+        if not item:
+            return False, "商店里没有这个条目"
+        name = str(item.get("name") or item_id)
+        if str(item.get("kind")) == "theme":
+            ok = self.installCustomTheme(
+                str(item.get("id") or ""),
+                name,
+                str(item.get("summary") or ""),
+                item.get("palette") or {},
+            )
+            return (True, f"已安装主题：{name}") if ok else (False, "主题安装失败")
+        result = self.installStorePlugin(item_id) or {}
+        if isinstance(result, dict):
+            return bool(result.get("ok")), str(result.get("message") or "")
+        return False, "插件安装失败"
+
+    def _on_web_admin_setting(self, key: str, value: object) -> None:
+        """网页改了设置：调用对应 Slot，让桌面端即时生效。"""
+        if key == "theme_mode":
+            self.setThemeMode(str(value))
+        elif key == "language":
+            self.setLanguage(str(value))
+        elif key == "ui_font_scale":
+            self.setUIFontScale(float(value or 1.0))
+        elif key == "ui_font_family":
+            self.setUIFontFamily(str(value or ""))
+        elif key == "nav_mode":
+            self.setNavMode(str(value))
+        elif key == "default_minutes":
+            self.setDefaultMinutes(int(value or 25))
+        elif key == "auto_update":
+            self.setAutoUpdate(bool(value))
+        elif key == "site_block_enabled":
+            self.setSiteBlockEnabled(bool(value))
+        elif key == "web_admin_enabled":
+            # 从管理页里关自己：设置已写入，真正的停止交给 WebAdminService 延迟执行
+            # （不能在请求线程里关掉正在回包的 HTTP 服务）
+            self.settingsChanged.emit()
+            self.webAdminChanged.emit()
+        else:
+            self.settingsChanged.emit()
+
+    @Property(bool, notify=webAdminChanged)
+    def webAdminEnabled(self) -> bool:
+        """网页管理开关（设置项；不代表服务一定已成功启动）。"""
+        return bool(self._settings.get("web_admin_enabled", False))
+
+    @Property(str, notify=webAdminChanged)
+    def webAdminUrl(self) -> str:
+        """带 token 的管理页地址；服务未运行返回空字符串。"""
+        running, url, _error = self._web_admin.status()
+        return url if running else ""
+
+    @Property(str, notify=webAdminChanged)
+    def webAdminError(self) -> str:
+        """网页管理最近一次错误（空 = 没有错误）。"""
+        return self._web_admin.status()[2]
+
+    def startWebAdmin(self) -> bool:
+        """按设置启动服务（app.py 启动时调用；冒烟模式不调用）。"""
+        if not self.webAdminEnabled:
+            return False
+        ok = self._web_admin.start()
+        if ok:
+            logger.info("网页管理已启动：%s", self._web_admin.url)
+        else:
+            logger.warning("网页管理启动失败：%s", self.webAdminError)
+        self.webAdminChanged.emit()
+        return ok
+
+    def stopWebAdmin(self) -> None:
+        self._web_admin.stop()
+        self.webAdminChanged.emit()
+
+    @Slot(bool)
+    def setWebAdminEnabled(self, enabled: bool) -> None:
+        """设置页开关：写入设置并即时启停服务。"""
+        self._settings.set("web_admin_enabled", bool(enabled))
+        ok = self._web_admin.set_enabled(bool(enabled))
+        self.webAdminChanged.emit()
+        if enabled and not ok:
+            self.toast.emit(
+                QCoreApplication.translate("ShenQing", "网页管理启动失败：{0}").format(
+                    self.webAdminError
+                )
+            )
+        elif enabled:
+            self.toast.emit(QCoreApplication.translate("ShenQing", "网页管理已启动"))
+        else:
+            self.toast.emit(QCoreApplication.translate("ShenQing", "网页管理已关闭"))
+        self.settingsChanged.emit()
+
+    @Slot()
+    def openWebAdmin(self) -> None:
+        """在系统浏览器里打开管理页。"""
+        if not self._web_admin.running:
+            self.startWebAdmin()
+        url = self._web_admin.url
+        if not url:
+            self.toast.emit(
+                QCoreApplication.translate("ShenQing", "网页管理未启动：{0}").format(
+                    self.webAdminError or "端口不可用"
+                )
+            )
+            return
+        from PySide6.QtCore import QUrl
+        from PySide6.QtGui import QDesktopServices
+
+        QDesktopServices.openUrl(QUrl(url))
+
+    @Slot(result=str)
+    def regenerateWebAdminToken(self) -> str:
+        """重新生成 token（旧的管理页地址立即失效）。"""
+        token = self._web_admin.regenerate_token()
+        self.webAdminChanged.emit()
+        self.toast.emit(QCoreApplication.translate("ShenQing", "网页管理 token 已更新"))
+        return token
+
     # ================= 服务退出清理 =================
     def _shutdown_services(self) -> None:
         try:
             self._restore_site_block(force=True)
         except Exception as exc:  # noqa: BLE001
             logger.warning("退出恢复网站屏蔽失败：%s", exc)
+        try:
+            self._web_admin.stop()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("停止网页管理失败：%s", exc)
         try:
             self._click_counter.stop()
         except Exception as exc:  # noqa: BLE001

@@ -59,6 +59,9 @@ DEFAULTS: dict[str, Any] = {
     "blocked_sites": [],           # 专注期间屏蔽的网站域名（v0.15）
     "site_block_enabled": True,    # 是否启用 hosts 网站屏蔽
     "card_background": "",         # 结束卡片背景：空=必应每日壁纸；否则本地图片绝对路径
+    "web_admin_enabled": False,    # v0.19 网页管理：浏览器里打开本地管理页
+    "web_admin_port": 8765,        # v0.19 网页管理端口（被占用时自动 +1，最多 20 次）
+    "web_admin_token": "",         # v0.19 网页管理 token（首次启用时生成并持久化）
 }
 
 

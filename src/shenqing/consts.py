@@ -8,7 +8,7 @@ APP_NAME = "深清"
 #: 英文名（v0.4 起对外统一用 Clarity；「身轻」不再展示）
 APP_ALIAS = "Clarity"
 APP_ID = "ShenQing"
-APP_VERSION = "0.18.3"
+APP_VERSION = "0.19.0"
 
 #: v0.18 自定义主题 id 前缀：theme_mode = "custom:<id>"
 CUSTOM_THEME_PREFIX = "custom:"
@@ -74,6 +74,19 @@ MAX_FONT_FAMILIES = 200
 
 #: 更新日志（最新在前；en 为空时用中文兜底）
 CHANGELOG = [
+    {
+        "version": "0.19.0",
+        "date": "2025-11-14",
+        "tag": "",
+        "items": [
+            "新增网页管理（参考 CW2 的浏览器管理方式）：本机浏览器打开管理页，可查看概览/空间/设置/统计/商店，并直接开始或结束专注",
+            "管理页带访问令牌鉴权，仅本机 127.0.0.1 可访问，端口自适应，设置里可开关、复制地址、重新生成令牌",
+        ],
+        "items_en": [
+            "New web admin (inspired by CW2 browser-based management): open a local admin page for overview, spaces, settings, stats and store, and start/stop focus sessions",
+            "Token-protected, 127.0.0.1 only, automatic port fallback; toggle, copy the address or regenerate the token in Settings",
+        ],
+    },
     {
         "version": "0.18.3",
         "date": "2025-11-14",
