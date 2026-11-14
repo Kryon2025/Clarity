@@ -1,0 +1,246 @@
+{
+  "version": 1,
+  "updated_at": "2025-11-14",
+  "items": [
+    {
+      "id": "theme-aurora",
+      "kind": "theme",
+      "name": "极光",
+      "author": "Clarity Studio",
+      "summary": "青绿极光掠过深夜海面",
+      "description": "以深海为底、极光青绿为强调色的深色主题包，适合夜间专注。",
+      "version": "1.0.0",
+      "rating": 4.8,
+      "downloads": 12840,
+      "tags": [
+        "深色",
+        "青绿",
+        "夜间"
+      ],
+      "screenshots": [],
+      "download_url": "",
+      "palette": {
+        "bgTop": "#0A1F2E",
+        "bgMid": "#06202C",
+        "bgBottom": "#04121A",
+        "accent": "#35E0C8",
+        "cardBg": "#0D2634",
+        "textPrimary": "#EAF8FC"
+      },
+      "published_at": "2025-10-02"
+    },
+    {
+      "id": "theme-sakura",
+      "kind": "theme",
+      "name": "樱雾",
+      "author": "Aki",
+      "summary": "淡粉雾气里的安静书桌",
+      "description": "低饱和樱粉浅色主题，配深莓强调色，白天的清空间会更柔和。",
+      "version": "1.0.0",
+      "rating": 4.6,
+      "downloads": 9360,
+      "tags": [
+        "浅色",
+        "樱粉",
+        "温柔"
+      ],
+      "screenshots": [],
+      "download_url": "",
+      "palette": {
+        "bgTop": "#F6EEF1",
+        "bgMid": "#F1E3E9",
+        "bgBottom": "#E9D6DE",
+        "accent": "#D46A8C",
+        "cardBg": "#FFFFFF",
+        "textPrimary": "#3A2230"
+      },
+      "published_at": "2025-09-18"
+    },
+    {
+      "id": "theme-forest",
+      "kind": "theme",
+      "name": "苔原",
+      "author": "青苔",
+      "summary": "安静生长的深林绿",
+      "description": "以苔绿与松针色构成的深色主题，长时间盯屏幕也不刺眼。",
+      "version": "1.0.0",
+      "rating": 4.5,
+      "downloads": 7710,
+      "tags": [
+        "深色",
+        "自然",
+        "护眼"
+      ],
+      "screenshots": [],
+      "download_url": "",
+      "palette": {
+        "bgTop": "#0C1F16",
+        "bgMid": "#0A291C",
+        "bgBottom": "#07170F",
+        "accent": "#6FD8A0",
+        "cardBg": "#103024",
+        "textPrimary": "#E9F7EF"
+      },
+      "published_at": "2025-08-30"
+    },
+    {
+      "id": "theme-mono",
+      "kind": "theme",
+      "name": "墨白",
+      "author": "Norr",
+      "summary": "只有黑白灰的极简空间",
+      "description": "去掉彩色干扰的墨白浅色主题，强调色仍是近黑，适合写作阅读。",
+      "version": "1.0.0",
+      "rating": 4.3,
+      "downloads": 5620,
+      "tags": [
+        "浅色",
+        "极简",
+        "写作"
+      ],
+      "screenshots": [],
+      "download_url": "",
+      "palette": {
+        "bgTop": "#F7F7F5",
+        "bgMid": "#EFEFEB",
+        "bgBottom": "#E6E6E0",
+        "accent": "#2B2B2B",
+        "cardBg": "#FFFFFF",
+        "textPrimary": "#1B1B1B"
+      },
+      "published_at": "2025-08-12"
+    },
+    {
+      "id": "theme-sunset",
+      "kind": "theme",
+      "name": "暮橘",
+      "author": "Haru",
+      "summary": "黄昏落在桌面的一角",
+      "description": "暮色酒红与暖橘强调色，给夜晚的专注一点温度。",
+      "version": "1.0.0",
+      "rating": 4.7,
+      "downloads": 11050,
+      "tags": [
+        "深色",
+        "暖色",
+        "黄昏"
+      ],
+      "screenshots": [],
+      "download_url": "",
+      "palette": {
+        "bgTop": "#2C1420",
+        "bgMid": "#3A1A1E",
+        "bgBottom": "#1A0B12",
+        "accent": "#FF9E64",
+        "cardBg": "#3A1C24",
+        "textPrimary": "#FFE9DC"
+      },
+      "published_at": "2025-09-01"
+    },
+    {
+      "id": "theme-cyber",
+      "kind": "theme",
+      "name": "霓虹夜",
+      "author": "Nova",
+      "summary": "霓虹紫在电路板上呼吸",
+      "description": "高对比霓虹紫主题包，配合深紫卡片，适合喜欢赛博感的用户。",
+      "version": "1.0.0",
+      "rating": 4.4,
+      "downloads": 6890,
+      "tags": [
+        "深色",
+        "赛博",
+        "紫色"
+      ],
+      "screenshots": [],
+      "download_url": "",
+      "palette": {
+        "bgTop": "#0B0B1A",
+        "bgMid": "#14102B",
+        "bgBottom": "#07060F",
+        "accent": "#B45CFF",
+        "cardBg": "#171330",
+        "textPrimary": "#EDE6FF"
+      },
+      "published_at": "2025-10-11"
+    },
+    {
+      "id": "pomodoro-plus",
+      "kind": "plugin",
+      "name": "清番增强",
+      "author": "社区",
+      "summary": "更细的番茄钟节奏与统计",
+      "description": "增加长休息提示、今日完成轮次与周统计，数据保存在插件目录。",
+      "version": "1.0.0",
+      "rating": 4.6,
+      "downloads": 8450,
+      "tags": [
+        "专注",
+        "统计",
+        "番茄钟"
+      ],
+      "screenshots": [],
+      "download_url": "https://raw.githubusercontent.com/Kryon2025/Clarity/store/plugins/pomodoro-plus.zip",
+      "palette": {},
+      "published_at": "2025-09-22"
+    },
+    {
+      "id": "muyu",
+      "kind": "plugin",
+      "name": "木鱼",
+      "author": "社区",
+      "summary": "敲一下，功德加一",
+      "description": "遮罩右下角的小木鱼，点击有敲击动画与功德计数，专注时放松一下。",
+      "version": "1.0.0",
+      "rating": 4.9,
+      "downloads": 15230,
+      "tags": [
+        "趣味",
+        "遮罩组件",
+        "解压"
+      ],
+      "screenshots": [],
+      "download_url": "https://raw.githubusercontent.com/Kryon2025/Clarity/store/plugins/muyu.zip",
+      "palette": {},
+      "published_at": "2025-10-05"
+    },
+    {
+      "id": "water-reminder",
+      "kind": "plugin",
+      "name": "喝水提醒",
+      "author": "社区",
+      "summary": "按时提醒你补充水分",
+      "description": "专注期间定时弹出轻提示，最多每小时一次，不打断锁定流程。",
+      "version": "1.0.0",
+      "rating": 4.2,
+      "downloads": 4980,
+      "tags": [
+        "健康",
+        "提醒"
+      ],
+      "screenshots": [],
+      "download_url": "https://raw.githubusercontent.com/Kryon2025/Clarity/store/plugins/water-reminder.zip",
+      "palette": {},
+      "published_at": "2025-08-20"
+    },
+    {
+      "id": "media-island",
+      "kind": "plugin",
+      "name": "媒体岛增强",
+      "author": "社区",
+      "summary": "把正在播放的歌放得更显眼",
+      "description": "遮罩顶部增加媒体信息与音量入口，支持常见播放器的 SMTC 信息。",
+      "version": "1.0.0",
+      "rating": 4.5,
+      "downloads": 7030,
+      "tags": [
+        "媒体",
+        "遮罩组件"
+      ],
+      "screenshots": [],
+      "download_url": "https://raw.githubusercontent.com/Kryon2025/Clarity/store/plugins/media-island.zip",
+      "palette": {},
+      "published_at": "2025-09-10"
+    }
+  ]
+}
