@@ -45,7 +45,18 @@ GITLINK_PAGE = "https://gitlink.org.cn/Kryon/Clarity/releases"
 
 GITEE_REPO = "kryonF/Clarity"
 GITEE_LATEST = "https://gitee.com/api/v5/repos/kryonF/Clarity/releases/latest"
+GITEE_RELEASES = "https://gitee.com/api/v5/repos/kryonF/Clarity/releases"
 GITEE_PAGE = "https://gitee.com/kryonF/Clarity/releases"
+#: 镜像仓库里的更新清单（仓库无 release 时兜底；由发布流程生成）
+GITEE_MANIFESTS = (
+    "https://gitee.com/kryonF/Clarity/raw/main/packaging/update.json",
+    "https://gitee.com/kryonF/Clarity/raw/master/packaging/update.json",
+)
+GITLINK_MANIFESTS = (
+    "https://gitlink.org.cn/Kryon/Clarity/raw/main/packaging/update.json",
+    "https://gitlink.org.cn/Kryon/Clarity/raw/master/packaging/update.json",
+)
+UPDATE_MANIFEST_PATH = "packaging/update.json"
 
 #: 兼容旧代码 / 旧测试的别名
 API_LATEST = GITHUB_LATEST
@@ -68,6 +79,9 @@ BUILTIN_SOURCES: list[dict[str, Any]] = [
         "url": GITLINK_LATEST,
         "fallbackUrl": GITLINK_RELEASES,
         "page": GITLINK_PAGE,
+        # GitLink 目前未提供公开 JSON API，raw 文件也被前端页面拦截（返回 HTML）
+        "available": False,
+        "note": "GitLink 暂无公开 API，暂不可用",
     },
     {
         "id": "gitee",
@@ -75,6 +89,8 @@ BUILTIN_SOURCES: list[dict[str, Any]] = [
         "kind": "gitee",
         "url": GITEE_LATEST,
         "page": GITEE_PAGE,
+        "available": True,
+        "note": "",
     },
 ]
 
@@ -331,6 +347,45 @@ def _release_from_payload(payload: object, source_name: str) -> tuple[dict | Non
     return release, ""
 
 
+def release_from_manifest(payload: object) -> dict | None:
+    """解析镜像仓库的 update.json 清单，归一化成 release 结构。
+
+    支持：
+      {"version": "0.20.0", "notes": "...", "assets": [{"name": "ShenQing-Setup-0.20.0.exe", "url": "..."}]}
+      {"tag_name": "v0.20.0", "body": "...", "assets": [{"name", "browser_download_url"}]}
+    """
+    if not isinstance(payload, Mapping):
+        return None
+    version = payload.get("version") or payload.get("tag_name") or payload.get("tag") or ""
+    version = str(version).strip()
+    if not version:
+        return None
+    tag = version if version.lower().startswith("v") else "v" + version
+    notes = payload.get("notes") or payload.get("body") or payload.get("changelog") or ""
+    assets: list[dict] = []
+    raw_assets = payload.get("assets")
+    if isinstance(raw_assets, list):
+        for item in raw_assets:
+            if not isinstance(item, Mapping):
+                continue
+            name = str(item.get("name") or item.get("asset_name") or "").strip()
+            url = str(item.get("url") or item.get("browser_download_url") or item.get("download_url") or "").strip()
+            if not url:
+                continue
+            asset = {"name": name or url.rsplit("/", 1)[-1], "browser_download_url": url}
+            size = item.get("size")
+            if isinstance(size, int) and size > 0:
+                asset["size"] = size
+            assets.append(asset)
+    if not assets:
+        url = str(payload.get("download_url") or payload.get("url") or "").strip()
+        if url:
+            assets.append({"name": url.rsplit("/", 1)[-1], "browser_download_url": url})
+    if not assets:
+        return None
+    return {"tag_name": tag, "body": str(notes), "assets": assets}
+
+
 # ---------- 拉取 ----------
 def fetch_release_detail(
     source_id: object = DEFAULT_SOURCE_ID,
@@ -351,6 +406,11 @@ def fetch_release_detail(
         return _release_from_payload(payload, "GitHub")
 
     if kind == "gitlink":
+        if not bool(source.get("available", True)):
+            return None, (
+                "GitLink 暂未提供公开的 release API（接口与 raw 文件都返回网页，无法解析 JSON）；"
+                "请改用 GitHub / Gitee，或在「更新」页添加自定义更新源。"
+            )
         errors: list[str] = []
         latest = str(source.get("url") or GITLINK_LATEST)
         try:
@@ -376,11 +436,40 @@ def fetch_release_detail(
         return None, "GitLink 源检查失败：" + ("；".join(errors) or "无响应")
 
     if kind == "gitee":
+        errors: list[str] = []
+        # 1) 正式 Release API
         try:
             payload = _read_json(str(source.get("url") or GITEE_LATEST))
+            release, error = _release_from_payload(payload, "Gitee")
+            if release is not None:
+                return release, ""
+            errors.append(error)
         except Exception as exc:  # noqa: BLE001
-            return None, "Gitee 源检查失败：" + describe_error(exc)
-        return _release_from_payload(payload, "Gitee")
+            errors.append("latest：" + describe_error(exc))
+        # 2) Release 列表（镜像仓库可能只有列表）
+        try:
+            listing = _read_json(GITEE_RELEASES)
+            if isinstance(listing, list) and listing:
+                release, error = _release_from_payload(listing[0], "Gitee")
+                if release is not None:
+                    return release, ""
+                errors.append(error)
+            elif isinstance(listing, list):
+                errors.append("releases：镜像仓库还没有发布 Release")
+        except Exception as exc:  # noqa: BLE001
+            errors.append("releases：" + describe_error(exc))
+        # 3) 镜像仓库的 update.json 清单
+        for url in GITEE_MANIFESTS:
+            try:
+                payload = _read_json(url)
+            except Exception as exc:  # noqa: BLE001
+                errors.append("manifest：" + describe_error(exc))
+                continue
+            release = release_from_manifest(payload)
+            if release is not None:
+                return release, ""
+            errors.append("manifest：清单格式不正确")
+        return None, "Gitee 源检查失败：" + ("；".join(errors) or "镜像仓库没有 Release 或 update.json")
 
     # 自定义源
     url = str(source.get("url") or "").strip()

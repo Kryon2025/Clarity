@@ -129,35 +129,14 @@ class UpdateSourceServiceTest(unittest.TestCase):
         self.assertEqual(info["assetName"], "Clarity-Setup.exe")
         self.assertEqual(info["source"], "github")
 
-    def test_gitlink_source_and_fallback(self) -> None:
-        payload = {
-            "tag_name": "v0.16.2",
-            "body": "GitLink",
-            "assets": [{"name": "Clarity-Setup.exe", "url": "https://gl/s.exe", "size": 7}],
-        }
-        with mock.patch.object(updater, "_read_json", return_value=payload) as reader:
-            info, error = updater.check_latest_detail("0.15.0", source_id="gitlink")
-        self.assertEqual(error, "")
-        self.assertEqual(info["assetUrl"], "https://gl/s.exe")
-        self.assertEqual(reader.call_args.args[0], updater.GITLINK_LATEST)
-
-        # /releases/latest 失败 → 回退 /releases 列表取首个
-        with mock.patch.object(
-            updater,
-            "_read_json",
-            side_effect=[URLError("boom"), [payload, {"tag_name": "v0.16.0"}]],
-        ) as reader:
-            info, error = updater.check_latest_detail("0.15.0", source_id="gitlink")
-        self.assertEqual(error, "")
-        self.assertEqual(info["version"], "0.16.2")
-        self.assertEqual(reader.call_args.args[0], updater.GITLINK_RELEASES)
-
-        # 两个接口都失败 → 可读错误
-        with mock.patch.object(updater, "_read_json", side_effect=URLError("down")):
+    def test_gitlink_reported_unavailable(self) -> None:
+        # v0.20.1：GitLink 未提供公开 JSON API，标记为不可用并给出明确提示
+        with mock.patch.object(updater, "_read_json") as reader:
             release, error = updater.fetch_release_detail("gitlink")
         self.assertIsNone(release)
         self.assertIn("GitLink", error)
-        self.assertIn("失败", error)
+        self.assertIn("暂未提供公开", error)
+        reader.assert_not_called()
 
     def test_gitee_source(self) -> None:
         payload = {

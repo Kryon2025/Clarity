@@ -8,7 +8,7 @@ APP_NAME = "深清"
 #: 英文名（v0.4 起对外统一用 Clarity；「身轻」不再展示）
 APP_ALIAS = "Clarity"
 APP_ID = "ShenQing"
-APP_VERSION = "0.20.0"
+APP_VERSION = "0.20.1"
 
 #: v0.18 自定义主题 id 前缀：theme_mode = "custom:<id>"
 CUSTOM_THEME_PREFIX = "custom:"
@@ -74,6 +74,19 @@ MAX_FONT_FAMILIES = 200
 
 #: 更新日志（最新在前；en 为空时用中文兜底）
 CHANGELOG = [
+    {
+        "version": "0.20.1",
+        "date": "2025-11-14",
+        "tag": "",
+        "items": [
+            "修复 Gitee 更新源：镜像仓库没有 Release 时自动读取 packaging/update.json 清单（发布流程自动生成）",
+            "GitLink 暂未提供公开 API，更新页会明确提示不可用，不再显示看不懂的 JSON 错误",
+        ],
+        "items_en": [
+            "Gitee update source now falls back to packaging/update.json when the mirror has no releases",
+            "GitLink has no public API yet and is reported as unavailable with a clear message",
+        ],
+    },
     {
         "version": "0.20.0",
         "date": "2025-11-14",
