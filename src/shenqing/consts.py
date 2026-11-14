@@ -8,7 +8,7 @@ APP_NAME = "深清"
 #: 英文名（v0.4 起对外统一用 Clarity；「身轻」不再展示）
 APP_ALIAS = "Clarity"
 APP_ID = "ShenQing"
-APP_VERSION = "0.18.1"
+APP_VERSION = "0.18.2"
 
 #: v0.18 自定义主题 id 前缀：theme_mode = "custom:<id>"
 CUSTOM_THEME_PREFIX = "custom:"
@@ -74,6 +74,19 @@ MAX_FONT_FAMILIES = 200
 
 #: 更新日志（最新在前；en 为空时用中文兜底）
 CHANGELOG = [
+    {
+        "version": "0.18.2",
+        "date": "2025-11-14",
+        "tag": "",
+        "items": [
+            "商店目录改为真实在线目录（上传 catalog.json 到 store 分支），打开商店即可看到在线条目",
+            "新增启动参数 --store theme|plugin，可直接打开主题/插件商店；重复启动会切换到对应商店页",
+        ],
+        "items_en": [
+            "Store catalog is now served online (catalog.json on the store branch)",
+            "New --store theme|plugin argument opens the theme or plugin store directly",
+        ],
+    },
     {
         "version": "0.18.1",
         "date": "2025-11-14",

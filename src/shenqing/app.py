@@ -79,6 +79,8 @@ def _parse_args(argv: list[str]) -> tuple[argparse.Namespace, list[str]]:
     parser.add_argument("--restarted", action="store_true", help="由保活看门狗重新拉起")
     parser.add_argument("--autostart", action="store_true", help="由计划任务/开机自启拉起")
     parser.add_argument("--theme", choices=["Auto", "Light", "Dark"], default=None)
+    # v0.18：启动即打开商店（theme / plugin），用于给用户直接展示线上商店
+    parser.add_argument("--store", choices=["theme", "plugin"], default=None)
     return parser.parse_known_args(argv[1:] if argv else [])
 
 
@@ -88,12 +90,14 @@ def _parse_args(argv: list[str]) -> tuple[argparse.Namespace, list[str]]:
 SINGLE_INSTANCE_NAME = f"{APP_ID}-SingleInstance"
 #: 第二个实例发给主实例的消息：激活主界面
 SHOW_MAIN_MESSAGE = "show-main"
+STORE_MESSAGE_PREFIX = "show-store:"
 
 
 class SingleInstanceServer(QObject):
     """主实例的本地套接字服务端：收到 show-main 时通知主窗口激活。"""
 
     showMainRequested = Signal()
+    showStoreRequested = Signal(str)  # v0.18：show-store:<theme|plugin>
     messageReceived = Signal(str)
 
     def __init__(self, name: str = SINGLE_INSTANCE_NAME, parent: QObject | None = None) -> None:
@@ -172,6 +176,8 @@ class SingleInstanceServer(QObject):
             self.messageReceived.emit(message)
             if message == SHOW_MAIN_MESSAGE:
                 self.showMainRequested.emit()
+            elif message.startswith(STORE_MESSAGE_PREFIX):
+                self.showStoreRequested.emit(message[len(STORE_MESSAGE_PREFIX) :].strip())
 
     def _drop_socket(self, socket: QLocalSocket) -> None:
         # socket 是 QLocalServer 的子对象，随服务端一起销毁；这里只丢掉 Python 引用
@@ -209,10 +215,10 @@ def _send_single_instance_message(
 
 
 def _notify_existing_instance(
-    name: str = SINGLE_INSTANCE_NAME, timeout_ms: int = 400
+    name: str = SINGLE_INSTANCE_NAME, timeout_ms: int = 400, message: str = SHOW_MAIN_MESSAGE
 ) -> bool:
-    """第二个实例：让已有主实例激活主界面（发送 show-main）。"""
-    return _send_single_instance_message(SHOW_MAIN_MESSAGE, name, timeout_ms)
+    """第二个实例：让已有主实例激活主界面（发送 show-main / show-store:<kind>）。"""
+    return _send_single_instance_message(message, name, timeout_ms)
 
 
 def _single_instance_enabled(args) -> bool:  # noqa: ANN001
@@ -269,8 +275,11 @@ def acquire_single_instance(
     restarted = bool(getattr(args, "restarted", False))
     notified = {"value": False}
 
+    store_kind = str(getattr(args, "store", "") or "")
+    message = f"{STORE_MESSAGE_PREFIX}{store_kind}" if store_kind else SHOW_MAIN_MESSAGE
+
     def _notify() -> bool:
-        if _notify_existing_instance(name):
+        if _notify_existing_instance(name, message=message):
             notified["value"] = True
             return True
         return False
@@ -314,6 +323,33 @@ def _raise_window(root) -> None:  # noqa: ANN001
             method()
         except (RuntimeError, TypeError, AttributeError):
             pass
+
+
+def _open_store_page(window, kind: str) -> bool:  # noqa: ANN001
+    """v0.18：打开商店页（kind: theme / plugin）。"""
+    root = getattr(window, "root_window", None) if window is not None else None
+    if root is None:
+        return False
+    kind = str(kind or "").strip()
+    if kind not in ("theme", "plugin"):
+        return False
+    try:
+        _show_window(window)
+    except (RuntimeError, AttributeError, TypeError):
+        pass
+    try:
+        from PySide6.QtCore import Q_ARG, QMetaObject, Qt
+
+        QMetaObject.invokeMethod(
+            root,
+            "openStorePage",
+            Qt.ConnectionType.DirectConnection,
+            Q_ARG("QVariant", kind),
+        )
+        return True
+    except (RuntimeError, AttributeError, TypeError) as exc:  # noqa: BLE001
+        logging.warning("打开商店页失败：%s", exc)
+        return False
 
 
 def _activate_main_window(window, bridge=None) -> str:  # noqa: ANN001
@@ -426,17 +462,26 @@ def main(argv: list[str] | None = None) -> int:
     pending_show_main = {"value": False}
     main_window: dict[str, object] = {"window": None, "bridge": None}
 
+    pending_store = {"value": ""}
+
     def _request_show_main() -> None:
         if main_window["window"] is None:
             pending_show_main["value"] = True
             return
         _activate_main_window(main_window["window"], main_window["bridge"])
 
+    def _request_show_store(kind: str) -> None:
+        if main_window["window"] is None:
+            pending_store["value"] = str(kind or "")
+            return
+        _open_store_page(main_window["window"], str(kind or ""))
+
     should_start, instance_server = acquire_single_instance(args)
     if not should_start:
         return 0
     if instance_server is not None:
         instance_server.showMainRequested.connect(_request_show_main)
+        instance_server.showStoreRequested.connect(_request_show_store)
         app.aboutToQuit.connect(instance_server.stop)
 
     settings = Settings()
@@ -500,6 +545,10 @@ def main(argv: list[str] | None = None) -> int:
     if pending_show_main["value"]:
         pending_show_main["value"] = False
         _activate_main_window(window, bridge)
+    initial_store = pending_store["value"] or str(getattr(args, "store", "") or "")
+    if initial_store:
+        pending_store["value"] = ""
+        QTimer.singleShot(700, lambda kind=initial_store: _open_store_page(window, kind))
 
     tray: TrayController | None = None
     quick_panel: QuickPanelController | None = None
