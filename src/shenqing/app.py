@@ -189,6 +189,11 @@ def main(argv: list[str] | None = None) -> int:
 
     bridge.themeChanged.connect(lambda name: window.setTheme(Theme(name)))
 
+    # v0.16 onboarding test marker
+    bridge.onboardingFinished.connect(lambda: _show_window(window))
+    if not args.smoke and not bool(settings.get("onboarding_done", False)):
+        _hide_window(window)
+
     tray: TrayController | None = None
     quick_panel: QuickPanelController | None = None
 
@@ -316,6 +321,17 @@ def _show_window(window: RinUIWindow) -> None:
         return
     root.show()
     root.requestActivate()
+
+
+def _hide_window(window: RinUIWindow) -> None:
+    """v0.16 首次使用引导期间隐藏主窗口（引导是独立的 QML 全屏窗口）。"""
+    root = window.root_window
+    if root is None:
+        return
+    try:
+        root.hide()
+    except (RuntimeError, TypeError):
+        pass
 
 
 def setup_dock_reveal(app: QApplication, bridge: AppBridge) -> DockRevealController:

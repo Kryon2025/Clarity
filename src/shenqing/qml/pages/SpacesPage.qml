@@ -22,6 +22,8 @@ Item {
     property bool animationsEnabled: true
 
     signal whitelistRequested(string mode, string spaceId)
+    // v0.16：打开「清番」置顶番茄钟小窗（由 Main.qml 承接）
+    signal pomodoroRequested()
 
     readonly property var modeList: {
         var base = (typeof App !== "undefined" && App.modes && App.modes.length > 0)
@@ -414,6 +416,54 @@ Item {
                     }
                 }
 
+                // v0.16 清番入口：无边框置顶番茄钟小窗
+                Item {
+                    id: pomodoroEntry
+                    objectName: "PomodoroEntry"
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: 4
+                    width: pomodoroLabel.implicitWidth + 58
+                    height: 36
+
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: 18
+                        color: pomodoroArea.containsMouse
+                               ? (AppTheme.glass ? "#22FFFFFF" : AppTheme.buttonBgAlt)
+                               : (AppTheme.glass ? "#12FFFFFF" : AppTheme.buttonBg)
+                        border.width: 1
+                        border.color: pomodoroArea.containsMouse ? AppTheme.accent : AppTheme.cardBorder
+                        Behavior on color { ColorAnimation { duration: 120 } }
+                    }
+
+                    Row {
+                        anchors.centerIn: parent
+                        spacing: 7
+                        Glyph {
+                            anchors.verticalCenter: parent.verticalCenter
+                            kind: "clock"
+                            size: 15
+                            color: AppTheme.accent
+                        }
+                        Text {
+                            id: pomodoroLabel
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: qsTr("清番 · 置顶番茄钟")
+                            color: AppTheme.textPrimary
+                            font.pixelSize: AppTheme.fs(12)
+                            font.family: AppTheme.fontFamily
+                        }
+                    }
+
+                    MouseArea {
+                        id: pomodoroArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: page.pomodoroRequested()
+                    }
+                }
             }
 
     // ---------- 浏览器式标签页：浅清 / 覆清 / 深清（固定顶部） ----------

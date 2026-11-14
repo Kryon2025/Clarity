@@ -8,7 +8,9 @@ import "Constants.js" as C
 // 专注全屏遮罩（App.locked 由 Python 控制；预览模式 App.previewActive 也会显示）。
 // v0.4：
 //  - 真实专注：左侧大倒计时 + 顶部状态条 + 右上灵动岛 + 覆清档右侧竖向 dock；
-//    深清档不显示暂停/提前结束，体验模式（App.trialActive）允许提前结束。
+//    v0.16：覆清与深清一样不显示暂停 / 提前结束（体验模式 App.trialActive 仍允许提前结束）。
+//  - v0.16 连点时间 10 次：点击时间显示（无视觉反馈）→ App.registerTimeClick()；
+//    后端发 exitWarningRequested → 弹确认弹窗；确认 App.confirmExitSession()、取消 App.cancelExitWarning()。
 //  - 预览：10 秒假倒计时 +「预览」角标 + 关闭按钮，调 App.stopPreview()；
 //    预览不调用 App.overlayOpened()（不隐藏任务栏、不装键盘钩子）。
 //  - glass 主题沿用海水玻璃；solid / light 主题用平面遮罩，不做折射/噪点。
@@ -51,6 +53,45 @@ Window {
                 return list[i].super === true
         }
         return false
+    }
+
+    // v0.16：覆清 / 深清都隐藏「暂停 / 提前结束」；预览与体验模式不受影响
+    readonly property bool restrictedExit: overlay.heavyLock || overlay.mediumDock
+    // 连点时间警告：优先由后端计数并 emit exitWarningRequested；接口缺失时本地点按兜底
+    property bool exitWarningOpen: false
+    property int localTimeClicks: 0
+    // 后端状态（App.exitWarningPending）也同步驱动弹窗，避免漏掉信号时序
+    readonly property bool backendWarningPending: (typeof App !== "undefined" && App.exitWarningPending !== undefined)
+                                                  ? App.exitWarningPending === true : false
+    function registerTimeClick() {
+        if (typeof App !== "undefined" && typeof App.registerTimeClick === "function") {
+            App.registerTimeClick()
+            return
+        }
+        overlay.localTimeClicks += 1
+        if (overlay.localTimeClicks >= 10) {
+            overlay.localTimeClicks = 0
+            overlay.exitWarningOpen = true
+        }
+    }
+    function confirmExitWarning() {
+        overlay.exitWarningOpen = false
+        if (typeof App !== "undefined" && typeof App.confirmExitSession === "function")
+            App.confirmExitSession()
+        else if (typeof App !== "undefined" && typeof App.stopSession === "function")
+            App.stopSession()   // 后端缺 confirmExitSession 时的退路：直接结束本次专注
+    }
+    function cancelExitWarning() {
+        overlay.exitWarningOpen = false
+        if (typeof App !== "undefined" && typeof App.cancelExitWarning === "function")
+            App.cancelExitWarning()
+    }
+
+    // 后端信号（接口缺失时 ignoreUnknownSignals 静默忽略，不产生 QML 报错）
+    Connections {
+        target: (typeof App !== "undefined") ? App : null
+        ignoreUnknownSignals: true
+        function onExitWarningRequested() { overlay.exitWarningOpen = true }
     }
 
     // 真实专注才通知 Python；预览绝不触发（不隐藏任务栏、不锁键）
@@ -198,7 +239,8 @@ Window {
     Shortcut {
         sequence: "Escape"
         onActivated: {
-            if (overlay.powerConfirmOpen) overlay.powerConfirmOpen = false
+            if (overlay.exitWarningOpen) overlay.cancelExitWarning()
+            else if (overlay.powerConfirmOpen) overlay.powerConfirmOpen = false
             else if (overlay.dockSettingsOpen) overlay.closeDockSettings()
             else if (overlay.widgetMenuOpen) overlay.widgetMenuOpen = false
         }
@@ -655,6 +697,15 @@ Window {
                     font.pixelSize: AppTheme.fs(34)
                     font.weight: Font.Light
                     font.letterSpacing: 2
+                    // v0.16：时间显示可点击（无视觉反馈），连续 10 次触发退出警告
+                    MouseArea {
+                        id: mainTimeClickArea
+                        objectName: "MainTimeClickArea"
+                        anchors.fill: parent
+                        acceptedButtons: Qt.LeftButton
+                        cursorShape: Qt.ArrowCursor
+                        onClicked: overlay.registerTimeClick()
+                    }
                 }
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
@@ -670,7 +721,9 @@ Window {
             Text {
                 text: overlay.previewing ? qsTr("10 秒假倒计时，仅用于预览遮罩效果")
                                           : (overlay.trial ? qsTr("体验模式 · 可提前结束")
-                                                           : qsTr("可以暂停，但时间不会等你"))
+                                                           : (overlay.restrictedExit
+                                                              ? qsTr("本档不可暂停，也不可提前结束")
+                                                              : qsTr("可以暂停，但时间不会等你")))
                 color: AppTheme.textTertiary
                 font.pixelSize: AppTheme.fs(13)
                 font.family: AppTheme.fontFamily
@@ -692,6 +745,14 @@ Window {
             font.pixelSize: Math.max(AppTheme.fs(140), Math.min(overlay.width * 0.20, overlay.height * 0.32))
             font.weight: Font.Light
             font.letterSpacing: 4
+            MouseArea {
+                id: heavyTimeClickArea
+                objectName: "HeavyTimeClickArea"
+                anchors.fill: parent
+                acceptedButtons: Qt.LeftButton
+                cursorShape: Qt.ArrowCursor
+                onClicked: overlay.registerTimeClick()
+            }
         }
 
         // ---------- 右侧自定义组件区（v0.8；预览模式下可增删） ----------
@@ -1117,7 +1178,8 @@ Window {
             }
 
             GlassButton {
-                visible: !overlay.previewing && !overlay.heavyLock
+                objectName: "PauseButton"
+                visible: !overlay.previewing && !overlay.restrictedExit
                 text: App.state === "paused" ? qsTr("继续") : qsTr("暂停")
                 tone: "light"
                 fontSize: 14
@@ -1130,8 +1192,9 @@ Window {
             }
 
             GlassButton {
-                // 深清档默认不显示；体验模式允许提前结束
-                visible: !overlay.previewing && (!overlay.heavyLock || overlay.trial)
+                objectName: "StopButton"
+                // 覆清 / 深清默认不显示；体验模式允许提前结束
+                visible: !overlay.previewing && (!overlay.restrictedExit || overlay.trial)
                 text: overlay.trial ? qsTr("结束体验") : qsTr("提前结束")
                 tone: "ghost"
                 fontSize: 14
@@ -1347,6 +1410,128 @@ Window {
                     }
                 }
             }
+        // ================= v0.16 连点时间 10 次 · 退出警告弹窗 =================
+        Item {
+            id: exitWarningLayer
+            objectName: "ExitWarningDialog"
+            anchors.fill: parent
+            z: 40
+            visible: overlay.exitWarningOpen || overlay.backendWarningPending
+
+            Rectangle {
+                anchors.fill: parent
+                color: "#B3040A10"
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                acceptedButtons: Qt.AllButtons
+                onClicked: overlay.cancelExitWarning()
+            }
+
+            Rectangle {
+                anchors.centerIn: parent
+                width: Math.min(460, overlay.width * 0.6)
+                height: warningColumn.implicitHeight + 44
+                radius: 22
+                color: AppTheme.glass ? "#F20A1B26" : AppTheme.cardBg
+                border.width: 1
+                border.color: AppTheme.cardBorderStrong
+
+                MouseArea { anchors.fill: parent; acceptedButtons: Qt.AllButtons; onClicked: {} }
+
+                Column {
+                    id: warningColumn
+                    x: 24
+                    y: 22
+                    width: parent.width - 48
+                    spacing: 14
+
+                    Row {
+                        width: parent.width
+                        spacing: 10
+                        Rectangle {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 34
+                            height: 34
+                            radius: 11
+                            color: AppTheme.danger
+                            Glyph {
+                                anchors.centerIn: parent
+                                kind: "lock"
+                                size: 17
+                                color: "#FFFFFF"
+                            }
+                        }
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: qsTr("确认退出本次专注？")
+                            color: AppTheme.textPrimary
+                            font.pixelSize: AppTheme.fs(18)
+                            font.weight: Font.Bold
+                            font.family: AppTheme.fontFamily
+                        }
+                    }
+
+                    Text {
+                        width: parent.width
+                        text: qsTr("你连续点击了 10 次时间显示。确认后将立即结束本次专注，本轮不算完整完成。")
+                        color: AppTheme.textSecondary
+                        font.pixelSize: AppTheme.fs(13)
+                        font.family: AppTheme.fontFamily
+                        wrapMode: Text.WordWrap
+                        lineHeight: 1.35
+                    }
+
+                    Text {
+                        width: parent.width
+                        text: qsTr("如果只是误触，点「取消」继续专注。")
+                        color: AppTheme.textTertiary
+                        font.pixelSize: AppTheme.fs(11)
+                        font.family: AppTheme.fontFamily
+                        wrapMode: Text.WordWrap
+                    }
+
+                    Row {
+                        width: parent.width
+                        spacing: 10
+                        Item { width: parent.width - 230; height: 1 }
+                        GlassButton {
+                            objectName: "ExitWarningCancel"
+                            text: qsTr("取消")
+                            tone: "ghost"
+                            fontSize: 13
+                            padH: 20
+                            minHeight: 38
+                            onClicked: overlay.cancelExitWarning()
+                        }
+                        Rectangle {
+                            width: 132
+                            height: 38
+                            radius: 19
+                            color: exitConfirmArea.containsMouse ? "#F06870" : AppTheme.danger
+                            Text {
+                                anchors.centerIn: parent
+                                text: qsTr("确认退出")
+                                color: "#FFFFFF"
+                                font.pixelSize: AppTheme.fs(13)
+                                font.weight: Font.DemiBold
+                                font.family: AppTheme.fontFamily
+                            }
+                            MouseArea {
+                                id: exitConfirmArea
+                                objectName: "ExitWarningConfirm"
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: overlay.confirmExitWarning()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         }
     }
 }

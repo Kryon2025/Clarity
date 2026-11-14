@@ -187,7 +187,9 @@ class UpdateBridgeTest(unittest.TestCase):
             "assetUrl": "https://x/s.exe",
             "assetSize": 20,
         }
-        with mock.patch.object(updater, "check_latest", return_value=info):
+        with mock.patch.object(
+            updater, "check_latest_detail", return_value=(info, "")
+        ):
             bridge.checkUpdate()
             self.assertEqual(bridge.updateState, "checking")
             self.assertTrue(self._wait_state("available"))
@@ -207,20 +209,24 @@ class UpdateBridgeTest(unittest.TestCase):
 
     def test_flow_check_error_and_idle(self) -> None:
         bridge = self.bridge
-        with mock.patch.object(updater, "check_latest", side_effect=RuntimeError("boom")):
+        with mock.patch.object(
+            updater, "check_latest_detail", side_effect=RuntimeError("boom")
+        ):
             bridge.checkUpdate()
             self.assertTrue(self._wait_state("error"))
         self.assertTrue(bridge.updateError)
         self.assertFalse(bridge.updateAvailable)
 
-        with mock.patch.object(updater, "check_latest", return_value=None):
+        with mock.patch.object(
+            updater, "check_latest_detail", return_value=(None, "")
+        ):
             bridge.checkUpdate()
             self.assertTrue(self._wait_state("idle"))
         self.assertFalse(bridge.updateAvailable)
 
     def test_download_failure(self) -> None:
         bridge = self.bridge
-        with mock.patch.object(updater, "check_latest", return_value={
+        with mock.patch.object(updater, "check_latest_detail", return_value=({
             "version": "0.6.1",
             "tag": "v0.6.1",
             "notes": "",
@@ -228,7 +234,7 @@ class UpdateBridgeTest(unittest.TestCase):
             "assetName": "ShenQing-Setup.exe",
             "assetUrl": "https://x/s.exe",
             "assetSize": 1,
-        }):
+        }, "")):
             bridge.checkUpdate()
             self.assertTrue(self._wait_state("available"))
         with mock.patch.object(updater, "download", return_value=False):

@@ -9,14 +9,6 @@ Item {
     property Item glassSource: null
     property bool animationsEnabled: true
     property bool configOpen: true
-    property bool providerMenuOpen: false
-    property bool modelMenuOpen: false
-    property real providerMenuX: 0
-    property real providerMenuY: 0
-    property real providerMenuW: 260
-    property real modelMenuX: 0
-    property real modelMenuY: 0
-    property real modelMenuW: 260
     property int providerIndex: 0
     property string modelDraft: ""
     property string baseDraft: ""
@@ -170,29 +162,28 @@ Item {
         return (tokens <= 0 && cost <= 0) ? ""
                : qsTr("上次回复 %1 tokens · %2%3（估算）").arg(tokens).arg(symbol).arg(cost.toFixed(4))
     }
+    // v0.16：服务商 / 模型下拉改用可复用 ScrollablePopup（自动翻转、滚轮隔离、右侧滚动条）
+    readonly property string currentProviderId: (typeof App !== "undefined" && App.aiProvider !== undefined
+                                                && String(App.aiProvider) !== "")
+                                               ? String(App.aiProvider) : String(page.currentProvider.id)
     function openProviderMenu(anchor) {
-        var point = anchor.mapToItem(page, 0, anchor.height + 4)
-        page.providerMenuW = Math.max(200, anchor.width)
-        page.providerMenuX = Math.max(10, Math.min(page.width - page.providerMenuW - 10, point.x))
-        page.providerMenuY = Math.max(10, Math.min(page.height - 260, point.y))
-        page.providerMenuOpen = true
-        page.modelMenuOpen = false
+        providerCombo.anchorItem = (anchor !== undefined && anchor !== null)
+                                   ? anchor : (page.configOpen ? configProviderField : providerButton)
+        providerCombo.currentValue = page.currentProviderId
+        providerCombo.open()
     }
     function openModelMenu(anchor) {
-        var point = anchor.mapToItem(page, 0, anchor.height + 4)
-        page.modelMenuW = Math.max(200, anchor.width)
-        page.modelMenuX = Math.max(10, Math.min(page.width - page.modelMenuW - 10, point.x))
-        page.modelMenuY = Math.max(10, Math.min(page.height - 230, point.y))
-        page.modelMenuOpen = true
-        page.providerMenuOpen = false
+        modelCombo.anchorItem = (anchor !== undefined && anchor !== null) ? anchor : modelInput
+        modelCombo.currentValue = page.modelDraft
+        modelCombo.open()
     }
-    onProviderMenuOpenChanged: {
-        if (!page.providerMenuOpen) return
-        var anchor = page.configOpen ? configProviderField : providerButton
-        var point = anchor.mapToItem(page, 0, anchor.height + 4)
-        page.providerMenuW = Math.max(200, anchor.width)
-        page.providerMenuX = Math.max(10, Math.min(page.width - page.providerMenuW - 10, point.x))
-        page.providerMenuY = Math.max(10, Math.min(page.height - 260, point.y))
+    function selectProviderValue(id) {
+        for (var i = 0; i < page.providerList.length; i++) {
+            if (String(page.providerList[i].id) === String(id)) {
+                page.selectProvider(i)
+                return
+            }
+        }
     }
     function init() {
         if (typeof App !== "undefined" && App.aiProvider !== undefined) {
@@ -211,8 +202,6 @@ Item {
     }
     function selectProvider(i) {
         page.providerIndex = i
-        page.providerMenuOpen = false
-        page.modelMenuOpen = false
         var p = page.providerList[i]
         page.baseDraft = (p.base !== undefined) ? String(p.base) : ""
         page.localModelsError = ""
@@ -225,7 +214,6 @@ Item {
     }
     function selectModel(name) {
         page.modelDraft = String(name)
-        page.modelMenuOpen = false
         if (typeof App !== "undefined" && typeof App.setAIModel === "function") App.setAIModel(page.modelDraft)
     }
     function saveModel() { if (typeof App !== "undefined" && typeof App.setAIModel === "function") App.setAIModel(page.modelDraft) }
@@ -433,7 +421,7 @@ Item {
                                         radius: 9
                                         color: providerButtonArea.containsMouse ? AppTheme.cardBgAlt : AppTheme.cardBg
                                         border.width: 1
-                                        border.color: page.providerMenuOpen ? AppTheme.accent : AppTheme.cardBorder
+                                        border.color: providerCombo.opened ? AppTheme.accent : AppTheme.cardBorder
                                     }
                                     Row {
                                         anchors.left: parent.left
@@ -684,6 +672,7 @@ Item {
                     interactive: false
                     glassSource: page.glassSource
                     Flickable {
+                        id: configFlick
                         anchors.fill: parent
                         anchors.margins: 16
                         contentWidth: width
@@ -878,95 +867,41 @@ Item {
         }
     }
 
-    // 服务商下拉：贴输入框下方、宽度一致、夹紧在页面内
-    Item {
-        visible: page.providerMenuOpen
-        z: 200
-        x: page.providerMenuX
-        y: page.providerMenuY
-        width: page.providerMenuW
-        height: Math.min(240, providerPopupColumn.height + 8)
-        Rectangle { anchors.fill: parent; radius: 12; color: AppTheme.cardBg; border.width: 1; border.color: AppTheme.cardBorderStrong }
-        Flickable {
-            anchors.fill: parent
-            anchors.margins: 4
-            contentWidth: width
-            contentHeight: providerPopupColumn.height
-            clip: true
-            Column {
-            id: providerPopupColumn
-            width: parent.width
-            spacing: 2
-            Repeater {
-                model: page.providerList
-                delegate: Item {
-                    width: parent.width
-                    height: 32
-                    readonly property bool isFree: modelData.needs_key === false
-                                                  || modelData.free === true
-                                                  || String(modelData.id) === "free"
-                                                  || String(modelData.id) === "pollinations"
-                    Row {
-                        anchors.left: parent.left
-                        anchors.leftMargin: 10
-                        anchors.verticalCenter: parent.verticalCenter
-                        spacing: 6
-                        Text { text: String(modelData.label); color: page.providerIndex === index ? AppTheme.accent : AppTheme.textSecondary; font.pixelSize: AppTheme.fs(11); font.family: AppTheme.fontFamily }
-                        Rectangle {
-                            visible: isFree
-                            width: 40
-                            height: 15
-                            radius: 7
-                            color: "#1FA36B"
-                            Text { anchors.centerIn: parent; text: qsTr("免配置"); color: "#FFFFFF"; font.pixelSize: AppTheme.fs(8); font.family: AppTheme.fontFamily }
-                        }
-                    }
-                    MouseArea { anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: page.selectProvider(index) }
-                }
-            }
-            }
+    // ---------- v0.16 服务商 / 模型下拉（复用 ScrollablePopup） ----------
+    ScrollablePopup {
+        id: providerCombo
+        objectName: "AIProviderPopup"
+        anchors.fill: parent
+        model: page.providerList
+        valueKey: "id"
+        labelKey: "label"
+        currentValue: page.currentProviderId
+        rowHeight: 32
+        maxPopupHeight: 240
+        minPopupWidth: 200
+        outerFlick: configFlick
+        badgeText: qsTr("免配置")
+        badgeWhen: function (item) {
+            if (item === null || item === undefined) return false
+            return item.needs_key === false || item.free === true || item.noConfig === true
+                   || String(item.id) === "free" || String(item.id) === "pollinations"
+                   || String(item.mode) === "free"
         }
+        onSelected: (value) => page.selectProviderValue(value)
     }
 
-    // 模型下拉
-    Item {
-        visible: page.modelMenuOpen
-        z: 200
-        x: page.modelMenuX
-        y: page.modelMenuY
-        width: page.modelMenuW
-        height: Math.min(230, modelPopupColumn.height + 8)
-        Rectangle { anchors.fill: parent; radius: 12; color: AppTheme.cardBg; border.width: 1; border.color: AppTheme.cardBorderStrong }
-        Flickable {
-            anchors.fill: parent
-            anchors.margins: 4
-            contentWidth: width
-            contentHeight: modelPopupColumn.height
-            clip: true
-            Column {
-                id: modelPopupColumn
-                width: parent.width
-                spacing: 2
-                Repeater {
-                    model: page.modelCandidates
-                    delegate: Item {
-                        width: parent.width
-                        height: 30
-                        Text {
-                            anchors.left: parent.left
-                            anchors.leftMargin: 10
-                            width: parent.width - 20
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: String(modelData)
-                            color: page.modelDraft === String(modelData) ? AppTheme.accent : AppTheme.textSecondary
-                            font.pixelSize: AppTheme.fs(10)
-                            font.family: C.monoFont
-                            elide: Text.ElideRight
-                        }
-                        MouseArea { anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: page.selectModel(modelData) }
-                    }
-                }
-            }
-        }
+    ScrollablePopup {
+        id: modelCombo
+        objectName: "AIModelPopup"
+        anchors.fill: parent
+        model: page.modelCandidates
+        currentValue: page.modelDraft
+        rowHeight: 30
+        maxPopupHeight: 230
+        minPopupWidth: 200
+        outerFlick: configFlick
+        mono: true
+        emptyText: page.modelsState === "loading" ? qsTr("正在获取模型列表…") : qsTr("暂无可用模型")
+        onSelected: (value) => page.selectModel(value)
     }
 }

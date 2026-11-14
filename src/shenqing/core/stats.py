@@ -56,6 +56,7 @@ class StatsStore:
         started_at: datetime | None = None,
         clicks: int = 0,
         recovered: bool = False,
+        interrupted: bool = False,
     ) -> None:
         now = when or datetime.now()
         start = started_at or now
@@ -71,6 +72,7 @@ class StatsStore:
                 "space": str(space or ""),
                 "clicks": max(0, int(clicks)),
                 "recovered": bool(recovered),
+                "interrupted": bool(interrupted),
             }
         )
         self.save()

@@ -953,6 +953,7 @@ FluentWindow {
                         glassSource: win.glassSource
                         animationsEnabled: win.pageTransitions
                         onWhitelistRequested: (mode, spaceId) => win.openWhitelist(mode, spaceId)
+                        onPomodoroRequested: pomodoroPanel.openPanel()
                     }
                 }
 
@@ -1460,6 +1461,15 @@ FluentWindow {
     Onboarding {
         id: onboarding
         animationsEnabled: win.pageTransitions
+        // 后端也 requirement 了 needsOnboarding，两边都做一次隐藏/恢复没有副作用
+        onShowingChanged: {
+            if (onboarding.showing) {
+                Qt.callLater(function () { if (onboarding.showing) win.hide() })
+            } else if (!win.allowClose) {
+                win.show()
+                win.requestActivate()
+            }
+        }
     }
 
     // ---------- 进入专注前的 10 秒倒计时（水滴凝聚） ----------
@@ -1475,6 +1485,12 @@ FluentWindow {
 
     // ---------- 重度锁机全屏遮罩 ----------
     LockOverlay {
+        animationsEnabled: win.pageTransitions
+    }
+
+    // ---------- v0.16 清番：无边框置顶番茄钟（空间页入口打开） ----------
+    PomodoroPanel {
+        id: pomodoroPanel
         animationsEnabled: win.pageTransitions
     }
 

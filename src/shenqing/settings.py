@@ -35,6 +35,12 @@ DEFAULTS: dict[str, Any] = {
     "app_usage_heatmap_days": 90,    # 应用热力图天数：30 / 90 / 180
     "volume_panel": 50,     # dock 设置面板上次的系统音量（0-100）
     "onboarding_done": False,  # 首次使用引导是否完成
+    "update_source": "github",  # v0.16 更新下载源：github / gitlink / gitee / 自定义源 id
+    "custom_update_sources": [],  # v0.16 自定义更新源：[{id,name,url,token}]
+    "pomodoro_work_minutes": 25,          # v0.16 清番：专注分钟数
+    "pomodoro_break_minutes": 5,          # v0.16 清番：短休息分钟数
+    "pomodoro_long_break_minutes": 15,    # v0.16 清番：长休息分钟数
+    "pomodoro_rounds_before_long": 4,     # v0.16 清番：几轮后长休息
     "countdown_date": "",      # 倒数日目标日期 YYYY-MM-DD（空=不显示）
     "overlay_widget_order": [],  # 全屏遮罩自定义组件顺序 ["pluginId:itemId"]
     "default_minutes": 25,

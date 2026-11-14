@@ -131,7 +131,6 @@ Item {
     }
 
     // ---------- v0.12 外观：字号 / 字体 / 导航展开方式 ----------
-    property bool fontMenuOpen: false
     readonly property var fontFamilyList: {
         var out = [{ value: "", label: qsTr("默认") }]
         if (typeof App !== "undefined" && App.uiFontFamilies !== undefined && App.uiFontFamilies !== null
@@ -746,7 +745,7 @@ Item {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: page.fontMenuOpen = !page.fontMenuOpen
+                                onClicked: fontCombo.open()
                             }
                         }
                         Text {
@@ -797,61 +796,6 @@ Item {
                     }
                 }
 
-                // 字体下拉
-                Item {
-                    id: fontPopup
-                    visible: page.fontMenuOpen
-                    z: 40
-                    x: fontField.x
-                    y: fontField.y + fontField.height + 4
-                    width: 240
-                    height: Math.min(220, fontPopupColumn.height + 8)
-                    Rectangle {
-                        anchors.fill: parent
-                        radius: 10
-                        color: AppTheme.cardBg
-                        border.width: 1
-                        border.color: AppTheme.cardBorderStrong
-                    }
-                    Flickable {
-                        anchors.fill: parent
-                        anchors.margins: 4
-                        contentWidth: width
-                        contentHeight: fontPopupColumn.height
-                        clip: true
-                        Column {
-                            id: fontPopupColumn
-                            width: parent.width
-                            spacing: 2
-                            Repeater {
-                                model: page.fontFamilyList
-                                delegate: Item {
-                                    width: parent.width
-                                    height: 30
-                                    Text {
-                                        anchors.left: parent.left
-                                        anchors.leftMargin: 10
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        text: String(modelData.label)
-                                        color: String(modelData.value) === page.currentFontValue
-                                               ? AppTheme.accent : AppTheme.textSecondary
-                                        font.pixelSize: AppTheme.fs(11)
-                                        font.family: AppTheme.fontFamily
-                                    }
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        hoverEnabled: true
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: {
-                                            page.setFontFamily(String(modelData.value))
-                                            page.fontMenuOpen = false
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
             }
 
             // ---------- 专注 ----------
@@ -1479,6 +1423,21 @@ Item {
                 }
             }
         }
+    }
+
+    // v0.16 字体下拉（可滚动弹出层）
+    ScrollablePopup {
+        id: fontCombo
+        objectName: "FontComboPopup"
+        anchors.fill: parent
+        model: page.fontFamilyList
+        currentValue: page.currentFontValue
+        anchorItem: fontField
+        outerFlick: flick
+        rowHeight: 32
+        maxPopupHeight: 300
+        minPopupHeight: 120
+        onSelected: (value) => page.setFontFamily(String(value))
     }
 
     Rectangle {

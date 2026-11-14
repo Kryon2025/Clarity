@@ -6,14 +6,16 @@ import "components"
 import "glass"
 import "components/Constants.js" as C
 
-// 速启面板（CW2 TrayPanel 形态）：375×475、无边框、置顶、失焦自动隐藏。
+// 速启面板（CW2 TrayPanel 形态）：340×372、无边框、置顶、失焦自动隐藏。
+// v0.16：去掉无用的「设置 / 刷新 / 打开主界面」按钮，改为紧凑的钱包式操作条：
+//        空间快捷入口 + 重启 + 重启为管理员（盾牌图标）+ 退出。
 // v0.4：三档文案来自 App.modes；空间只展示唯一的清空间，点击即按默认档开始。
 // 对外：showAt(px, py) / hide()（Python 侧接托盘与快捷键）
 Window {
     id: panel
     title: qsTr("深清 · 速启")
-    width: 375
-    height: 475
+    width: 340
+    height: 372
     flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool
     color: "transparent"
     visible: false
@@ -195,6 +197,18 @@ Window {
         panel.hide()
     }
 
+    // v0.16：重启 / 以管理员身份重启（接口缺失时静默，说明见发布说明）
+    function restartApp() {
+        if (typeof App !== "undefined" && typeof App.restartApp === "function")
+            App.restartApp()
+        panel.hide()
+    }
+    function relaunchAsAdmin() {
+        if (typeof App !== "undefined" && typeof App.relaunchAsAdmin === "function")
+            App.relaunchAsAdmin()
+        panel.hide()
+    }
+
     Component.onCompleted: {
         AppTheme.mode = (typeof App !== "undefined" && App.themeMode) ? App.themeMode : "solid"
     }
@@ -351,19 +365,6 @@ Window {
                 }
             }
 
-            GlassButton {
-                anchors.right: parent.right
-                anchors.verticalCenter: parent.verticalCenter
-                text: qsTr("打开主界面")
-                tone: "ghost"
-                fontSize: 11
-                padH: 12
-                minHeight: 28
-                onClicked: {
-                    if (typeof App.showMainWindow === "function") App.showMainWindow()
-                    panel.hide()
-                }
-            }
         }
 
         // ---- 区块一：专注档位 ----
@@ -619,47 +620,7 @@ Window {
             }
         }
 
-        // ---- 区块三：今日 ----
-        Text {
-            id: todayText
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: spaceCard.bottom
-            anchors.topMargin: 14
-            text: qsTr("今日专注 %1 分钟 · 连续 %2 天")
-                  .arg(Math.round(Number(App.todayMinutes) || 0))
-                  .arg(Math.round(Number(App.streakDays) || 0))
-            color: AppTheme.textTertiary
-            font.pixelSize: AppTheme.fs(12)
-            font.family: AppTheme.fontFamily
-        }
-
-        // ---- 中部留白：一句提示 ----
-        Column {
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.top: todayText.bottom
-            anchors.topMargin: 24
-            spacing: 8
-
-            Glyph {
-                anchors.horizontalCenter: parent.horizontalCenter
-                kind: "ripple"
-                size: 26
-                color: AppTheme.glass ? "#3A6A78" : AppTheme.textTertiary
-                opacity: 0.6
-            }
-
-            Text {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: qsTr("把注意力收回来")
-                color: AppTheme.textTertiary
-                font.pixelSize: AppTheme.fs(11)
-                font.family: AppTheme.fontFamily
-                font.letterSpacing: 2
-            }
-        }
-
-        // ---- 底部工具条 ----
+        // ---- 底部工具条：重启 / 重启为管理员 / 退出 ----
         Item {
             id: footer
             anchors.left: parent.left
@@ -676,34 +637,93 @@ Window {
 
             Row {
                 anchors.left: parent.left
-                anchors.leftMargin: 4
+                anchors.leftMargin: 2
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: 10
+                spacing: 6
 
-                MiniGlassButton {
-                    size: 32
-                    glyph: "gear"
-                    onClicked: {
-                        if (typeof App.showMainWindow === "function") App.showMainWindow()
-                        if (typeof App.gotoSettings === "function") App.gotoSettings()
-                        panel.hide()
+                // 重启
+                Item {
+                    id: restartButton
+                    objectName: "QuickRestartButton"
+                    width: 66
+                    height: 30
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: 15
+                        color: restartArea.containsMouse
+                               ? (AppTheme.glass ? "#26FFFFFF" : AppTheme.buttonBgAlt)
+                               : (AppTheme.glass ? "#14FFFFFF" : AppTheme.buttonBg)
+                        border.width: 1
+                        border.color: AppTheme.glass ? "#33FFFFFF" : AppTheme.cardBorder
+                    }
+                    Row {
+                        anchors.centerIn: parent
+                        spacing: 5
+                        Glyph { anchors.verticalCenter: parent.verticalCenter; kind: "restart"; size: 13
+                                color: AppTheme.glass ? "#EAF8FB" : AppTheme.textPrimary }
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: qsTr("重启")
+                            color: AppTheme.glass ? "#EAF8FB" : AppTheme.textPrimary
+                            font.pixelSize: AppTheme.fs(11)
+                            font.family: AppTheme.fontFamily
+                        }
+                    }
+                    MouseArea {
+                        id: restartArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: panel.restartApp()
                     }
                 }
 
-                MiniGlassButton {
-                    size: 32
-                    glyph: "refresh"
-                    onClicked: if (typeof App.refreshStats === "function") App.refreshStats()
+                // 重启为管理员（盾牌图标）
+                Item {
+                    id: adminRestartButton
+                    objectName: "QuickRelaunchAdminButton"
+                    width: 112
+                    height: 30
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: 15
+                        color: adminArea.containsMouse
+                               ? (AppTheme.glass ? "#26FFFFFF" : AppTheme.buttonBgAlt)
+                               : (AppTheme.glass ? "#14FFFFFF" : AppTheme.buttonBg)
+                        border.width: 1
+                        border.color: adminArea.containsMouse ? AppTheme.accent
+                                                              : (AppTheme.glass ? "#33FFFFFF" : AppTheme.cardBorder)
+                    }
+                    Row {
+                        anchors.centerIn: parent
+                        spacing: 5
+                        Glyph { anchors.verticalCenter: parent.verticalCenter; kind: "shield"; size: 13
+                                color: AppTheme.accent }
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: qsTr("重启为管理员")
+                            color: AppTheme.glass ? "#EAF8FB" : AppTheme.textPrimary
+                            font.pixelSize: AppTheme.fs(11)
+                            font.family: AppTheme.fontFamily
+                        }
+                    }
+                    MouseArea {
+                        id: adminArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: panel.relaunchAsAdmin()
+                    }
                 }
             }
 
             Row {
                 anchors.right: parent.right
-                anchors.rightMargin: 4
+                anchors.rightMargin: 2
                 anchors.verticalCenter: parent.verticalCenter
 
                 MiniGlassButton {
-                    size: 32
+                    size: 30
                     glyph: "close"
                     onClicked: {
                         if (typeof App.quitApp === "function") App.quitApp()

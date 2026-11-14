@@ -8,7 +8,7 @@ APP_NAME = "深清"
 #: 英文名（v0.4 起对外统一用 Clarity；「身轻」不再展示）
 APP_ALIAS = "Clarity"
 APP_ID = "ShenQing"
-APP_VERSION = "0.15.0"
+APP_VERSION = "0.16.0"
 
 #: GitHub 仓库（自动更新与反馈入口用）
 GITHUB_REPO = "Kryon2025/Clarity"
@@ -39,6 +39,25 @@ DEFAULT_THEME = "solid"
 
 #: 更新日志（最新在前；en 为空时用中文兜底）
 CHANGELOG = [
+    {
+        "version": "0.16.0",
+        "date": "2025-11-14",
+        "tag": "",
+        "items": [
+            "更新下载源：内置 GitHub / GitLink / Gitee，支持自定义 JSON 更新源（可带 Token），失败信息可读并可在关于页切换",
+            "覆清与深清一样不再提供暂停 / 退出；连续点击时间显示 10 次（6 秒内）弹出警告，确认后强制结束并标记 interrupted",
+            "新增「清番」番茄钟：置顶悬浮，25 分钟专注 / 5 分钟短休息 / 4 轮后 15 分钟长休息，可暂停、跳过、退出",
+            "首次使用引导取代主界面显示：引导完成前隐藏主窗口，完成后再进主界面",
+            "速启面板新增「重启」与「以管理员身份重启」，移除无用按钮",
+        ],
+        "items_en": [
+            "Update sources: built-in GitHub / GitLink / Gitee plus custom JSON sources (optional token); readable errors and source switching on the About page",
+            "Veil no longer offers pause/exit, like Deep; clicking the time display 10 times within 6 seconds shows a warning and a confirmed forced exit is recorded as interrupted",
+            "New Qingfan pomodoro: always-on-top timer with 25-minute focus / 5-minute break / 15-minute long break every 4 rounds, with pause, skip and exit",
+            "First-run onboarding replaces the main window: the main window stays hidden until the guide is finished",
+            "Quick panel gained Restart and Restart as administrator, and dropped unused buttons",
+        ],
+    },
     {
         "version": "0.15.0",
         "date": "2025-11-08",

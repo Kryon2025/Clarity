@@ -76,6 +76,7 @@ class Translator(QObject):
         self._app = app
         self._translator = QTranslator()
         self._rinui_translator = None  # noqa: ANN001 - RinUITranslator
+        self._fallback_translator: QTranslator | None = None
         self._language = AUTO
         self._locale = DEFAULT_LOCALE
         self.apply(language)
@@ -104,8 +105,11 @@ class Translator(QObject):
             self._app.removeTranslator(self._translator)
         if self._rinui_translator is not None:
             self._app.removeTranslator(self._rinui_translator)
+        if self._fallback_translator is not None:
+            self._app.removeTranslator(self._fallback_translator)
         self._translator = QTranslator()
         self._rinui_translator = None
+        self._fallback_translator = None
 
         qm_path = locales_dir() / f"{locale}.qm"
         installed = False
@@ -113,6 +117,14 @@ class Translator(QObject):
             installed = bool(self._translator.load(str(qm_path)))
         else:
             logger.info("未找到翻译文件 %s，使用源语言", qm_path)
+        # 法语/日语尚未全部翻译时，先装英文兜底：缺条目显示英文而不是中文
+        if locale in ("fr_FR", "ja_JP"):
+            english_qm = locales_dir() / "en_US.qm"
+            if english_qm.exists():
+                fallback = QTranslator()
+                if fallback.load(str(english_qm)):
+                    self._app.installTranslator(fallback)
+                    self._fallback_translator = fallback
         if installed:
             self._app.installTranslator(self._translator)
 

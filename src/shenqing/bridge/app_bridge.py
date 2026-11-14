@@ -57,6 +57,7 @@ from ..services import ai as ai_service
 from ..services import app_usage
 from ..services import backup as backup_service
 from ..services import click_counter
+from ..services import pomodoro as pomodoro_service
 from ..services import site_blocker
 from ..services import sleep_mode, system_control, wallpaper
 from ..services.autostart import AutostartManager
@@ -67,6 +68,10 @@ from ..paths import app_data_dir, license_file, notice_file
 from ..settings import Settings
 
 logger = logging.getLogger("shenqing.bridge")
+
+#: v0.16：连点时间显示退出的判定窗口（秒）与次数
+TIME_CLICK_WINDOW_SECONDS = 6.0
+TIME_CLICK_LIMIT = 10
 
 try:  # 插件系统由独立模块提供，缺失时降级为空实现
     from ..plugins.manager import PluginManager
@@ -142,6 +147,13 @@ class AppBridge(QObject):
     #: v0.10 模型列表拉取结果：provider, models, error
     _aiModelsFetched = Signal(str, object, str)
 
+    #: v0.16 连点 10 次时间显示 → 请求显示退出警告（QML 弹确认框）
+    exitWarningRequested = Signal()
+    #: v0.16 首次使用引导完成（主窗口可以显示了）
+    onboardingFinished = Signal()
+    #: v0.16 清番番茄钟状态变化
+    pomodoroChanged = Signal()
+
     def __init__(
         self,
         parent: QObject | None = None,
@@ -180,6 +192,8 @@ class AppBridge(QObject):
         self._update_error = ""
         self._update_download_path: Path | None = None
         self._update_cancel: updater.CancelToken | None = None
+        # v0.16：更新源错误（可读文案，QML 展示）
+        self._update_source_error = ""
         # v0.8：睡眠模式 / 系统控制 / 壁纸 / AI 骨架
         self._sleep = sleep_mode.SleepManager()
         self._ai = ai_service.AIService(self._settings)
@@ -225,6 +239,14 @@ class AppBridge(QObject):
         self._volume = -1
         self._sleep_lock_active = False
         self._clock_clicks: deque[float] = deque()
+        # v0.16：覆清/深清连点时间显示 10 次 → 退出警告；标记强制结束写 interrupted
+        self._time_clicks: deque[float] = deque()
+        self._exit_warning = False
+        self._force_interrupt = False
+        # v0.16 清番（置顶番茄钟）：与锁机 / guard 完全独立
+        self._pomodoro = pomodoro_service.PomodoroTimer(self._settings, parent=self)
+        self._pomodoro.changed.connect(self.pomodoroChanged)
+        self._pomodoro.notify.connect(self._on_pomodoro_notify)
         self._bing_url = wallpaper.cached_bing_url()
         self._avatar_url = ""
         self._sleep_timer = QTimer(self)
@@ -590,7 +612,8 @@ class AppBridge(QObject):
 
     @Property(bool, notify=stateChanged)
     def canPause(self) -> bool:
-        return self._session.can_pause and self._session_level != LockLevel.HEAVY.value
+        """v0.16：只有浅清可以暂停；覆清 / 深清与「还清」一样没有暂停。"""
+        return self._session.can_pause and self._session_level == LockLevel.LIGHT.value
 
     # ================= 媒体（SMTC） =================
     @Property(str, notify=mediaChanged)
@@ -1808,6 +1831,10 @@ class AppBridge(QObject):
         except Exception as exc:  # noqa: BLE001
             logger.warning("停止点击统计失败：%s", exc)
         try:
+            self._pomodoro.stop()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("停止清番番茄钟失败：%s", exc)
+        try:
             self._app_usage.shutdown()
         except Exception as exc:  # noqa: BLE001
             logger.warning("停止应用使用统计失败：%s", exc)
@@ -1925,8 +1952,24 @@ class AppBridge(QObject):
 
     @Slot(bool)
     def setOnboardingDone(self, done: bool) -> None:
-        self._settings.set("onboarding_done", bool(done))
+        """旧接口（兼容旧 QML）：完成时等价于 finishOnboarding。"""
+        if done:
+            self.finishOnboarding()
+            return
+        self._settings.set("onboarding_done", False)
         self.settingsChanged.emit()
+
+    @Property(bool, notify=settingsChanged)
+    def needsOnboarding(self) -> bool:
+        """v0.16：首次使用引导未完成时为 True（app.py 启动时先隐藏主窗口）。"""
+        return not bool(self._settings.get("onboarding_done", False))
+
+    @Slot()
+    def finishOnboarding(self) -> None:
+        """v0.16：引导完成：写 settings 并通知 app.py 显示主窗口。"""
+        self._settings.set("onboarding_done", True)
+        self.settingsChanged.emit()
+        self.onboardingFinished.emit()
 
     @Property(list, notify=pluginsChanged)
     def overlayWidgets(self) -> list[dict]:
@@ -2074,6 +2117,9 @@ class AppBridge(QObject):
             self._session.start(int(minutes), pause_limit)
         # 点击计数从 0 开始（会话中统计全局左键点击）
         self._reset_click_tracking()
+        self._time_clicks.clear()
+        self._exit_warning = False
+        self._force_interrupt = False
         self.lockedChanged.emit()
         if persist_state and not trial:
             self._write_session_state(end_at_ms=end_at_ms)
@@ -2403,8 +2449,15 @@ class AppBridge(QObject):
 
     @Slot()
     def pauseSession(self) -> None:
+        """v0.16：只有浅清可暂停；覆清 / 深清与还清一样没有暂停。"""
+        if self._session_level == LockLevel.MEDIUM.value:
+            self.toast.emit(QCoreApplication.translate("ShenQing", "覆清没有暂停，等计时走完"))
+            return
         if self._session_level == LockLevel.HEAVY.value:
             self.toast.emit(QCoreApplication.translate("ShenQing", "重度模式不可暂停"))
+            return
+        if self._session_level != LockLevel.LIGHT.value:
+            self.toast.emit(QCoreApplication.translate("ShenQing", "当前档位不可暂停"))
             return
         if not self._session.pause():
             self.toast.emit(QCoreApplication.translate("ShenQing", "暂停次数已用完"))
@@ -2419,13 +2472,78 @@ class AppBridge(QObject):
 
     @Slot()
     def stopSession(self) -> None:
+        """v0.16：覆清 / 深清不可提前结束（体验模式仍允许退出）。"""
         if self._session.state is SessionState.IDLE:
             return
-        if self._session_level == LockLevel.HEAVY.value and not self._trial_active:
-            self.toast.emit(
-                QCoreApplication.translate("ShenQing", "深清档不可提前结束，等计时走完")
-            )
+        if self._session_level in (
+            LockLevel.MEDIUM.value,
+            LockLevel.HEAVY.value,
+        ) and not self._trial_active:
+            if self._session_level == LockLevel.MEDIUM.value:
+                self.toast.emit(
+                    QCoreApplication.translate("ShenQing", "覆清不可提前结束，等计时走完")
+                )
+            else:
+                self.toast.emit(
+                    QCoreApplication.translate("ShenQing", "深清档不可提前结束，等计时走完")
+                )
             return
+        self._session.stop()
+
+    # ================= v0.16 连点时间显示 10 次 → 警告退出 =================
+    @Property(bool, notify=stateChanged)
+    def exitWarningPending(self) -> bool:
+        """是否已弹出「确认退出」警告（QML 用来显示确认框）。"""
+        return self._exit_warning
+
+    @Slot(result=bool)
+    def registerTimeClick(self) -> bool:
+        """时间显示连点计数：6 秒内第 10 次 emit exitWarningRequested。
+
+        只有覆清 / 深清生效（浅清本来就能暂停/退出，不需要这条通道）。
+        返回是否触发了退出警告。
+        """
+        if not self.busy or self._session_level not in (
+            LockLevel.MEDIUM.value,
+            LockLevel.HEAVY.value,
+        ):
+            return False
+        now = time.monotonic()
+        while self._time_clicks and now - self._time_clicks[0] > TIME_CLICK_WINDOW_SECONDS:
+            self._time_clicks.popleft()
+        self._time_clicks.append(now)
+        if len(self._time_clicks) < TIME_CLICK_LIMIT:
+            return False
+        self._time_clicks.clear()
+        if self._exit_warning:
+            return False
+        self._exit_warning = True
+        self.exitWarningRequested.emit()
+        self.stateChanged.emit()
+        return True
+
+    @Slot()
+    def cancelExitWarning(self) -> None:
+        """取消退出警告并清空连点计数。"""
+        self._time_clicks.clear()
+        if self._exit_warning:
+            self._exit_warning = False
+            self.stateChanged.emit()
+
+    @Slot()
+    def confirmExitSession(self) -> None:
+        """确认退出：强制结束当前覆清 / 深清会话，统计标记 interrupted。"""
+        if not self.busy:
+            self.cancelExitWarning()
+            return
+        if self._session_level not in (
+            LockLevel.MEDIUM.value,
+            LockLevel.HEAVY.value,
+        ):
+            self.cancelExitWarning()
+            return
+        self.cancelExitWarning()
+        self._force_interrupt = True
         self._session.stop()
 
     # ================= 统计 / 设置 =================
@@ -3136,7 +3254,207 @@ class AppBridge(QObject):
         # 通知主程序：应用已拉起，覆清 dock 需要把它显示到遮罩之上
         self.appLaunched.emit(str(exe))
 
-    # ================= 自动更新（GitHub Releases） =================
+    # ================= v0.16 清番（置顶番茄钟） =================
+    @Property(bool, notify=pomodoroChanged)
+    def pomodoroRunning(self) -> bool:
+        return self._pomodoro.running
+
+    @Property(bool, notify=pomodoroChanged)
+    def pomodoroPaused(self) -> bool:
+        return self._pomodoro.paused
+
+    @Property(str, notify=pomodoroChanged)
+    def pomodoroPhase(self) -> str:
+        """idle / work / break（break 时长由第几轮决定：满 4 轮是长休息）。"""
+        return self._pomodoro.phase
+
+    @Property(int, notify=pomodoroChanged)
+    def pomodoroRemaining(self) -> int:
+        return self._pomodoro.remaining
+
+    @Property(str, notify=pomodoroChanged)
+    def pomodoroState(self) -> str:
+        """兼容 QML 的合并状态：idle / work / break / paused。"""
+        if not self._pomodoro.running:
+            return "idle"
+        if self._pomodoro.paused:
+            return "paused"
+        return self._pomodoro.phase
+
+    @Property(int, notify=pomodoroChanged)
+    def pomodoroPresetTotal(self) -> int:
+        return self._pomodoro.preset_total
+
+    @Property(int, notify=pomodoroChanged)
+    def pomodoroTotal(self) -> int:
+        """pomodoroPresetTotal 的 QML 别名。"""
+        return self._pomodoro.preset_total
+
+    @Property(int, notify=pomodoroChanged)
+    def pomodoroRound(self) -> int:
+        return self._pomodoro.round
+
+    @Property(int, notify=pomodoroChanged)
+    def pomodoroWorkMinutes(self) -> int:
+        return self._pomodoro.work_minutes
+
+    @Property(int, notify=pomodoroChanged)
+    def pomodoroBreakMinutes(self) -> int:
+        return self._pomodoro.break_minutes
+
+    @Property(int, notify=pomodoroChanged)
+    def pomodoroLongBreakMinutes(self) -> int:
+        return self._pomodoro.long_break_minutes
+
+    @Property(int, notify=pomodoroChanged)
+    def pomodoroRoundsBeforeLong(self) -> int:
+        return self._pomodoro.rounds_before_long
+
+    @Property(int, notify=pomodoroChanged)
+    def pomodoroRounds(self) -> int:
+        """pomodoroRoundsBeforeLong 的 QML 别名。"""
+        return self._pomodoro.rounds_before_long
+
+    @Slot(result=bool)
+    def startPomodoro(self) -> bool:
+        return self._pomodoro.start()
+
+    @Slot(result=bool)
+    def pausePomodoro(self) -> bool:
+        return self._pomodoro.pause()
+
+    @Slot(result=bool)
+    def resumePomodoro(self) -> bool:
+        return self._pomodoro.resume()
+
+    @Slot(result=bool)
+    def stopPomodoro(self) -> bool:
+        return self._pomodoro.stop()
+
+    @Slot(result=bool)
+    def skipPomodoro(self) -> bool:
+        return self._pomodoro.skip()
+
+    def _on_pomodoro_notify(self, title: str, body: str) -> None:
+        """清番到点：系统通知（不与锁机 / guard 交互）。"""
+        try:
+            self._notifications.notify(str(title), str(body))
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("清番通知失败：%s", exc)
+
+    # ================= 自动更新（多下载源） =================
+    def _custom_update_sources(self) -> list[dict]:
+        """已保存的自定义更新源（每项 {id,name,url,token}）。"""
+        raw = self._settings.get("custom_update_sources", [])
+        if not isinstance(raw, list):
+            return []
+        result: list[dict] = []
+        for item in raw:
+            if not isinstance(item, dict):
+                continue
+            source_id = str(item.get("id") or "").strip()
+            url = str(item.get("url") or "").strip()
+            if not source_id or not url:
+                continue
+            result.append(
+                {
+                    "id": source_id,
+                    "name": str(item.get("name") or "自定义源"),
+                    "url": url,
+                    "token": str(item.get("token") or ""),
+                }
+            )
+        return result
+
+    @Property(list, notify=settingsChanged)
+    def updateSources(self) -> list[dict]:
+        """可选更新源：[{id,name,kind}]（内置 GitHub / GitLink / Gitee + 自定义）。"""
+        return updater.source_choices(self._custom_update_sources())
+
+    @Property(list, notify=settingsChanged)
+    def customUpdateSources(self) -> list[dict]:
+        """自定义源列表 [{id,name,url}]（不返回 Token）。"""
+        return [
+            {"id": item["id"], "name": item["name"], "url": item["url"]}
+            for item in self._custom_update_sources()
+        ]
+
+    @Property(str, notify=settingsChanged)
+    def updateSource(self) -> str:
+        """当前更新源 id（找不到时回退 GitHub）。"""
+        current = updater.resolve_source_id(
+            self._settings.get("update_source", updater.DEFAULT_SOURCE_ID),
+            self._custom_update_sources(),
+        )
+        return current or updater.DEFAULT_SOURCE_ID
+
+    @Property(str, notify=stateChanged)
+    def updateSourceError(self) -> str:
+        """最近一次更新源相关错误（可读中文，空 = 无错误）。"""
+        return self._update_source_error
+
+    @Slot(str, result=bool)
+    def setUpdateSource(self, source_id: str) -> bool:
+        """切换更新源：内置 github / gitlink / gitee 或自定义源 id。"""
+        sources = self._custom_update_sources()
+        resolved = updater.resolve_source_id(source_id, sources)
+        if not resolved:
+            self._update_source_error = "未知的更新源"
+            self.toast.emit(QCoreApplication.translate("ShenQing", "未知的更新源"))
+            self.stateChanged.emit()
+            return False
+        self._settings.set("update_source", resolved)
+        self._update_source_error = ""
+        source = updater.resolve_source(resolved, sources) or {}
+        self.toast.emit(
+            QCoreApplication.translate("ShenQing", "已切换更新源：{0}").format(
+                str(source.get("name") or resolved)
+            )
+        )
+        self.settingsChanged.emit()
+        self.stateChanged.emit()
+        return True
+
+    @Slot(str, str, result=str)
+    @Slot(str, str, str, result=str)
+    def addCustomUpdateSource(self, name: str, url: str, token: str = "") -> str:
+        """新增自定义更新源（JSON API，可带 Token），成功后自动切换过去。"""
+        existing = self._custom_update_sources()
+        try:
+            item = updater.make_custom_source(name, url, token, existing)
+        except ValueError as exc:
+            self._update_source_error = str(exc)
+            self.toast.emit(str(exc))
+            self.stateChanged.emit()
+            return ""
+        existing.append(item)
+        self._settings.set("custom_update_sources", existing)
+        self._settings.set("update_source", item["id"])
+        self._update_source_error = ""
+        self.toast.emit(
+            QCoreApplication.translate("ShenQing", "已添加更新源：{0}").format(item["name"])
+        )
+        self.settingsChanged.emit()
+        self.stateChanged.emit()
+        return item["id"]
+
+    @Slot(str, result=bool)
+    def removeCustomUpdateSource(self, source_id: str) -> bool:
+        """删除自定义源；若正在使用则回退 GitHub。"""
+        wanted = str(source_id or "").strip()
+        existing = self._custom_update_sources()
+        kept = [item for item in existing if str(item.get("id")) != wanted]
+        if len(kept) == len(existing):
+            return False
+        self._settings.set("custom_update_sources", kept)
+        if str(self._settings.get("update_source", "")) == wanted:
+            self._settings.set("update_source", updater.DEFAULT_SOURCE_ID)
+        self._update_source_error = ""
+        self.toast.emit(QCoreApplication.translate("ShenQing", "已移除更新源"))
+        self.settingsChanged.emit()
+        self.stateChanged.emit()
+        return True
+
     def _set_update_state(self, state: str, error: str = "") -> None:
         self._update_state = str(state)
         self._update_error = str(error or "")
@@ -3179,11 +3497,15 @@ class AppBridge(QObject):
         self._settings.set("auto_update", bool(enabled))
         self.settingsChanged.emit()
 
-    def _check_update_worker(self) -> None:
+    def _check_update_worker(
+        self, source_id: str, custom_sources: list[dict]
+    ) -> None:
         info: dict | None = None
         error = ""
         try:
-            info = updater.check_latest()
+            info, error = updater.check_latest_detail(
+                APP_VERSION, source_id=source_id, custom_sources=custom_sources
+            )
         except Exception as exc:  # noqa: BLE001 - 后台线程不能崩
             error = str(exc)
             logger.warning("检查更新异常：%s", exc)
@@ -3194,12 +3516,14 @@ class AppBridge(QObject):
 
     @Slot()
     def checkUpdate(self) -> None:
-        """手动/自动检查 GitHub 最新 Release（后台线程，不阻塞界面）。"""
+        """手动/自动检查当前下载源的最新 Release（后台线程，不阻塞界面）。"""
         if self._update_state in ("checking", "downloading"):
             return
+        self._update_source_error = ""
         self._set_update_state("checking")
         threading.Thread(
             target=self._check_update_worker,
+            args=(self.updateSource, self._custom_update_sources()),
             name="shenqing-update-check",
             daemon=True,
         ).start()
@@ -3208,11 +3532,18 @@ class AppBridge(QObject):
     def _on_update_checked(self, info: object, error: str) -> None:
         if error:
             self._update_info = None
+            self._update_source_error = str(error)
             self._set_update_state("error", str(error))
-            self.toast.emit(QCoreApplication.translate("ShenQing", "检查更新失败"))
+            logger.warning("检查更新失败：%s", error)
+            self.toast.emit(
+                QCoreApplication.translate("ShenQing", "检查更新失败：{0}").format(
+                    str(error)[:120]
+                )
+            )
             return
+        self._update_info = None
+        self._update_source_error = ""
         if not isinstance(info, dict) or not info:
-            self._update_info = None
             self._set_update_state("idle")
             return
         self._update_info = dict(info)
@@ -3324,6 +3655,70 @@ class AppBridge(QObject):
             logger.warning("打开更新页面失败：%s", exc)
             self.toast.emit(QCoreApplication.translate("ShenQing", "无法打开浏览器"))
 
+    # ================= v0.16 速启面板：重启 / 管理员重启 =================
+    def _spawn_restart(self, extra_args: str = "") -> bool:
+        """停看门狗并拉起新进程（--restarted）。成功返回 True。"""
+        try:
+            from ..services import keeper
+
+            keeper.stop_keeper()
+        except Exception as exc:  # noqa: BLE001 - 重启失败也要继续尝试
+            logger.warning("重启前停止看门狗失败：%s", exc)
+        try:
+            from PySide6.QtCore import QProcess
+
+            from ..services import keeper
+
+            command = list(keeper.main_command())
+            if not command:
+                return False
+            program = command[0]
+            args = command[1:]
+            if "--restarted" not in args:
+                args.append("--restarted")
+            if extra_args:
+                args.extend(extra_args.split())
+            return bool(
+                QProcess.startDetached(program, args, keeper.working_directory())
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("拉起新进程失败：%s", exc)
+            return False
+
+    @Slot()
+    def restartApp(self) -> None:
+        """v0.16 速启面板：正常重启深清。"""
+        if not self._spawn_restart():
+            self.toast.emit(
+                QCoreApplication.translate("ShenQing", "重启失败，请手动重新打开深清")
+            )
+            return
+        self.toast.emit(QCoreApplication.translate("ShenQing", "正在重启深清…"))
+        application = QCoreApplication.instance()
+        if application is not None:
+            QTimer.singleShot(300, application.quit)
+
+    @Slot()
+    def relaunchAsAdmin(self) -> None:
+        """v0.16 速启面板：以管理员身份重启（ShellExecute runas）。"""
+        if elevation.is_admin():
+            self.toast.emit(QCoreApplication.translate("ShenQing", "当前已是管理员权限"))
+            return
+        self.toast.emit(QCoreApplication.translate("ShenQing", "正在请求管理员权限…"))
+        try:
+            ok = elevation.relaunch_as_admin("--restarted")
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("管理员重启失败：%s", exc)
+            ok = False
+        if ok:
+            self.quitRequested.emit()
+        else:
+            self.toast.emit(
+                QCoreApplication.translate(
+                    "ShenQing", "提权失败：用户取消了 UAC 或策略禁止"
+                )
+            )
+
     @Slot(str, result=list)
     def search(self, query: str) -> list[dict]:
         text = str(query or "").strip().casefold()
@@ -3384,6 +3779,10 @@ class AppBridge(QObject):
 
     def _on_finished(self, elapsed_seconds: int, completed: bool, pauses: int) -> None:
         clicks = self._stop_click_tracking()
+        interrupted = bool(self._force_interrupt)
+        self._force_interrupt = False
+        self._time_clicks.clear()
+        self._exit_warning = False
         self._delete_session_state()
         self._restore_site_block(force=True)
         self._guard.stop()
@@ -3396,7 +3795,7 @@ class AppBridge(QObject):
         if self._trial_active:
             # 体验模式只做演示：不写统计、不影响连续天数
             self.toast.emit(QCoreApplication.translate("ShenQing", "体验结束"))
-        elif completed or minutes >= 1:
+        elif completed or minutes >= 1 or interrupted:
             self._stats.record(
                 minutes,
                 self._session_level or self.lockLevel,
@@ -3406,13 +3805,21 @@ class AppBridge(QObject):
                 when=timesync.now(),
                 started_at=self._session_started_at,
                 clicks=clicks,
+                interrupted=interrupted,
             )
             self.statsChanged.emit()
-            self.toast.emit(
-                QCoreApplication.translate("ShenQing", "本轮专注完成，休息一下")
-                if completed
-                else QCoreApplication.translate("ShenQing", "本轮专注已结束")
-            )
+            if interrupted:
+                self.toast.emit(
+                    QCoreApplication.translate("ShenQing", "已强制结束本次专注")
+                )
+            elif completed:
+                self.toast.emit(
+                    QCoreApplication.translate("ShenQing", "本轮专注完成，休息一下")
+                )
+            else:
+                self.toast.emit(
+                    QCoreApplication.translate("ShenQing", "本轮专注已结束")
+                )
         else:
             self.toast.emit(QCoreApplication.translate("ShenQing", "专注时间太短，未计入统计"))
         summary = {
@@ -3423,6 +3830,7 @@ class AppBridge(QObject):
             "completed": bool(completed),
             "pauses": int(pauses),
             "clicks": int(clicks),
+            "interrupted": interrupted,
         }
         self._dispatch("session_end", summary)
         try:
