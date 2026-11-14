@@ -329,6 +329,42 @@ class AppBridge(QObject):
         except Exception as exc:  # noqa: BLE001
             logger.warning("插件事件 %s 分发失败：%s", event, exc)
 
+    @Property(str, constant=True)
+    def appIconUrl(self) -> str:
+        """应用图标：assets/icon.png（窗口/引导页使用）。"""
+        import sys as _sys
+
+        candidates = []
+        bundled = getattr(_sys, "_MEIPASS", None)
+        if bundled:
+            candidates.append(Path(bundled) / "assets" / "icon.png")
+        candidates.append(Path(__file__).resolve().parents[3] / "assets" / "icon.png")
+        for path in candidates:
+            try:
+                if path.exists():
+                    return path.as_uri()
+            except OSError:
+                continue
+        return ""
+
+    @Property(str, constant=True)
+    def controlPanelIconUrl(self) -> str:
+        """速启（控制）面板使用的图标：assets/control_panel.png。"""
+        import sys as _sys
+
+        candidates = []
+        bundled = getattr(_sys, "_MEIPASS", None)
+        if bundled:
+            candidates.append(Path(bundled) / "assets" / "control_panel.png")
+        candidates.append(Path(__file__).resolve().parents[3] / "assets" / "control_panel.png")
+        for path in candidates:
+            try:
+                if path.exists():
+                    return path.as_uri()
+            except OSError:
+                continue
+        return ""
+
     @Property(list, notify=pluginsChanged)
     def plugins(self) -> list[dict]:
         if self._plugins is None:

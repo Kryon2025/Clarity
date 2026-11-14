@@ -253,7 +253,17 @@ Window {
                         GradientStop { position: 0.0; color: "#7FE7DA" }
                         GradientStop { position: 1.0; color: "#2B86FF" }
                     }
-                    Glyph { anchors.centerIn: parent; kind: "drop"; size: 17; color: "#04222B" }
+                    Image {
+                        anchors.fill: parent
+                        source: (typeof App !== "undefined" && App.appIconUrl) ? String(App.appIconUrl) : ""
+                        fillMode: Image.PreserveAspectCrop
+                        visible: source !== ""
+                    }
+                    Glyph {
+                        anchors.centerIn: parent
+                        visible: !(typeof App !== "undefined" && App.appIconUrl)
+                        kind: "drop"; size: 17; color: "#04222B"
+                    }
                 }
                 Text {
                     anchors.verticalCenter: parent.verticalCenter

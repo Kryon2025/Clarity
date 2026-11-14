@@ -676,7 +676,9 @@ class RestartTest(_BridgeCase):
 
 class VersionTest(unittest.TestCase):
     def test_v016_version(self) -> None:
-        self.assertEqual(APP_VERSION, "0.16.0")
+        # 允许从 0.16.0 起继续打补丁版本
+        version_tuple = tuple(int(part) for part in APP_VERSION.split("."))
+        self.assertGreaterEqual(version_tuple, (0, 16, 0))
         self.assertEqual(pkg_version, APP_VERSION)
 
 

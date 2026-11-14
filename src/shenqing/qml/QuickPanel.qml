@@ -327,13 +327,22 @@ Window {
                 Rectangle {
                     anchors.fill: parent
                     radius: 11
-                    gradient: Gradient {
-                        GradientStop { position: 0.0; color: "#7FE7DA" }
-                        GradientStop { position: 0.55; color: "#2ED3C6" }
-                        GradientStop { position: 1.0; color: "#1F6FD0" }
+                    clip: true
+                    color: "#123A4A"
+
+                    readonly property string panelIcon: (typeof App !== "undefined" && App.controlPanelIconUrl)
+                                                       ? String(App.controlPanelIconUrl) : ""
+
+                    Image {
+                        anchors.fill: parent
+                        source: parent.panelIcon
+                        fillMode: Image.PreserveAspectCrop
+                        visible: parent.panelIcon !== ""
                     }
+
                     Glyph {
                         anchors.centerIn: parent
+                        visible: parent.panelIcon === ""
                         kind: "drop"
                         size: 18
                         color: "#04222B"
