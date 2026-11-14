@@ -210,9 +210,9 @@ Item {
                             radius: 24
                             anchors.verticalCenter: parent.verticalCenter
                             gradient: Gradient {
-                                GradientStop { position: 0.0; color: "#7FE7DA" }
-                                GradientStop { position: 0.55; color: "#2ED3C6" }
-                                GradientStop { position: 1.0; color: "#1F6FD0" }
+                                GradientStop { position: 0.0; color: "#BEEFF6" }
+                                GradientStop { position: 0.55; color: "#4FD0E0" }
+                                GradientStop { position: 1.0; color: "#144F66" }
                             }
                             border.width: 1
                             border.color: "#66FFFFFF"
@@ -221,7 +221,7 @@ Item {
                                 anchors.centerIn: parent
                                 kind: "drop"
                                 size: 38
-                                color: "#04222B"
+                                color: "#0B2B3A"
                             }
                         }
 
@@ -440,7 +440,7 @@ Item {
                                             width: versionLabel.implicitWidth + 18
                                             height: 22
                                             radius: 11
-                                            color: AppTheme.glass ? "#262ED3C6" : "#E4F4F2"
+                                            color: AppTheme.glass ? "#264FD0E0" : "#E4F4F2"
                                             border.width: 1
                                             border.color: AppTheme.accent
 
@@ -764,7 +764,7 @@ Item {
 
         Rectangle {
             anchors.fill: parent
-            color: "#B3040A10"
+            color: "#B3051620"
         }
 
         MouseArea {
@@ -780,7 +780,7 @@ Item {
             height: Math.min(560, page.height * 0.72)
             anchors.centerIn: parent
             radius: 22
-            color: AppTheme.glass ? "#F20A1B26" : AppTheme.cardBg
+            color: AppTheme.glass ? "#F2082430" : AppTheme.cardBg
             border.width: 1
             border.color: AppTheme.glass ? "#4DFFFFFF" : AppTheme.cardBorderStrong
             scale: page.docDialogVisible ? 1 : 0.98

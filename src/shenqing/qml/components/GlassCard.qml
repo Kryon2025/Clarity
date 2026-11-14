@@ -86,7 +86,7 @@ Item {
             anchors.fill: parent
             radius: root.radius
             visible: AppTheme.glass && root.glassSource === null
-            color: root.selected ? "#2A050A14" : (pointer.containsMouse ? "#26050A12" : "#22050A12")
+            color: root.selected ? "#2A06141D" : (pointer.containsMouse ? "#26061721" : "#22061620")
             Behavior on color { ColorAnimation { duration: 180 } }
         }
 
@@ -113,8 +113,8 @@ Item {
             color: "transparent"
             border.width: 1
             border.color: root.selected
-                          ? "#66FFFFFF"
-                          : (pointer.containsMouse ? "#4DFFFFFF" : "#2EFFFFFF")
+                          ? "#66BEEFF6"
+                          : (pointer.containsMouse ? "#4DBEEFF6" : "#2EBEEFF6")
             Behavior on border.color { ColorAnimation { duration: 180 } }
         }
 

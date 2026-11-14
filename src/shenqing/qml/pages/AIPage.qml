@@ -285,6 +285,20 @@ Item {
             Item {
                 width: parent.width
                 height: 62
+                // v0.17 海洋波浪页头底纹（静态，避免多页同时动画）
+                WaveBackdrop {
+                    x: -(page.width - parent.width) / 2
+                    width: page.width
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    anchors.topMargin: -10
+                    anchors.bottomMargin: -78
+                    tone: AppTheme.light ? "light" : "deep"
+                    intensity: 0.50
+                    animated: false
+                    z: -1
+                }
+
                 Column {
                     anchors.left: parent.left
                     anchors.bottom: parent.bottom

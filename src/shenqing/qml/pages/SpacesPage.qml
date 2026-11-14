@@ -392,6 +392,20 @@ Item {
         width: page.contentWidth
         height: 78
 
+        // v0.17 海洋波浪页头底纹：清空间大标题 + 标签栏后面的一条浪（静态，切页不额外耗电）
+        WaveBackdrop {
+            x: -page.contentX
+            width: page.width
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            anchors.topMargin: -12
+            anchors.bottomMargin: -96
+            tone: AppTheme.light ? "light" : "deep"
+            intensity: 0.60
+            animated: false
+            z: -1
+        }
+
                 Column {
                     anchors.left: parent.left
                     anchors.bottom: parent.bottom
@@ -1319,7 +1333,7 @@ Item {
             height: infoColumn.implicitHeight + 44
             radius: 20
             anchors.centerIn: parent
-            color: AppTheme.glass ? "#F20A1B26" : AppTheme.cardBg
+            color: AppTheme.glass ? "#F2082430" : AppTheme.cardBg
             border.width: 1
             border.color: AppTheme.glass ? "#4DFFFFFF" : AppTheme.cardBorderStrong
 

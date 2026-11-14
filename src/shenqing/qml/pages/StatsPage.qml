@@ -18,7 +18,7 @@ Item {
     property var demoUsageWeek: null
     property var demoCategories: null
     property int usageRange: 0   // 0=今日，1=本周
-    readonly property var appUsageColors: ["#2ED3C6", "#7FB6FF", "#F2C879", "#C9A7FF",
+    readonly property var appUsageColors: ["#4FD0E0", "#7FD8EA", "#F2C879", "#C9A7FF",
                                            "#F27E7E", "#8FD1A8", "#E8B86B", "#7ED7E8"]
     function itemName(item) {
         if (item === null || item === undefined) return ""
@@ -129,8 +129,8 @@ Item {
     }
 
     readonly property var statCards: [
-        { label: qsTr("今日专注"), value: page.todaySessions, unit: qsTr("次"), accent: "#2ED3C6" },
-        { label: qsTr("今日时长"), value: Math.round(page.todayMinutes), unit: qsTr("分钟"), accent: "#7FB6FF" },
+        { label: qsTr("今日专注"), value: page.todaySessions, unit: qsTr("次"), accent: "#4FD0E0" },
+        { label: qsTr("今日时长"), value: Math.round(page.todayMinutes), unit: qsTr("分钟"), accent: "#7FD8EA" },
         { label: qsTr("连续打卡"), value: page.streakDays, unit: qsTr("天"), accent: "#F2C879" },
         { label: qsTr("今日会话"), value: page.cardSessions, unit: qsTr("次"), accent: "#C9A7FF" }
     ]
@@ -230,10 +230,10 @@ Item {
     function heatColor(minutes) {
         if (Number(minutes) <= 0) return AppTheme.glass ? "#12FFFFFF" : AppTheme.divider
         var ratio = Number(minutes) / Math.max(1, page.heatmapMax)
-        if (ratio > 0.75) return "#2ED3C6"
-        if (ratio > 0.5) return "#2ED3C6"
-        if (ratio > 0.25) return "#1E9E95"
-        return "#176B68"
+        if (ratio > 0.75) return "#4FD0E0"
+        if (ratio > 0.5) return "#4FD0E0"
+        if (ratio > 0.25) return "#2E9FBF"
+        return "#0B5E73"
     }
     readonly property var hourlyValues: {
         var values = page.demoHourly
@@ -281,6 +281,20 @@ Item {
             Item {
                 width: parent.width
                 height: 78
+
+                // v0.17 海洋波浪页头底纹（静态，避免多页同时动画）
+                WaveBackdrop {
+                    x: -(page.width - parent.width) / 2
+                    width: page.width
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    anchors.topMargin: -10
+                    anchors.bottomMargin: -78
+                    tone: AppTheme.light ? "light" : "deep"
+                    intensity: 0.55
+                    animated: false
+                    z: -1
+                }
 
                 Column {
                     anchors.left: parent.left
@@ -527,8 +541,8 @@ Item {
                                                               * (Number(modelData.minutes) || 0) / page.dayMax)
                                         radius: 8
                                         gradient: Gradient {
-                                            GradientStop { position: 0.0; color: "#7FE7DA" }
-                                            GradientStop { position: 1.0; color: "#2B86FF" }
+                                            GradientStop { position: 0.0; color: "#BEEFF6" }
+                                            GradientStop { position: 1.0; color: "#2E9FBF" }
                                         }
                                         opacity: 0.9
                                     }
@@ -1027,7 +1041,7 @@ Item {
                             font.family: AppTheme.fontFamily
                         }
                         Repeater {
-                            model: ["#176B68", "#1E9E95", "#2ED3C6"]
+                            model: ["#0B5E73", "#2E9FBF", "#4FD0E0"]
                             delegate: Rectangle {
                                 width: 11
                                 height: 11
@@ -1158,7 +1172,7 @@ Item {
                                         height: 28
                                         radius: 2
                                         anchors.verticalCenter: parent.verticalCenter
-                                        color: modelData.completed === true ? "#2ED3C6" : "#7FB6FF"
+                                        color: modelData.completed === true ? "#4FD0E0" : "#7FD8EA"
                                     }
                                     Column {
                                         anchors.verticalCenter: parent.verticalCenter

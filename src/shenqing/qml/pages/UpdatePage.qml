@@ -322,10 +322,10 @@ Item {
                             anchors.left: parent.left
                             anchors.verticalCenter: parent.verticalCenter
                             gradient: Gradient {
-                                GradientStop { position: 0.0; color: "#7FE7DA" }
-                                GradientStop { position: 1.0; color: "#2B86FF" }
+                                GradientStop { position: 0.0; color: "#BEEFF6" }
+                                GradientStop { position: 1.0; color: "#2E9FBF" }
                             }
-                            Glyph { anchors.centerIn: parent; kind: "download"; size: 20; color: "#04222B" }
+                            Glyph { anchors.centerIn: parent; kind: "download"; size: 20; color: "#0B2B3A" }
                         }
 
                         Column {
@@ -425,8 +425,8 @@ Item {
                                 radius: 5
                                 gradient: Gradient {
                                     orientation: Gradient.Horizontal
-                                    GradientStop { position: 0.0; color: "#2B86FF" }
-                                    GradientStop { position: 1.0; color: "#2ED3C6" }
+                                    GradientStop { position: 0.0; color: "#2E9FBF" }
+                                    GradientStop { position: 1.0; color: "#4FD0E0" }
                                 }
                                 Behavior on width { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
                             }
@@ -811,7 +811,7 @@ Item {
         z: 90
         visible: page.addSourceOpen
 
-        Rectangle { anchors.fill: parent; color: "#B3040A10" }
+        Rectangle { anchors.fill: parent; color: "#B3051620" }
 
         MouseArea {
             anchors.fill: parent
@@ -824,7 +824,7 @@ Item {
             width: Math.min(460, page.width * 0.6)
             height: addSourceColumn.implicitHeight + 44
             radius: 22
-            color: AppTheme.glass ? "#F20A1B26" : AppTheme.cardBg
+            color: AppTheme.glass ? "#F2082430" : AppTheme.cardBg
             border.width: 1
             border.color: AppTheme.cardBorderStrong
 

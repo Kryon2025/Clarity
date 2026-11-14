@@ -225,6 +225,15 @@ Window {
             opacity: 0.08
         }
 
+        // v0.17 海洋波浪：引导页全屏分层浪花（跟随引导动画开关，低端机静态）
+        WaveBackdrop {
+            anchors.fill: parent
+            tone: AppTheme.light ? "light" : "deep"
+            intensity: 0.80
+            animated: overlay.animationsEnabled && overlay.showing
+            z: 0
+        }
+
         MouseArea {
             anchors.fill: parent
             acceptedButtons: Qt.AllButtons
@@ -250,8 +259,8 @@ Window {
                     height: 30
                     radius: 10
                     gradient: Gradient {
-                        GradientStop { position: 0.0; color: "#7FE7DA" }
-                        GradientStop { position: 1.0; color: "#2B86FF" }
+                        GradientStop { position: 0.0; color: "#BEEFF6" }
+                        GradientStop { position: 1.0; color: "#2E9FBF" }
                     }
                     Image {
                         anchors.fill: parent
@@ -262,7 +271,7 @@ Window {
                     Glyph {
                         anchors.centerIn: parent
                         visible: !(typeof App !== "undefined" && App.appIconUrl)
-                        kind: "drop"; size: 17; color: "#04222B"
+                        kind: "drop"; size: 17; color: "#0B2B3A"
                     }
                 }
                 Text {
@@ -322,13 +331,13 @@ Window {
                         height: 104
                         radius: 32
                         gradient: Gradient {
-                            GradientStop { position: 0.0; color: "#7FE7DA" }
-                            GradientStop { position: 0.55; color: "#2ED3C6" }
-                            GradientStop { position: 1.0; color: "#1F6FD0" }
+                            GradientStop { position: 0.0; color: "#BEEFF6" }
+                            GradientStop { position: 0.55; color: "#4FD0E0" }
+                            GradientStop { position: 1.0; color: "#144F66" }
                         }
                         border.width: 1
                         border.color: "#66FFFFFF"
-                        Glyph { anchors.centerIn: parent; kind: "drop"; size: 46; color: "#04222B" }
+                        Glyph { anchors.centerIn: parent; kind: "drop"; size: 46; color: "#0B2B3A" }
                     }
                     Text {
                         width: parent.width
@@ -642,11 +651,11 @@ Window {
                                         height: 46
                                         radius: 15
                                         gradient: Gradient {
-                                            GradientStop { position: 0.0; color: "#7FE7DA" }
-                                            GradientStop { position: 1.0; color: "#2B86FF" }
+                                            GradientStop { position: 0.0; color: "#BEEFF6" }
+                                            GradientStop { position: 1.0; color: "#2E9FBF" }
                                         }
                                         Glyph { anchors.centerIn: parent; kind: String(modelData.icon); size: 22
-                                                color: "#04222B" }
+                                                color: "#0B2B3A" }
                                     }
                                     Text {
                                         text: String(modelData.title)
@@ -773,10 +782,10 @@ Window {
                         height: 96
                         radius: 32
                         gradient: Gradient {
-                            GradientStop { position: 0.0; color: "#7FE7DA" }
-                            GradientStop { position: 1.0; color: "#2B86FF" }
+                            GradientStop { position: 0.0; color: "#BEEFF6" }
+                            GradientStop { position: 1.0; color: "#2E9FBF" }
                         }
-                        Glyph { anchors.centerIn: parent; kind: "check"; size: 44; color: "#04222B" }
+                        Glyph { anchors.centerIn: parent; kind: "check"; size: 44; color: "#0B2B3A" }
                     }
                     Text {
                         width: parent.width

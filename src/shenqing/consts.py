@@ -8,7 +8,7 @@ APP_NAME = "深清"
 #: 英文名（v0.4 起对外统一用 Clarity；「身轻」不再展示）
 APP_ALIAS = "Clarity"
 APP_ID = "ShenQing"
-APP_VERSION = "0.16.2"
+APP_VERSION = "0.16.3"
 
 #: GitHub 仓库（自动更新与反馈入口用）
 GITHUB_REPO = "Kryon2025/Clarity"
@@ -39,6 +39,21 @@ DEFAULT_THEME = "solid"
 
 #: 更新日志（最新在前；en 为空时用中文兜底）
 CHANGELOG = [
+    {
+        "version": "0.16.3",
+        "date": "2025-11-14",
+        "tag": "",
+        "items": [
+            "全新海洋波浪视觉：深海渐变 + 分层浪花背景，强调色统一为海洋蓝青",
+            "清空间 / 数据 / 设置 / AI / 主题页头加入波浪底纹，引导、锁屏、加载环、速启面板与结束卡片同步海洋主题",
+            "应用图标更换为水彩海浪（安装包/窗口/托盘同步）",
+        ],
+        "items_en": [
+            "New ocean-wave visual language: deep-sea gradients, layered foam backdrops and ocean-teal accents throughout",
+            "Wave headers on Spaces/Stats/Settings/AI/Themes, plus onboarding, lock overlay, loading ring, quick panel and summary card",
+            "New watercolor-wave application icon (installer, window and tray)",
+        ],
+    },
     {
         "version": "0.16.2",
         "date": "2025-11-14",

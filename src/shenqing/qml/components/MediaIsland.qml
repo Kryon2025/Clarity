@@ -122,14 +122,14 @@ Item {
                 radius: 10
                 anchors.verticalCenter: parent.verticalCenter
                 gradient: Gradient {
-                    GradientStop { position: 0.0; color: "#7FE7DA" }
-                    GradientStop { position: 1.0; color: "#1F6FD0" }
+                    GradientStop { position: 0.0; color: "#BEEFF6" }
+                    GradientStop { position: 1.0; color: "#144F66" }
                 }
                 Glyph {
                     anchors.centerIn: parent
                     kind: island.hasMedia ? "wave" : "ripple"
                     size: 16
-                    color: "#04222B"
+                    color: "#0B2B3A"
                 }
             }
 
@@ -176,14 +176,14 @@ Item {
                     radius: 7
                     anchors.verticalCenter: parent.verticalCenter
                     gradient: Gradient {
-                        GradientStop { position: 0.0; color: "#7FE7DA" }
-                        GradientStop { position: 1.0; color: "#1F6FD0" }
+                        GradientStop { position: 0.0; color: "#BEEFF6" }
+                        GradientStop { position: 1.0; color: "#144F66" }
                     }
                     Glyph {
                         anchors.centerIn: parent
                         kind: island.hasMedia ? "wave" : "ripple"
                         size: 12
-                        color: "#04222B"
+                        color: "#0B2B3A"
                     }
                 }
 

@@ -235,10 +235,24 @@ Window {
             anchors.fill: parent
             radius: 18
             gradient: Gradient {
-                GradientStop { position: 0.0; color: AppTheme.bgMid }
-                GradientStop { position: 0.55; color: AppTheme.bgTop }
+                GradientStop { position: 0.0; color: AppTheme.bgTop }
+                GradientStop { position: 0.55; color: AppTheme.bgMid }
                 GradientStop { position: 1.0; color: AppTheme.bgBottom }
             }
+        }
+
+        // v0.17 海洋波浪：速启面板头部浪花（面板可见时才跑动画）
+        WaveBackdrop {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.leftMargin: 1
+            anchors.rightMargin: 1
+            anchors.topMargin: 1
+            height: 150
+            tone: AppTheme.light ? "light" : "deep"
+            intensity: 0.70
+            animated: panel.animationsEnabled && panel.visible
         }
 
         Item {
@@ -345,7 +359,7 @@ Window {
                         visible: parent.panelIcon === ""
                         kind: "drop"
                         size: 18
-                        color: "#04222B"
+                        color: "#0B2B3A"
                     }
                 }
             }

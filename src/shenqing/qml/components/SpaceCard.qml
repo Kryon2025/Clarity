@@ -63,7 +63,7 @@ Item {
             anchors.fill: parent
             radius: C.radiusCard
             visible: !root.superCard && root.glassSource === null
-            color: pointer.containsMouse ? "#28050A12" : "#22050A12"
+            color: pointer.containsMouse ? "#28061721" : "#22061620"
             Behavior on color { ColorAnimation { duration: 180 } }
         }
 

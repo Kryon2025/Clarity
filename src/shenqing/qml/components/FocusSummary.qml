@@ -307,7 +307,7 @@ Window {
                     Rectangle {
                         anchors.fill: parent
                         radius: width / 2
-                        color: "#7FE7DA"
+                        color: "#BEEFF6"
                     }
                 }
             }
@@ -334,7 +334,7 @@ Window {
                     width: 40
                     height: 40
                     radius: 20
-                    color: "#2ED3C6"
+                    color: "#4FD0E0"
                     opacity: 0.25
                 }
             }
@@ -355,14 +355,14 @@ Window {
                 id: cardBg
                 anchors.fill: parent
                 radius: 28
-                color: "#0E2A38"
+                color: "#0C2E3C"
                 border.width: 1
                 border.color: "#33FFFFFF"
 
                 gradient: Gradient {
-                    GradientStop { position: 0.0; color: "#16405A" }
-                    GradientStop { position: 0.55; color: "#0E2A38" }
-                    GradientStop { position: 1.0; color: "#081C28" }
+                    GradientStop { position: 0.0; color: "#144F66" }
+                    GradientStop { position: 0.55; color: "#0C2E3C" }
+                    GradientStop { position: 1.0; color: "#0B2B3A" }
                 }
             }
 
@@ -400,8 +400,8 @@ Window {
                     orientation: Gradient.Vertical
                     GradientStop { position: 0.0; color: overlay.bgStyle === 1 ? "#2E4B6E"
                                                           : overlay.bgStyle === 2 ? "#5A3C4F"
-                                                          : (overlay.bgStyle === 3 ? "#12212B" : "#1B4258") }
-                    GradientStop { position: 1.0; color: "#08131B" }
+                                                          : (overlay.bgStyle === 3 ? "#12212B" : "#144F66") }
+                    GradientStop { position: 1.0; color: "#071E29" }
                 }
             }
 
@@ -414,6 +414,20 @@ Window {
                     GradientStop { position: 0.45; color: "#55070F16" }
                     GradientStop { position: 1.0; color: "#CC060C12" }
                 }
+            }
+
+            // v0.17 海洋波浪：结束卡片底部装饰（留出圆角内边距，避免溢出卡片）
+            WaveBackdrop {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                anchors.leftMargin: 14
+                anchors.rightMargin: 14
+                anchors.bottomMargin: 14
+                height: Math.round(overlay.cardHeight * 0.42)
+                tone: "deep"
+                intensity: 0.55
+                animated: overlay.animationsEnabled && (overlay.showing || overlay.closing)
             }
 
             Column {
@@ -433,13 +447,13 @@ Window {
                         Rectangle {
                             anchors.fill: parent
                             radius: width / 2
-                            color: "#2ED3C6"
+                            color: "#4FD0E0"
                             visible: overlay.avatarUrl === ""
 
                             Text {
                                 anchors.centerIn: parent
                                 text: "深"
-                                color: "#04222B"
+                                color: "#0B2B3A"
                                 font.pixelSize: AppTheme.fs(22)
                                 font.weight: Font.Bold
                                 font.family: AppTheme.fontFamily
@@ -601,7 +615,7 @@ Window {
                 Rectangle {
                     anchors.fill: parent
                     radius: 12
-                    color: "#F20E2A38"
+                    color: "#F20C2E3C"
                     border.width: 1
                     border.color: "#40FFFFFF"
                 }
@@ -788,7 +802,7 @@ Window {
             Rectangle {
                 anchors.fill: parent
                 radius: 17
-                color: "#CC0A1B26"
+                color: "#CC08242F"
                 border.width: 1
                 border.color: "#4DFFFFFF"
             }

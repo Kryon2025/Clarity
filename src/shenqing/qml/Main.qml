@@ -72,6 +72,8 @@ FluentWindow {
 
     // 页面切换动画开关（截图/低功耗场景可关闭，动画依赖渲染帧，被系统节流时会停在过渡态）
     property bool pageTransitions: true
+    // v0.17 海洋波浪根背景强度（0~1；低端机可调低，并把 pageTransitions 设为 false 关闭漂移）
+    property real waveIntensity: AppTheme.light ? 0.60 : 0.85
 
     // ---------- 专注结束「今日专注卡片」状态 ----------
     property bool sessionWasLocked: false
@@ -192,7 +194,12 @@ FluentWindow {
         function onSettingsChanged() { win.applyAppearance() }
     }
 
-    background: Backdrop { id: appBackdrop }
+    // 根背景 = 深海渐变 + 全幅分层波浪（所有页面之后），波浪动画跟随页面动画开关
+    background: Backdrop {
+        id: appBackdrop
+        waveIntensity: win.waveIntensity
+        waveAnimated: win.pageTransitions && win.visible
+    }
 
     // ================= 导航逻辑 =================
     function toggleNavExpanded() {

@@ -64,6 +64,20 @@ Item {
                 width: parent.width
                 height: 76
 
+                // v0.17 海洋波浪页头底纹（静态，避免多页同时动画）
+                WaveBackdrop {
+                    x: -(page.width - parent.width) / 2
+                    width: page.width
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    anchors.topMargin: -10
+                    anchors.bottomMargin: -78
+                    tone: AppTheme.light ? "light" : "deep"
+                    intensity: 0.55
+                    animated: false
+                    z: -1
+                }
+
                 Column {
                     anchors.left: parent.left
                     anchors.bottom: parent.bottom
@@ -137,8 +151,8 @@ Item {
                                 radius: 16
                                 visible: String(modelData.value) === "solid"
                                 gradient: Gradient {
-                                    GradientStop { position: 0.0; color: "#0E2A38" }
-                                    GradientStop { position: 1.0; color: "#04121C" }
+                                    GradientStop { position: 0.0; color: "#0C2E3C" }
+                                    GradientStop { position: 1.0; color: "#071E29" }
                                 }
                                 border.width: 1
                                 border.color: "#2BFFFFFF"
@@ -149,7 +163,7 @@ Item {
                                     width: 34
                                     height: 10
                                     radius: 5
-                                    color: "#2ED3C6"
+                                    color: "#4FD0E0"
                                 }
                                 Rectangle {
                                     x: 12
@@ -173,7 +187,7 @@ Item {
                                     width: 40
                                     height: 14
                                     radius: 7
-                                    color: "#2ED3C6"
+                                    color: "#4FD0E0"
                                     opacity: 0.85
                                 }
                             }
@@ -195,7 +209,7 @@ Item {
                                     width: 34
                                     height: 10
                                     radius: 5
-                                    color: "#0E9E95"
+                                    color: "#0E7E99"
                                 }
                                 Rectangle {
                                     x: 12
@@ -219,7 +233,7 @@ Item {
                                     width: 40
                                     height: 14
                                     radius: 7
-                                    color: "#0E9E95"
+                                    color: "#0E7E99"
                                     opacity: 0.9
                                 }
                             }
@@ -229,9 +243,9 @@ Item {
                                 radius: 16
                                 visible: String(modelData.value) === "glass"
                                 gradient: Gradient {
-                                    GradientStop { position: 0.0; color: "#1F6FD0" }
-                                    GradientStop { position: 0.55; color: "#2ED3C6" }
-                                    GradientStop { position: 1.0; color: "#0A2A36" }
+                                    GradientStop { position: 0.0; color: "#144F66" }
+                                    GradientStop { position: 0.55; color: "#4FD0E0" }
+                                    GradientStop { position: 1.0; color: "#0B2B3A" }
                                 }
                                 opacity: 0.55
                                 border.width: 1
@@ -301,7 +315,7 @@ Item {
                                     height: 18
                                     radius: 9
                                     anchors.verticalCenter: parent.verticalCenter
-                                    color: AppTheme.glass ? "#2A2ED3C6" : "#E4F4F2"
+                                    color: AppTheme.glass ? "#2A4FD0E0" : "#E4F4F2"
                                     border.width: 1
                                     border.color: AppTheme.accent
 

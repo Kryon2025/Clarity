@@ -404,9 +404,17 @@ Window {
             visible: AppTheme.glass
             gradient: Gradient {
                 GradientStop { position: 0.0; color: AppTheme.bgTop }
-                GradientStop { position: 0.55; color: "#06202C" }
+                GradientStop { position: 0.55; color: "#082330" }
                 GradientStop { position: 1.0; color: AppTheme.bgBottom }
             }
+        }
+
+        // v0.17 海洋波浪：遮罩背景分层浪花（透明度跟随遮罩淡入淡出）
+        WaveBackdrop {
+            anchors.fill: parent
+            tone: AppTheme.light ? "light" : "deep"
+            intensity: 0.70
+            animated: overlay.animationsEnabled && (overlay.shouldShow || overlay.closing)
         }
 
         Item {
@@ -561,14 +569,14 @@ Window {
                 height: 26
                 radius: 9
                 gradient: Gradient {
-                    GradientStop { position: 0.0; color: "#7FE7DA" }
-                    GradientStop { position: 1.0; color: "#1F6FD0" }
+                    GradientStop { position: 0.0; color: "#BEEFF6" }
+                    GradientStop { position: 1.0; color: "#144F66" }
                 }
                 Glyph {
                     anchors.centerIn: parent
                     kind: "drop"
                     size: 15
-                    color: "#04222B"
+                    color: "#0B2B3A"
                 }
             }
 
@@ -674,9 +682,9 @@ Window {
                     radius: parent.height / 2
                     gradient: Gradient {
                         orientation: Gradient.Horizontal
-                        GradientStop { position: 0.0; color: "#2B86FF" }
-                        GradientStop { position: 0.55; color: "#2ED3C6" }
-                        GradientStop { position: 1.0; color: "#7FE7DA" }
+                        GradientStop { position: 0.0; color: "#2E9FBF" }
+                        GradientStop { position: 0.55; color: "#4FD0E0" }
+                        GradientStop { position: 1.0; color: "#BEEFF6" }
                     }
                     Behavior on width { NumberAnimation { duration: 500; easing.type: Easing.OutCubic } }
                 }
@@ -1144,7 +1152,7 @@ Window {
             Rectangle {
                 anchors.fill: parent
                 radius: 13
-                color: AppTheme.glass ? "#26040A10" : "#66040A10"
+                color: AppTheme.glass ? "#26051620" : "#66051620"
                 border.width: 1
                 border.color: AppTheme.glass ? "#33FFFFFF" : AppTheme.cardBorder
             }
@@ -1215,7 +1223,7 @@ Window {
                 acceptedButtons: Qt.AllButtons
                 onClicked: overlay.closeDockSettings()
             }
-            Rectangle { anchors.fill: parent; color: "#99040A10" }
+            Rectangle { anchors.fill: parent; color: "#99050F18" }
 
             Rectangle {
                 id: dockSettingsPanel
@@ -1223,7 +1231,7 @@ Window {
                 width: 440
                 height: settingsColumn.implicitHeight + 44
                 radius: 22
-                color: AppTheme.glass ? "#F20A1B26" : AppTheme.cardBg
+                color: AppTheme.glass ? "#F2082430" : AppTheme.cardBg
                 border.width: 1
                 border.color: AppTheme.glass ? "#4DFFFFFF" : AppTheme.cardBorderStrong
                 MouseArea { anchors.fill: parent; acceptedButtons: Qt.AllButtons; onClicked: {} }
@@ -1341,7 +1349,7 @@ Window {
             Rectangle {
                 visible: overlay.powerConfirmOpen
                 anchors.fill: parent
-                color: "#AA040A10"
+                color: "#AA051620"
                 MouseArea { anchors.fill: parent; acceptedButtons: Qt.AllButtons; onClicked: overlay.powerConfirmOpen = false }
                 Rectangle {
                     anchors.centerIn: parent
@@ -1420,7 +1428,7 @@ Window {
 
             Rectangle {
                 anchors.fill: parent
-                color: "#B3040A10"
+                color: "#B3051620"
             }
 
             MouseArea {
@@ -1434,7 +1442,7 @@ Window {
                 width: Math.min(460, overlay.width * 0.6)
                 height: warningColumn.implicitHeight + 44
                 radius: 22
-                color: AppTheme.glass ? "#F20A1B26" : AppTheme.cardBg
+                color: AppTheme.glass ? "#F2082430" : AppTheme.cardBg
                 border.width: 1
                 border.color: AppTheme.cardBorderStrong
 
