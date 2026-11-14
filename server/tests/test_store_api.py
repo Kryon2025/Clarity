@@ -9,6 +9,7 @@ catalog.json 结构、管理员调整角色、排序筛选、输入校验、静�
 
 from __future__ import annotations
 
+import logging
 import os
 import sys
 import tempfile
@@ -85,6 +86,11 @@ class StoreApiTestCase(unittest.TestCase):
         )
         self.app = create_app(self.settings)
         self.client = TestClient(self.app)
+        # 发送限流用可控时钟：测试可以「快进」，不用真的等 60 秒
+        self._mail_now = 1_700_000_000.0
+        self.app.state.send_limiter.clock = lambda: self._mail_now
+        # 开发模式会把验证码写 WARNING 日志，测试里不必刷屏（assertLogs 会自己接管）
+        logging.getLogger("shenqing.mailer").setLevel(logging.ERROR)
 
     # ---------- 辅助 ----------
     def post(self, path: str, token: str | None = None, **kwargs):
@@ -99,8 +105,37 @@ class StoreApiTestCase(unittest.TestCase):
         headers = {"Authorization": "Bearer " + token} if token else {}
         return self.client.get(path, headers=headers, **kwargs)
 
+    def advance_mail_clock(self, seconds: float = 60.0) -> None:
+        """把发送限流的时钟往前推（不影响验证码自身的过期时间）。"""
+        self._mail_now += float(seconds)
+
+    def send_code(self, email: str, purpose: str = "register", *, advance_on_limit: bool = True):
+        """请求一次验证码；撞上 60 秒限流时自动快进时钟重试一次。"""
+        payload = {"email": email, "purpose": purpose}
+        response = self.post("/api/auth/send-code", json=payload)
+        if (
+            advance_on_limit
+            and response.status_code == 429
+            and "太频繁" in str(response.json().get("detail", ""))
+        ):
+            self.advance_mail_clock(120)
+            response = self.post("/api/auth/send-code", json=payload)
+        return response
+
+    def request_code(self, email: str, purpose: str = "register") -> str:
+        """发一次验证码并返回 dev_code（测试环境没有 SMTP，dev_code 必然存在）。"""
+        response = self.send_code(email, purpose)
+        self.assertEqual(response.status_code, 200, response.text)
+        return response.json()["dev_code"]
+
     def register(self, email: str, password: str = "pass1234", name: str = "测试用户") -> dict:
-        response = self.post("/api/auth/register", json={"email": email, "password": password, "name": name})
+        # 注册现在必须带邮箱验证码；邮箱已注册时 send-code 会 400，此时不带 code，
+        # 让 register 走 409 分支（保持原来的重复注册用例语义）。
+        code_response = self.send_code(email, "register")
+        payload = {"email": email, "password": password, "name": name}
+        if code_response.status_code == 200:
+            payload["code"] = code_response.json()["dev_code"]
+        response = self.post("/api/auth/register", json=payload)
         self.assertEqual(response.status_code, 200, response.text)
         return response.json()
 

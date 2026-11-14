@@ -81,6 +81,10 @@
           <button type="button" class="auth-tab is-active" data-auth-mode="login" role="tab" aria-selected="true">登录</button>
           <button type="button" class="auth-tab" data-auth-mode="register" role="tab" aria-selected="false">注册</button>
         </div>
+        <div class="login-mode-tabs" id="loginModeTabs" role="tablist" aria-label="登录方式" hidden>
+          <button type="button" class="mode-tab is-active" data-login-mode="password" role="tab" aria-selected="true">密码登录</button>
+          <button type="button" class="mode-tab" data-login-mode="code" role="tab" aria-selected="false">邮箱验证码登录</button>
+        </div>
         <form id="authForm" class="auth-form" novalidate>
           <div class="field" id="nameField" hidden>
             <label for="authName">昵称</label>
@@ -90,12 +94,32 @@
             <label for="authEmail">邮箱</label>
             <input id="authEmail" name="email" type="email" autocomplete="username" placeholder="you@example.com" required />
           </div>
-          <div class="field">
-            <label for="authPassword">密码</label>
+          <div class="field" id="codeField" hidden>
+            <label for="authCode">邮箱验证码</label>
+            <div class="code-row">
+              <input id="authCode" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="请输入邮箱收到的验证码" />
+              <button type="button" class="btn ghost code-btn" id="sendCodeBtn">获取验证码</button>
+            </div>
+          </div>
+          <div class="field" id="passwordField">
+            <label for="authPassword" id="passwordLabel">密码</label>
             <input id="authPassword" name="password" type="password" autocomplete="current-password" placeholder="至少 6 位" required />
+          </div>
+          <div class="field" id="newPasswordField" hidden>
+            <label for="authNewPassword">新密码</label>
+            <input id="authNewPassword" name="new_password" type="password" autocomplete="new-password" placeholder="至少 6 位" />
+          </div>
+          <div class="dev-hint" id="devCodeBox" hidden>
+            <span class="dev-hint-label">本地开发模式</span>
+            <span class="dev-hint-code" id="devCodeValue"></span>
+            <button type="button" class="link-btn" id="devCodeFill">填入验证码</button>
           </div>
           <p class="form-error" id="authError" role="alert" hidden></p>
           <button type="submit" class="btn primary block" id="authSubmit">登录</button>
+          <p class="auth-aux" id="authAux">
+            <button type="button" class="link-btn" id="forgotBtn">忘记密码？</button>
+            <button type="button" class="link-btn" id="backToLoginBtn" hidden>← 返回登录</button>
+          </p>
         </form>
         <p class="auth-foot" id="authFoot">未登录也可以浏览公开商店 · <a href="#/store">先去逛逛</a></p>
         <div class="auth-logged" id="authLoggedIn" hidden></div>

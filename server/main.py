@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 import re
+import secrets
 import sqlite3
 import uuid
 from pathlib import Path
@@ -30,11 +31,13 @@ from pydantic import BaseModel
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 try:  # 作为包导入：uvicorn server.main:app
-    from . import auth, db
+    from . import auth, db, mailer, ratelimit
     from .config import Settings, load_settings
 except ImportError:  # 在 server/ 目录内直接运行：uvicorn main:app
     import auth  # type: ignore
     import db  # type: ignore
+    import mailer  # type: ignore
+    import ratelimit  # type: ignore
     from config import Settings, load_settings  # type: ignore
 
 logger = logging.getLogger("shenqing.store")
@@ -49,6 +52,11 @@ KINDS = ("theme", "plugin")
 PALETTE_KEYS = ("bgTop", "bgMid", "bgBottom", "accent", "cardBg", "textPrimary")
 #: 评论正文上限（与桌面端一致）
 MAX_COMMENT_TEXT = 500
+#: 验证码用途（与 db.EMAIL_CODE_PURPOSES 保持一致）
+CODE_PURPOSES = db.EMAIL_CODE_PURPOSES
+#: 对外统一文案：不区分「不存在 / 用过了 / 过期了 / 填错了」
+CODE_INVALID_DETAIL = "验证码错误或已过期"
+CODE_TOO_MANY_DETAIL = "验证码尝试次数过多，请重新获取"
 
 EMAIL_RE = re.compile(r"^[^@\s]{1,64}@[^@\s]{1,190}\.[^@\s]{1,64}$")
 USER_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$")
@@ -77,11 +85,29 @@ class RegisterIn(BaseModel):
     email: str = ""
     password: str = ""
     name: str = ""
+    #: 邮箱验证码（purpose=register）
+    code: str = ""
 
 
 class LoginIn(BaseModel):
     email: str = ""
     password: str = ""
+
+
+class SendCodeIn(BaseModel):
+    email: str = ""
+    purpose: str = "register"
+
+
+class LoginCodeIn(BaseModel):
+    email: str = ""
+    code: str = ""
+
+
+class ResetPasswordIn(BaseModel):
+    email: str = ""
+    code: str = ""
+    new_password: str = ""
 
 
 class ItemIn(BaseModel):
@@ -154,6 +180,44 @@ def _validate_password(value: Any) -> str:
             status_code=400, detail="密码最多 " + str(auth.MAX_PASSWORD_LENGTH) + " 位"
         )
     return password
+
+
+def _validate_purpose(value: Any) -> str:
+    purpose = str(value or "").strip().lower()
+    if purpose not in CODE_PURPOSES:
+        raise HTTPException(status_code=400, detail="purpose 只能是 register / login / reset")
+    return purpose
+
+
+def _generate_code() -> str:
+    """6 位数字验证码（返回字符串，可能带前导 0）。"""
+    return str(secrets.randbelow(1_000_000)).zfill(6)
+
+
+def _consume_code(
+    conn: sqlite3.Connection, settings: Settings, email: str, purpose: str, code: Any
+) -> None:
+    """校验并消费验证码；失败统一 400，错误次数用尽 429。"""
+    status = db.consume_email_code(
+        conn,
+        email,
+        purpose,
+        str(code or "").strip(),
+        max_attempts=settings.email_code_max_attempts,
+    )
+    if status == "too_many":
+        raise HTTPException(status_code=429, detail=CODE_TOO_MANY_DETAIL)
+    if status != "ok":
+        raise HTTPException(status_code=400, detail=CODE_INVALID_DETAIL)
+
+
+def _client_ip(request: Request) -> str:
+    """限流用的客户端 IP：优先 X-Forwarded-For 第一段（反代部署时才有）。"""
+    forwarded = (request.headers.get("x-forwarded-for") or "").strip()
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    client = request.client
+    return client.host if client is not None else "unknown"
 
 
 def _validate_role(value: Any) -> str:
@@ -487,6 +551,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         version=settings.app_version,
     )
     application.state.settings = settings
+    #: 邮件配置（启动时快照；未配置 SMTP 即开发模式）
+    mail_config = mailer.config_from_settings(settings)
+    application.state.mail_config = mail_config
+    #: 发送限流（纯内存，进程重启即重置）
+    application.state.send_limiter = ratelimit.SendRateLimiter()
 
     application.add_middleware(
         CORSMiddleware,
@@ -514,6 +583,44 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     router = APIRouter(prefix="/api")
 
     # ---------------- 认证 ----------------
+    @router.post("/auth/send-code")
+    def send_code(payload: SendCodeIn, request: Request, conn: DB) -> dict:
+        """发送邮箱验证码（注册 / 验证码登录 / 找回密码）。"""
+        email = _normalize_email(payload.email)
+        purpose = _validate_purpose(payload.purpose)
+
+        limiter = request.app.state.send_limiter
+        allowed, reason, retry_after = limiter.allow(email, _client_ip(request))
+        if not allowed:
+            raise HTTPException(
+                status_code=429, detail=reason, headers={"Retry-After": str(retry_after)}
+            )
+
+        row = conn.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
+        if purpose == "register" and row is not None:
+            raise HTTPException(status_code=400, detail="该邮箱已注册，请直接登录或找回密码")
+        ttl = int(settings.email_code_ttl_seconds)
+        if purpose != "register" and row is None:
+            # 防枚举：账号不存在也返回成功，只写日志
+            logger.info("验证码请求：邮箱 %s 不存在（%s），按防枚举策略仍返回成功", email, purpose)
+            return {"ok": True, "ttl_seconds": ttl}
+
+        code = _generate_code()
+        db.create_email_code(conn, email, purpose, code, ttl_seconds=ttl)
+        try:
+            mailer.send_code(mail_config, email, purpose, code, ttl)
+        except mailer.MailError as exc:
+            # 没发出去就别留下一个永远收不到的验证码，也不能抛 500
+            db.discard_email_code(conn, email, purpose)
+            logger.warning("验证码邮件发送失败（%s / %s）：%s", email, purpose, exc)
+            raise HTTPException(status_code=503, detail=str(exc)) from None
+
+        result = {"ok": True, "ttl_seconds": ttl}
+        if mailer.is_dev_mode(mail_config):
+            # 仅开发模式返回，正式部署（已配置 SMTP 且未开 MAIL_DEV_MODE）不会出现
+            result["dev_code"] = code
+        return result
+
     @router.post("/auth/register")
     def register(payload: RegisterIn, conn: DB) -> dict:
         email = _normalize_email(payload.email)
@@ -522,6 +629,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         exists = conn.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
         if exists is not None:
             raise HTTPException(status_code=409, detail="该邮箱已注册")
+        # 邮箱验证码：purpose=register，用后即废
+        _consume_code(conn, settings, email, "register", payload.code)
         now = db.utc_now()
         cursor = conn.execute(
             "INSERT INTO users (email, password_hash, name, role, created_at) "
@@ -557,6 +666,39 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         }
         token = auth.create_token(user, settings.secret_key, settings.token_ttl_seconds)
         return {"token": token, "user": user}
+
+    @router.post("/auth/login-code")
+    def login_code(payload: LoginCodeIn, conn: DB) -> dict:
+        """验证码登录（邮箱 + purpose=login 的验证码）。"""
+        email = _normalize_email(payload.email)
+        _consume_code(conn, settings, email, "login", payload.code)
+        row = conn.execute(
+            "SELECT id, email, name, role, created_at FROM users WHERE email = ?", (email,)
+        ).fetchone()
+        user = db.row_to_user(row)
+        if user is None:
+            raise HTTPException(status_code=401, detail="账号不存在或已被删除")
+        token = auth.create_token(user, settings.secret_key, settings.token_ttl_seconds)
+        return {"token": token, "user": user}
+
+    @router.post("/auth/reset-password")
+    def reset_password(payload: ResetPasswordIn, conn: DB) -> dict:
+        """用邮箱验证码重置密码（purpose=reset）。"""
+        email = _normalize_email(payload.email)
+        # 先校验新密码，避免因为密码不合格白白消耗掉验证码
+        new_password = _validate_password(payload.new_password)
+        _consume_code(conn, settings, email, "reset", payload.code)
+        row = conn.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
+        if row is None:
+            # 验证码有效但账号已不存在：仍用统一文案，不泄露账号信息
+            raise HTTPException(status_code=400, detail=CODE_INVALID_DETAIL)
+        conn.execute(
+            "UPDATE users SET password_hash = ? WHERE id = ?",
+            (auth.hash_password(new_password), int(row["id"])),
+        )
+        conn.commit()
+        logger.info("用户 %s 通过邮箱验证码重置了密码", email)
+        return {"ok": True}
 
     @router.get("/auth/me")
     def me(user: CurrentUser) -> dict:

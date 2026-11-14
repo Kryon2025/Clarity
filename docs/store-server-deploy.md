@@ -115,6 +115,42 @@ sudo systemctl status shenqing-store
 
 Nginx 与 HTTPS 同上。
 
+## 4.5 邮箱验证码（注册 / 验证码登录 / 找回密码）
+
+服务端支持邮箱验证码，需要配置 SMTP（不配置时进入开发模式：验证码只写日志并在接口返回 `dev_code`，不要用于公网）。
+
+**免费 SMTP 选择（按场景挑一个）：**
+
+| 服务 | 免费额度（以官网为准） | 适合 | 备注 |
+| --- | --- | --- | --- |
+| QQ 邮箱 SMTP | 免费，常见有每日上限（约 50–500 封） | 国内个人/小规模 | 需在 QQ 邮箱设置开启 SMTP 并用「授权码」当密码 |
+| 163 / 126 邮箱 SMTP | 免费，有每日上限 | 国内个人 | 同样使用授权码 |
+| 腾讯云 SES / 阿里云邮件推送 | 新用户有免费额度（几百~几千封，按活动） | 国内正式站点 | 需要域名验证（SPF/DKIM），送达率最好 |
+| Brevo (Sendinblue) | 约 300 封/天 | 海外/国际用户 | SMTP 免费层，注册即用 |
+| Resend | 约 100 封/天 | 海外、开发者友好 | 免费层可发测试域名 |
+| SendGrid | 约 100 封/天 | 海外 | 免费层需审核用途 |
+| Gmail SMTP | 约 500 封/天（应用专用密码） | 临时/测试 | 国内访问不稳定，建议仅测试 |
+
+**配置方式（`.env`）：**
+
+```ini
+SMTP_HOST=smtp.qq.com
+SMTP_PORT=465
+SMTP_USER=你的邮箱@qq.com
+SMTP_PASSWORD=邮箱授权码
+SMTP_FROM=深清商店 <你的邮箱@qq.com>
+SMTP_SSL=1
+SMTP_TLS=0
+MAIL_DEV_MODE=0
+EMAIL_CODE_TTL_SECONDS=600
+EMAIL_CODE_MAX_ATTEMPTS=5
+```
+
+- 587 端口一般用 `SMTP_TLS=1`，465 端口用 `SMTP_SSL=1`；
+- 正式站点建议用自有域名发信（腾讯云 SES / 阿里云 / Brevo 都可绑定域名），并配置 SPF/DKIM，否则容易进垃圾箱；
+- 验证码规则：10 分钟有效、最多尝试 5 次、同邮箱 60 秒 1 次 / 每小时 5 次 / 每天 10 次；
+- 配好后可用页面「找回密码」或「邮箱验证码登录」自测。
+
 ## 5. 首次使用
 
 1. 浏览器打开 `https://你的域名/`，用 `ADMIN_EMAIL/ADMIN_PASSWORD` 登录；

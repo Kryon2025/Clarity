@@ -78,6 +78,18 @@ def _env_int(name: str, default: int, minimum: int = 1) -> int:
     return value if value >= minimum else default
 
 
+def _env_bool(name: str, default: bool) -> bool:
+    """1/true/yes/on → True，0/false/no/off → False，其它回退默认值。"""
+    raw = (os.environ.get(name) or "").strip().lower()
+    if not raw:
+        return default
+    if raw in ("1", "true", "yes", "on"):
+        return True
+    if raw in ("0", "false", "no", "off"):
+        return False
+    return default
+
+
 @dataclass(frozen=True)
 class Settings:
     """运行时配置（不可变；测试直接构造覆盖）。"""
@@ -93,6 +105,24 @@ class Settings:
     public_base_url: str = ""
     #: 启动时是否用 ADMIN_EMAIL/ADMIN_PASSWORD 引导管理员
     bootstrap_admin: bool = True
+    # ---------------- 邮件验证码（SMTP） ----------------
+    #: SMTP 服务器；为空则进入开发模式（不发信，只把验证码写日志）
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    #: 发件地址（默认回退 SMTP_USER）
+    smtp_from: str = ""
+    #: 587 端口通常要 STARTTLS
+    smtp_tls: bool = True
+    #: 465 端口用隐式 SSL；与 smtp_tls 互斥
+    smtp_ssl: bool = False
+    #: 强制开发模式：不发信、响应里带 dev_code（严禁在生产开启）
+    mail_dev_mode: bool = False
+    #: 验证码有效期（秒）
+    email_code_ttl_seconds: int = 600
+    #: 单个验证码最多尝试次数
+    email_code_max_attempts: int = 5
     extra: dict[str, str] = field(default_factory=dict)
 
 
@@ -113,6 +143,15 @@ def load_settings() -> Settings:
         app_version=(os.environ.get("APP_VERSION") or DEFAULT_APP_VERSION).strip(),
         static_dir=_resolve_path(os.environ.get("STATIC_DIR", ""), DEFAULT_STATIC_DIR),
         public_base_url=(os.environ.get("PUBLIC_BASE_URL") or "").strip().rstrip("/"),
-        bootstrap_admin=(os.environ.get("BOOTSTRAP_ADMIN") or "1").strip().lower()
-        not in ("0", "false", "no", "off"),
+        bootstrap_admin=_env_bool("BOOTSTRAP_ADMIN", True),
+        smtp_host=(os.environ.get("SMTP_HOST") or "").strip(),
+        smtp_port=_env_int("SMTP_PORT", 587, minimum=1),
+        smtp_user=(os.environ.get("SMTP_USER") or "").strip(),
+        smtp_password=os.environ.get("SMTP_PASSWORD") or "",
+        smtp_from=(os.environ.get("SMTP_FROM") or "").strip(),
+        smtp_tls=_env_bool("SMTP_TLS", True),
+        smtp_ssl=_env_bool("SMTP_SSL", False),
+        mail_dev_mode=_env_bool("MAIL_DEV_MODE", False),
+        email_code_ttl_seconds=_env_int("EMAIL_CODE_TTL_SECONDS", 600, minimum=30),
+        email_code_max_attempts=_env_int("EMAIL_CODE_MAX_ATTEMPTS", 5, minimum=1),
     )

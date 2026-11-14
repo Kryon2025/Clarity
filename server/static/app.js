@@ -33,6 +33,8 @@
     kind: '',
     sort: 'rating',
     authMode: 'login',
+    loginMode: 'password',
+    devCode: { purpose: '', code: '' },
     adminTab: 'pending',
     pendingItems: [],
     pendingComments: [],
@@ -269,7 +271,10 @@
           clearSession();
           message = message || '登录已过期，请重新登录';
         }
-        throw new ApiError(message || '请求失败（' + response.status + '）', response.status, data);
+        var apiErr = new ApiError(message || '请求失败（' + response.status + '）', response.status, data);
+        var retryAfter = response.headers ? Number(response.headers.get('Retry-After')) : NaN;
+        if (retryAfter > 0) apiErr.retryAfter = retryAfter;
+        throw apiErr;
       });
     });
   }
@@ -550,17 +555,137 @@
   }
 
   // ---------- 登录 / 注册 ----------
+  var CODE_LENGTH = 6;
+  var CODE_TTL_FALLBACK = 600;
+  var CODE_RESEND_SECONDS = 60;
+  var codeCooldown = {};
+  var codeTimer = null;
+
+  function authStage() {
+    return state.authMode === 'register' || state.authMode === 'reset' ? state.authMode : 'login';
+  }
+
+  function codePurpose() {
+    var stage = authStage();
+    return stage === 'login' ? 'login' : stage;
+  }
+
+  function cooldownKey(email) {
+    return String(email || '').trim().toLowerCase();
+  }
+
+  function cooldownLeft(email) {
+    var until = codeCooldown[cooldownKey(email)] || 0;
+    return Math.max(0, Math.ceil((until - Date.now()) / 1000));
+  }
+
+  function authEmailValue() {
+    var input = $('#authEmail');
+    return input ? String(input.value || '').trim() : '';
+  }
+
+  function isEmailText(value) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || ''));
+  }
+
+  function hideAuthError() {
+    var errorEl = $('#authError');
+    if (errorEl) { errorEl.hidden = true; errorEl.textContent = ''; }
+  }
+
+  function showAuthError(message) {
+    var errorEl = $('#authError');
+    if (errorEl) {
+      errorEl.hidden = false;
+      errorEl.textContent = message;
+    } else {
+      toast(message, 'error');
+    }
+  }
+
+  function renderCodeButton() {
+    var btn = $('#sendCodeBtn');
+    if (!btn) return;
+    var left = cooldownLeft(authEmailValue());
+    if (left > 0) {
+      btn.disabled = true;
+      btn.textContent = left + ' 秒后重发';
+    } else {
+      btn.disabled = false;
+      btn.textContent = '获取验证码';
+    }
+  }
+
+  function startCodeCooldown(email, seconds) {
+    codeCooldown[cooldownKey(email)] = Date.now() + Math.max(1, Number(seconds) || CODE_RESEND_SECONDS) * 1000;
+    renderCodeButton();
+    if (codeTimer) return;
+    codeTimer = window.setInterval(function () {
+      renderCodeButton();
+      var now = Date.now();
+      var active = Object.keys(codeCooldown).some(function (key) { return (codeCooldown[key] || 0) > now; });
+      if (!active) {
+        window.clearInterval(codeTimer);
+        codeTimer = null;
+      }
+    }, 1000);
+  }
+
+  function renderDevCode() {
+    var box = $('#devCodeBox');
+    var valueEl = $('#devCodeValue');
+    if (!box || !valueEl) return;
+    var dev = state.devCode || {};
+    if (dev.code && dev.purpose === codePurpose()) {
+      box.hidden = false;
+      valueEl.textContent = dev.code;
+    } else {
+      box.hidden = true;
+      valueEl.textContent = '';
+    }
+  }
+
+  function sendCode() {
+    var email = authEmailValue();
+    var purpose = codePurpose();
+    hideAuthError();
+    if (!isEmailText(email)) { showAuthError('请先填写有效的邮箱地址'); return; }
+    if (cooldownLeft(email) > 0) return;
+    var btn = $('#sendCodeBtn');
+    if (btn) { btn.disabled = true; btn.textContent = '发送中…'; }
+    api('/api/auth/send-code', { method: 'POST', body: { email: email, purpose: purpose } }).then(function (data) {
+      var ttl = Number(data && data.ttl_seconds);
+      if (!ttl || ttl <= 0) ttl = CODE_TTL_FALLBACK;
+      startCodeCooldown(email, CODE_RESEND_SECONDS);
+      if (data && data.dev_code) {
+        state.devCode = { purpose: purpose, code: String(data.dev_code) };
+      } else {
+        state.devCode = { purpose: '', code: '' };
+      }
+      renderDevCode();
+      toast('验证码已发送，' + Math.max(1, Math.round(ttl / 60)) + ' 分钟内有效', 'success');
+      var codeInput = $('#authCode');
+      if (codeInput) codeInput.focus();
+    }).catch(function (err) {
+      if (btn) { btn.disabled = false; btn.textContent = '获取验证码'; }
+      if (err && err.retryAfter > 0) startCodeCooldown(email, err.retryAfter);
+      else renderCodeButton();
+      showAuthError(errorMessage(err));
+    });
+  }
+
   function renderAuthView() {
     var tabs = $('.auth-tabs');
+    var modeTabs = $('#loginModeTabs');
     var form = $('#authForm');
     var foot = $('#authFoot');
     var loggedBox = $('#authLoggedIn');
-    var nameField = $('#nameField');
     var sub = $('#authSub');
     if (!form) return;
 
     if (state.user) {
       if (tabs) tabs.hidden = true;
+      if (modeTabs) modeTabs.hidden = true;
       form.hidden = true;
       if (foot) foot.hidden = true;
       if (loggedBox) {
@@ -574,68 +699,181 @@
       return;
     }
 
-    if (tabs) tabs.hidden = false;
+    var stage = authStage();
+    var isRegister = stage === 'register';
+    var isReset = stage === 'reset';
+    var isCodeLogin = stage === 'login' && state.loginMode === 'code';
+
+    if (tabs) tabs.hidden = isReset;
+    if (modeTabs) modeTabs.hidden = stage !== 'login';
     form.hidden = false;
     if (foot) foot.hidden = false;
     if (loggedBox) { loggedBox.hidden = true; loggedBox.innerHTML = ''; }
-    var isRegister = state.authMode === 'register';
+
+    var nameField = $('#nameField');
     if (nameField) nameField.hidden = !isRegister;
-    if (sub) sub.textContent = isRegister ? '注册一个账号，评论、提交与审核都会用得上' : '登录后即可发表评论、提交主题与插件';
+    var passwordField = $('#passwordField');
+    if (passwordField) passwordField.hidden = isReset || isCodeLogin;
+    var newPasswordField = $('#newPasswordField');
+    if (newPasswordField) newPasswordField.hidden = !isReset;
+    var codeField = $('#codeField');
+    if (codeField) codeField.hidden = !(isRegister || isReset || isCodeLogin);
+
+    var passwordInput = $('#authPassword');
+    if (passwordInput) passwordInput.setAttribute('autocomplete', isRegister ? 'new-password' : 'current-password');
+
+    var subText = {
+      login: '登录后即可发表评论、提交主题与插件',
+      register: '注册一个账号，评论、提交与审核都会用得上',
+      reset: '填写注册邮箱，验证码通过后即可重设密码'
+    };
+    if (sub) sub.textContent = subText[stage];
     var submit = $('#authSubmit');
-    if (submit) submit.textContent = isRegister ? '注册并登录' : '登录';
+    if (submit) submit.textContent = isRegister ? '注册并登录' : (isReset ? '重置密码' : '登录');
+
     $$('.auth-tab').forEach(function (tab) {
-      var active = tab.getAttribute('data-auth-mode') === state.authMode;
+      var active = tab.getAttribute('data-auth-mode') === stage;
       tab.classList.toggle('is-active', active);
       tab.setAttribute('aria-selected', active ? 'true' : 'false');
     });
-    var errorEl = $('#authError');
-    if (errorEl) errorEl.hidden = true;
+    $$('.mode-tab').forEach(function (tab) {
+      var active = (tab.getAttribute('data-login-mode') || 'password') === (state.loginMode === 'code' ? 'code' : 'password');
+      tab.classList.toggle('is-active', active);
+      tab.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+
+    var aux = $('#authAux');
+    if (aux) aux.hidden = !(stage === 'login' || isReset);
+    var forgotBtn = $('#forgotBtn');
+    if (forgotBtn) forgotBtn.hidden = stage !== 'login';
+    var backBtn = $('#backToLoginBtn');
+    if (backBtn) backBtn.hidden = !isReset;
+
+    hideAuthError();
+    renderCodeButton();
+    renderDevCode();
   }
 
   function setAuthMode(mode) {
     state.authMode = mode === 'register' ? 'register' : 'login';
+    if (state.authMode === 'login') state.loginMode = state.loginMode === 'code' ? 'code' : 'password';
     renderAuthView();
     var focusEl = state.authMode === 'register' ? $('#authName') : $('#authEmail');
     if (focusEl) focusEl.focus();
   }
 
-  function submitAuth(form) {
-    var mode = state.authMode;
-    var email = ($('#authEmail').value || '').trim();
-    var password = $('#authPassword').value || '';
-    var name = ($('#authName').value || '').trim();
-    var errorEl = $('#authError');
+  function setLoginMode(mode) {
+    state.loginMode = mode === 'code' ? 'code' : 'password';
+    state.authMode = 'login';
+    renderAuthView();
+    var focusEl = state.loginMode === 'code' ? $('#authCode') : $('#authPassword');
+    if (focusEl) focusEl.focus();
+  }
 
-    function showError(message) {
-      if (errorEl) {
-        errorEl.hidden = false;
-        errorEl.textContent = message;
-      } else {
-        toast(message, 'error');
-      }
-    }
+  function setAuthStage(stage) {
+    state.authMode = stage === 'register' || stage === 'reset' ? stage : 'login';
+    renderAuthView();
+    var focusEl = state.authMode === 'register' ? $('#authName') : $('#authEmail');
+    if (focusEl) focusEl.focus();
+  }
 
-    if (errorEl) errorEl.hidden = true;
-    if (!email || email.indexOf('@') < 0) { showError('请输入有效的邮箱地址'); return; }
-    if (password.length < 6) { showError('密码至少 6 位'); return; }
-    if (mode === 'register' && !name) { showError('请填写昵称'); return; }
+  function validAuthCode(code) {
+    return new RegExp('^\\d{' + CODE_LENGTH + '}$').test(code);
+  }
 
+  function clearAuthSecrets() {
+    state.devCode = { purpose: '', code: '' };
+    var codeInput = $('#authCode');
+    if (codeInput) codeInput.value = '';
+    var newPwd = $('#authNewPassword');
+    if (newPwd) newPwd.value = '';
+  }
+
+  function postAuth(path, payload, pendingText, onSuccess) {
     var btn = $('#authSubmit');
     var oldText = btn ? btn.textContent : '';
-    if (btn) { btn.disabled = true; btn.textContent = mode === 'register' ? '注册中…' : '登录中…'; }
-
-    var path = mode === 'register' ? '/api/auth/register' : '/api/auth/login';
-    var payload = mode === 'register' ? { email: email, password: password, name: name } : { email: email, password: password };
+    var switched = false;
+    if (btn) { btn.disabled = true; btn.textContent = pendingText; }
     api(path, { method: 'POST', body: payload }).then(function (data) {
-      if (!data || !data.token || !data.user) throw new ApiError('登录响应格式不正确', 0, null);
-      setSession(data.token, data.user);
-      form.reset();
-      toast(mode === 'register' ? '注册成功，欢迎加入深清商店' : '欢迎回来，' + (data.user.name || '朋友'), 'success');
-      go('#/store');
+      onSuccess(data);
+      switched = true;
     }).catch(function (err) {
-      showError(errorMessage(err));
+      showAuthError(errorMessage(err));
     }).then(function () {
-      if (btn) { btn.disabled = false; btn.textContent = oldText; }
+      if (btn) {
+        btn.disabled = false;
+        if (!switched) btn.textContent = oldText;
+      }
+    });
+  }
+
+  function finishAuthLogin(data, welcome) {
+    if (!data || !data.token || !data.user) throw new ApiError('登录响应格式不正确', 0, null);
+    setSession(data.token, data.user);
+    var form = $('#authForm');
+    if (form) form.reset();
+    clearAuthSecrets();
+    renderDevCode();
+    toast(welcome, 'success');
+    go('#/store');
+  }
+
+  function submitAuth(form) {
+    var stage = authStage();
+    var email = authEmailValue();
+    var codeInput = $('#authCode');
+    var code = codeInput ? String(codeInput.value || '').trim() : '';
+    var passwordInput = $('#authPassword');
+    var password = passwordInput ? passwordInput.value || '' : '';
+    var newPwdInput = $('#authNewPassword');
+    var newPassword = newPwdInput ? newPwdInput.value || '' : '';
+    var nameInput = $('#authName');
+    var name = nameInput ? String(nameInput.value || '').trim() : '';
+
+    hideAuthError();
+
+    if (stage === 'reset') {
+      if (!isEmailText(email)) { showAuthError('请输入有效的邮箱地址'); return; }
+      if (!validAuthCode(code)) { showAuthError('请输入 6 位邮箱验证码'); return; }
+      if (newPassword.length < 6) { showAuthError('新密码至少 6 位'); return; }
+      postAuth('/api/auth/reset-password', { email: email, code: code, new_password: newPassword }, '提交中…', function () {
+        if (form) form.reset();
+        clearAuthSecrets();
+        state.authMode = 'login';
+        state.loginMode = 'password';
+        renderAuthView();
+        var emailInput = $('#authEmail');
+        if (emailInput) emailInput.value = email;
+        var pwd = $('#authPassword');
+        if (pwd) pwd.focus();
+        toast('密码已重置，请使用新密码登录', 'success');
+      });
+      return;
+    }
+
+    if (!isEmailText(email)) { showAuthError('请输入有效的邮箱地址'); return; }
+
+    if (stage === 'register') {
+      if (!name) { showAuthError('请填写昵称'); return; }
+      if (!validAuthCode(code)) { showAuthError('请输入 6 位邮箱验证码'); return; }
+      if (password.length < 6) { showAuthError('密码至少 6 位'); return; }
+      postAuth('/api/auth/register', { email: email, password: password, name: name, code: code }, '注册中…', function (data) {
+        finishAuthLogin(data, '注册成功，欢迎加入深清商店');
+      });
+      return;
+    }
+
+    if (state.loginMode === 'code') {
+      if (!validAuthCode(code)) { showAuthError('请输入 6 位邮箱验证码'); return; }
+      postAuth('/api/auth/login-code', { email: email, code: code }, '登录中…', function (data) {
+        finishAuthLogin(data, '欢迎回来，' + ((data && data.user && data.user.name) || '朋友'));
+      });
+      return;
+    }
+
+    if (password.length < 6) { showAuthError('密码至少 6 位'); return; }
+    postAuth('/api/auth/login', { email: email, password: password }, '登录中…', function (data) {
+      finishAuthLogin(data, '欢迎回来，' + ((data && data.user && data.user.name) || '朋友'));
     });
   }
 
@@ -1675,6 +1913,26 @@
     $$('.auth-tab').forEach(function (tab) {
       tab.addEventListener('click', function () { setAuthMode(tab.getAttribute('data-auth-mode')); });
     });
+    $$('.mode-tab').forEach(function (tab) {
+      tab.addEventListener('click', function () { setLoginMode(tab.getAttribute('data-login-mode')); });
+    });
+    var sendCodeBtn = $('#sendCodeBtn');
+    if (sendCodeBtn) sendCodeBtn.addEventListener('click', sendCode);
+    var authEmailInput = $('#authEmail');
+    if (authEmailInput) authEmailInput.addEventListener('input', renderCodeButton);
+    var forgotBtn = $('#forgotBtn');
+    if (forgotBtn) forgotBtn.addEventListener('click', function () { setAuthStage('reset'); });
+    var backToLoginBtn = $('#backToLoginBtn');
+    if (backToLoginBtn) backToLoginBtn.addEventListener('click', function () { setAuthStage('login'); });
+    var devCodeFill = $('#devCodeFill');
+    if (devCodeFill) {
+      devCodeFill.addEventListener('click', function () {
+        var codeInput = $('#authCode');
+        if (!codeInput || !state.devCode || !state.devCode.code) return;
+        codeInput.value = state.devCode.code;
+        codeInput.focus();
+      });
+    }
     $$('.seg-tab[data-admin-tab]').forEach(function (tab) {
       tab.addEventListener('click', function () { setAdminTab(tab.getAttribute('data-admin-tab')); });
     });

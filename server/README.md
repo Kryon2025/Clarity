@@ -16,6 +16,8 @@ server/
 ├── config.py             环境变量与 .env 解析
 ├── db.py                 SQLite 连接、建表、行序列化
 ├── auth.py               密码哈希与 JWT（纯 stdlib）
+├── mailer.py             邮箱验证码发信（smtplib，未配 SMTP 时走开发模式）
+├── ratelimit.py          验证码发送限流（内存滑动窗口）
 ├── seed.py               演示数据（3 主题 + 2 插件 + 示例账号）
 ├── static/               前端静态文件（index.html / app.js / style.css，由前端提供）
 ├── tests/                单元测试（fastapi.testclient.TestClient）
@@ -69,6 +71,16 @@ curl http://127.0.0.1:8000/api/health          # {"status":"ok",...}
 | APP_VERSION | 否 | 0.19.0 | catalog.json 顶层 version |
 | STATIC_DIR | 否 | server/static | 前端静态目录 |
 | BOOTSTRAP_ADMIN | 否 | 1 | 设为 0 可关闭启动时创建管理员 |
+| SMTP_HOST | 否 | 空 | SMTP 服务器；为空即开发模式（不发信，验证码写日志 + 响应带 dev_code） |
+| SMTP_PORT | 否 | 587 | SMTP 端口（587 配 STARTTLS，465 配 SMTP_SSL=1） |
+| SMTP_USER | 否 | 空 | SMTP 登录账号 |
+| SMTP_PASSWORD | 否 | 空 | SMTP 密码 / 授权码 |
+| SMTP_FROM | 否 | SMTP_USER | 发件地址（显示名为「深清商店」） |
+| SMTP_TLS | 否 | 1 | 是否 STARTTLS（587 端口一般开） |
+| SMTP_SSL | 否 | 0 | 是否隐式 SSL（465 端口开，开了就不再 STARTTLS） |
+| MAIL_DEV_MODE | 否 | 0 | 强制开发模式：不发信、响应里带 dev_code。**生产严禁开启** |
+| EMAIL_CODE_TTL_SECONDS | 否 | 600 | 验证码有效期（秒） |
+| EMAIL_CODE_MAX_ATTEMPTS | 否 | 5 | 单个验证码最多尝试次数，超限返回 429 |
 
 配置也可以写在 server/.env（KEY=VALUE，# 注释），环境变量优先于 .env。
 
@@ -81,6 +93,51 @@ curl http://127.0.0.1:8000/api/health          # {"status":"ok",...}
 
 创建后可登录网页商店，进入管理后台审核条目、调整用户角色。若忘记密码，
 直接改数据库或删掉该用户后用新密码重启即可。
+
+## 邮箱验证码（OTP）
+
+注册、验证码登录、找回密码共用一套邮箱验证码：
+
+~~~text
+POST /api/auth/send-code      {email, purpose}        # purpose = register | login | reset
+   200 -> {"ok": true, "ttl_seconds": 600}          # 开发模式额外带 "dev_code"
+POST /api/auth/register       {email, password, name, code}    # code 为 purpose=register 的验证码
+POST /api/auth/login-code     {email, code}                     # purpose=login
+POST /api/auth/reset-password {email, code, new_password}       # purpose=reset -> {"ok": true}
+~~~
+
+- 验证码 6 位数字、10 分钟有效、**用后即废**；库里只存 HMAC-SHA256 摘要 + 独立盐，不存明文；
+- 同一邮箱同一用途只保留最新一条（重新发码会作废旧码）；
+- 验证码错误 / 不存在 / 已过期 / 已使用统一 `400 {"detail": "验证码错误或已过期"}`，不区分具体原因；
+  单个验证码错 5 次后继续请求返回 `429 {"detail": "验证码尝试次数过多，请重新获取"}`；
+- 防枚举：`purpose=login/reset` 时邮箱不存在也返回成功（只写日志，不发信、不建档）；
+  `purpose=register` 时邮箱已注册返回 `400`；验证码登录/重置接口对不存在的账号同样返回统一提示。
+
+发送限流（内存计数，进程重启即重置；多副本或公网部署请再叠加 Nginx limit_req）：
+
+| 维度 | 限制 |
+| --- | --- |
+| 同一邮箱 | 60 秒 1 次、1 小时 5 次、1 天 10 次 |
+| 同一 IP | 10 分钟 20 次（优先取 X-Forwarded-For 第一段，否则取连接来源） |
+
+命中限流返回 `429`，`detail` 是可读中文，并带 `Retry-After` 响应头（秒）。
+
+### 开发模式与正式部署
+
+- **未配置 SMTP_HOST，或 `MAIL_DEV_MODE=1`**：不连邮件服务器，把验证码写进日志
+  （logger `shenqing.mailer`，WARNING 级），并在 `send-code` 响应里返回 `dev_code`；
+  本地联调直接用 dev_code 完成注册 / 登录 / 重置。
+- 配好 SMTP（`SMTP_HOST / SMTP_PORT / SMTP_USER / SMTP_PASSWORD / SMTP_FROM`）且未开
+  `MAIL_DEV_MODE` 时**不会**返回 `dev_code`；发信失败返回 `503` + 可读中文提示
+  （不会 500），同时丢弃本次验证码记录，避免留下永远收不到的码。
+- SMTP 连接/读写超时固定 10 秒，避免请求线程被拖住。
+
+示例（QQ 邮箱，密码填 SMTP 授权码）：
+
+~~~bash
+SMTP_HOST=smtp.qq.com SMTP_PORT=587 SMTP_USER=you@qq.com \
+SMTP_PASSWORD=授权码 SMTP_FROM=you@qq.com SMTP_TLS=1 uvicorn server.main:app
+~~~
 
 ## 演示数据（可选）
 
@@ -116,8 +173,11 @@ python -m server.seed          # 仓库根目录
 
 | 方法 | 路径 | 权限 | 说明 |
 | --- | --- | --- | --- |
-| POST | /api/auth/register | 公开 | 注册，返回 {token,user} |
-| POST | /api/auth/login | 公开 | 登录，返回 {token,user} |
+| POST | /api/auth/send-code | 公开 | 发送邮箱验证码 {email, purpose: register/login/reset} → {ok, ttl_seconds, dev_code?} |
+| POST | /api/auth/register | 公开 | 注册（需邮箱验证码 code），返回 {token,user} |
+| POST | /api/auth/login | 公开 | 密码登录，返回 {token,user} |
+| POST | /api/auth/login-code | 公开 | 验证码登录 {email, code} → {token,user} |
+| POST | /api/auth/reset-password | 公开 | 用验证码重置密码 {email, code, new_password} → {ok: true} |
 | GET | /api/auth/me | 登录 | 当前用户 |
 | GET | /api/store/items?kind=&q=&sort= | 公开 | 已过审列表；sort=rating/downloads/newest/oldest/name |
 | GET | /api/store/items/{id} | 公开 | 详情；pending/rejected 仅作者与管理员可见 |
@@ -135,7 +195,7 @@ python -m server.seed          # 仓库根目录
 | GET | /api/catalog.json | 公开 | 桌面端目录（仅 approved，download_url 绝对地址） |
 | GET | /api/health | 公开 | 健康检查 |
 
-约定：成功统一 200；错误统一 {"detail": "中文提示"}（400/401/403/404/409/422）。
+约定：成功统一 200；错误统一 {"detail": "中文提示"}（400/401/403/404/409/422/429/503）。
 列表接口直接返回 JSON 数组，单个资源返回对象。
 
 鉴权请求头：Authorization: Bearer <token>。
@@ -195,7 +255,12 @@ python -m unittest server.tests.test_store_api -v
 ~~~
 
 覆盖：注册/登录/鉴权、角色权限、待审不可见、审核通过后可见、拒绝原因、
-评论 pending 与评分、catalog 结构、管理员调整角色、排序筛选、输入校验、静态回退。
+评论 pending 与评分、catalog 结构、管理员调整角色、排序筛选、输入校验、静态回退，
+以及邮箱验证码（建档只存摘要、dev_code 开发模式、注册需 code、错误/过期/用后即废/
+尝试超限、邮箱/IP 限流、验证码登录、找回密码后旧密码失效、SMTP 失败返回 503）。
+
+测试全部用临时 SQLite + TestClient，并把发送限流的时钟注入成可控假时钟，
+所以限流用例（60 秒 / 1 小时 / 1 天）不需要真的等待。
 
 ## Docker 部署
 
@@ -220,7 +285,9 @@ docs/store-server-deploy.md。关键点：
   若 catalog 里的绝对地址仍不对，设置 PUBLIC_BASE_URL；
 - 备份：sqlite3 /data/store.db ".backup /backup/store-$(date +%F).db"
   或停服复制 store.db（WAL 模式建议用 .backup）；
-- 限流：Nginx 对 /api/auth/* 限速，防暴力破解；
+- 限流：Nginx 对 /api/auth/* 限速，防暴力破解（应用内另有验证码发送限流，
+  依赖 X-Forwarded-For，反代请透传真实 IP）；
+- 邮件：生产必须配置 SMTP_* 且保持 MAIL_DEV_MODE=0，否则验证码只写日志、接口返回 dev_code；
 - 升级：git pull && docker compose up -d --build（表结构 IF NOT EXISTS，无需迁移）。
 
 ## 常见问题
@@ -230,6 +297,9 @@ docs/store-server-deploy.md。关键点：
 - 401：token 过期（默认 7 天）或 SECRET_KEY 改过导致旧 token 全部失效，重新登录；
 - 403：当前角色不够（先让管理员把账号提升为 developer）；
 - 409：邮箱已注册 / 条目 id 重复；
+- 429：验证码发送太频繁或尝试次数过多（看 detail 与 Retry-After）；
+- 503：验证码邮件发送失败（检查 SMTP_HOST/PORT/USER/PASSWORD、授权码是否过期、
+  服务器是否允许 587 端口发信）；本地开发没配 SMTP 时会自动用 dev_code，不会走到这里；
 - 插件安装失败：download_url 必须公网可访问（GitHub Release、对象存储直链），
   且条目 id 要与 plugin.json 的 id 一致；
 - 忘记管理员密码：删掉该用户后用新的 ADMIN_PASSWORD 重启，或直接改库里的
