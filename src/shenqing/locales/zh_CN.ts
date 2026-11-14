@@ -1537,63 +1537,63 @@
         <translation>深清 · 新手引导</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="129"/>
+        <location filename="../qml/components/Onboarding.qml" line="132"/>
         <source>纯色</source>
         <translation>纯色</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="130"/>
+        <location filename="../qml/components/Onboarding.qml" line="133"/>
         <source>清空间浅色</source>
         <translation>清空间浅色</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="131"/>
+        <location filename="../qml/components/Onboarding.qml" line="134"/>
         <source>液态玻璃</source>
         <translation>液态玻璃</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="137"/>
+        <location filename="../qml/components/Onboarding.qml" line="140"/>
         <source>自动</source>
         <translation>自动</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="138"/>
+        <location filename="../qml/components/Onboarding.qml" line="141"/>
         <source>始终展开</source>
         <translation>始终展开</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="139"/>
+        <location filename="../qml/components/Onboarding.qml" line="142"/>
         <source>仅图标</source>
         <translation>仅图标</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="145"/>
+        <location filename="../qml/components/Onboarding.qml" line="148"/>
         <source>跟随系统</source>
         <translation>跟随系统</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="146"/>
+        <location filename="../qml/components/Onboarding.qml" line="149"/>
         <source>简体中文</source>
         <translation>简体中文</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="278"/>
-        <location filename="../qml/components/Onboarding.qml" line="549"/>
+        <location filename="../qml/components/Onboarding.qml" line="281"/>
+        <location filename="../qml/components/Onboarding.qml" line="552"/>
         <source>深清</source>
         <translation>深清</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="287"/>
+        <location filename="../qml/components/Onboarding.qml" line="290"/>
         <source>新手引导</source>
         <translation>新手引导</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="297"/>
+        <location filename="../qml/components/Onboarding.qml" line="300"/>
         <source>%1 / %2</source>
         <translation>%1 / %2</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="344"/>
+        <location filename="../qml/components/Onboarding.qml" line="347"/>
         <source>欢迎使用深清</source>
         <translation>欢迎使用深清</translation>
     </message>
@@ -1602,7 +1602,7 @@
         <translation type="vanished">选好模式与时长，时间没到不开门。深清会帮你把注意力收回来。</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="366"/>
+        <location filename="../qml/components/Onboarding.qml" line="369"/>
         <source>三档空间</source>
         <translation>三档空间</translation>
     </message>
@@ -1611,7 +1611,7 @@
         <translation type="vanished">浅清只屏蔽黑名单应用；覆清额外显示白名单 dock；深清只留倒计时，不可提前结束。</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="422"/>
+        <location filename="../qml/components/Onboarding.qml" line="425"/>
         <source>主题</source>
         <translation>主题</translation>
     </message>
@@ -1628,7 +1628,7 @@
         <translation type="vanished">插件可以给深清加功能：番茄同步、专注统计，或自定义遮罩小组件。</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="792"/>
+        <location filename="../qml/components/Onboarding.qml" line="795"/>
         <source>准备好了</source>
         <translation>准备好了</translation>
     </message>
@@ -1637,133 +1637,133 @@
         <translation type="vanished">开始第一轮专注吧。数据与设置都保存在本机，随时可以在设置里重新查看引导。</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="832"/>
+        <location filename="../qml/components/Onboarding.qml" line="835"/>
         <source>跳过</source>
         <translation>跳过</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="873"/>
+        <location filename="../qml/components/Onboarding.qml" line="876"/>
         <source>上一步</source>
         <translation>上一步</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="811"/>
-        <location filename="../qml/components/Onboarding.qml" line="882"/>
+        <location filename="../qml/components/Onboarding.qml" line="814"/>
+        <location filename="../qml/components/Onboarding.qml" line="885"/>
         <source>进入深清</source>
         <translation>进入深清</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="355"/>
+        <location filename="../qml/components/Onboarding.qml" line="358"/>
         <source>选好模式与时长，时间没到不开门。深清会帮你把注意力收回来，专注记录都保存在本机。</source>
         <translation>选好模式与时长，时间没到不开门。深清会帮你把注意力收回来，专注记录都保存在本机。</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="366"/>
+        <location filename="../qml/components/Onboarding.qml" line="369"/>
         <source>还清作息</source>
         <translation>还清作息</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="366"/>
+        <location filename="../qml/components/Onboarding.qml" line="369"/>
         <source>清番番茄钟</source>
         <translation>清番番茄钟</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="397"/>
+        <location filename="../qml/components/Onboarding.qml" line="400"/>
         <source>先调成你喜欢的样子</source>
         <translation>先调成你喜欢的样子</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="407"/>
+        <location filename="../qml/components/Onboarding.qml" line="410"/>
         <source>下面每一项都会立即生效，之后也可以在「设置」里继续调整。</source>
         <translation>下面每一项都会立即生效，之后也可以在「设置」里继续调整。</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="447"/>
+        <location filename="../qml/components/Onboarding.qml" line="450"/>
         <source>字号</source>
         <translation>字号</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="472"/>
+        <location filename="../qml/components/Onboarding.qml" line="475"/>
         <source>导航</source>
         <translation>导航</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="497"/>
+        <location filename="../qml/components/Onboarding.qml" line="500"/>
         <source>语言</source>
         <translation>语言</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="527"/>
+        <location filename="../qml/components/Onboarding.qml" line="530"/>
         <source>三档空间，各有边界</source>
         <translation>三档空间，各有边界</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="536"/>
+        <location filename="../qml/components/Onboarding.qml" line="539"/>
         <source>每个档位可以建多个空间，各自保存时长与白名单。</source>
         <translation>每个档位可以建多个空间，各自保存时长与白名单。</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="547"/>
+        <location filename="../qml/components/Onboarding.qml" line="550"/>
         <source>浅清</source>
         <translation>浅清</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="547"/>
+        <location filename="../qml/components/Onboarding.qml" line="550"/>
         <source>只屏蔽黑名单应用的窗口与声音。可以暂停，适合轻量专注。</source>
         <translation>只屏蔽黑名单应用的窗口与声音。可以暂停，适合轻量专注。</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="548"/>
+        <location filename="../qml/components/Onboarding.qml" line="551"/>
         <source>覆清</source>
         <translation>覆清</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="548"/>
+        <location filename="../qml/components/Onboarding.qml" line="551"/>
         <source>屏蔽干扰，同时显示白名单 dock。不可暂停，也不可提前结束。</source>
         <translation>屏蔽干扰，同时显示白名单 dock。不可暂停，也不可提前结束。</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="549"/>
+        <location filename="../qml/components/Onboarding.qml" line="552"/>
         <source>白名单之外全部屏蔽，只保留倒计时。连点时间 10 次才能确认退出。</source>
         <translation>白名单之外全部屏蔽，只保留倒计时。连点时间 10 次才能确认退出。</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="606"/>
+        <location filename="../qml/components/Onboarding.qml" line="609"/>
         <source>还清到点，清番计时</source>
         <translation>还清到点，清番计时</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="615"/>
+        <location filename="../qml/components/Onboarding.qml" line="618"/>
         <source>除了三档专注，深清还有两种更轻的节奏。</source>
         <translation>除了三档专注，深清还有两种更轻的节奏。</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="626"/>
+        <location filename="../qml/components/Onboarding.qml" line="629"/>
         <source>还清（睡眠模式）</source>
         <translation>还清（睡眠模式）</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="627"/>
+        <location filename="../qml/components/Onboarding.qml" line="630"/>
         <source>按作息时间自动进入深清锁定，到点替你合上今天。可设置作息时间与每月解锁次数。</source>
         <translation>按作息时间自动进入深清锁定，到点替你合上今天。可设置作息时间与每月解锁次数。</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="628"/>
+        <location filename="../qml/components/Onboarding.qml" line="631"/>
         <source>在「空间 → 还清」里设置作息</source>
         <translation>在「空间 → 还清」里设置作息</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="629"/>
+        <location filename="../qml/components/Onboarding.qml" line="632"/>
         <source>清番（置顶番茄钟）</source>
         <translation>清番（置顶番茄钟）</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="630"/>
+        <location filename="../qml/components/Onboarding.qml" line="633"/>
         <source>25 分钟专注 + 5 分钟休息，每 4 轮长休息。无边框置顶小窗，可随时暂停或关闭。</source>
         <translation>25 分钟专注 + 5 分钟休息，每 4 轮长休息。无边框置顶小窗，可随时暂停或关闭。</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="631"/>
+        <location filename="../qml/components/Onboarding.qml" line="634"/>
         <source>在「空间 → 清番」档位打开番茄钟</source>
         <translation>在「空间 → 清番」档位打开番茄钟</translation>
     </message>
@@ -1772,62 +1772,62 @@
         <translation type="vanished">在「空间」页右上角打开清番</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="698"/>
+        <location filename="../qml/components/Onboarding.qml" line="701"/>
         <source>插件扩展深清</source>
         <translation>插件扩展深清</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="707"/>
+        <location filename="../qml/components/Onboarding.qml" line="710"/>
         <source>内置插件开箱可用；第三方插件可以给遮罩加组件或接入自己的统计。</source>
         <translation>内置插件开箱可用；第三方插件可以给遮罩加组件或接入自己的统计。</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="719"/>
+        <location filename="../qml/components/Onboarding.qml" line="722"/>
         <source>卡皮巴拉敲木鱼</source>
         <translation>卡皮巴拉敲木鱼</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="719"/>
+        <location filename="../qml/components/Onboarding.qml" line="722"/>
         <source>专注遮罩右下角的小木鱼，敲一敲攒功德。</source>
         <translation>专注遮罩右下角的小木鱼，敲一敲攒功德。</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="720"/>
+        <location filename="../qml/components/Onboarding.qml" line="723"/>
         <source>番茄同步</source>
         <translation>番茄同步</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="720"/>
+        <location filename="../qml/components/Onboarding.qml" line="723"/>
         <source>把清番的专注次数同步到今日统计。</source>
         <translation>把清番的专注次数同步到今日统计。</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="721"/>
+        <location filename="../qml/components/Onboarding.qml" line="724"/>
         <source>专注统计</source>
         <translation>专注统计</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="721"/>
+        <location filename="../qml/components/Onboarding.qml" line="724"/>
         <source>汇总累计专注次数与时长。</source>
         <translation>汇总累计专注次数与时长。</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="722"/>
+        <location filename="../qml/components/Onboarding.qml" line="725"/>
         <source>第三方插件</source>
         <translation>第三方插件</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="722"/>
+        <location filename="../qml/components/Onboarding.qml" line="725"/>
         <source>可在「插件」页启用、停用与查看插件设置。</source>
         <translation>可在「插件」页启用、停用与查看插件设置。</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="802"/>
+        <location filename="../qml/components/Onboarding.qml" line="805"/>
         <source>开始第一轮专注吧。引导可以随时在「设置 → 新手引导」里重新打开。</source>
         <translation>开始第一轮专注吧。引导可以随时在「设置 → 新手引导」里重新打开。</translation>
     </message>
     <message>
-        <location filename="../qml/components/Onboarding.qml" line="882"/>
+        <location filename="../qml/components/Onboarding.qml" line="885"/>
         <source>下一步</source>
         <translation>下一步</translation>
     </message>
