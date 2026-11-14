@@ -1,0 +1,9 @@
+__pycache__/
+*.py[cod]
+store.db
+store.db-wal
+store.db-shm
+.env
+.venv/
+tests/
+*.md

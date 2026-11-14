@@ -1,0 +1,16 @@
+# SQLite 数据文件
+store.db
+store.db-wal
+store.db-shm
+
+# 本地配置与虚拟环境
+.env
+.venv/
+venv/
+
+# Python 缓存
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# 运行时静态占位（前端资源由 ui-store 提供，不忽略 static/）

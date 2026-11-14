@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#04121c" />
+  <meta name="description" content="深清商店：专注应用的主题与插件市场。浏览、下载、评论，开发者提交与管理员审核。" />
+  <title>深清商店 · 主题与插件</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230a2636'/%3E%3Cpath d='M10 38c7-8 14-8 21 0s14 8 21 0' stroke='%2335e0c8' stroke-width='5' fill='none' stroke-linecap='round'/%3E%3Ccircle cx='46' cy='24' r='4' fill='%2335e0c8'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="ocean" aria-hidden="true">
+    <span class="glow glow-a"></span>
+    <span class="glow glow-b"></span>
+    <span class="glow glow-c"></span>
+    <span class="grid-dots"></span>
+    <span class="wave wave-a"></span>
+    <span class="wave wave-b"></span>
+  </div>
+
+  <header class="topbar">
+    <a class="brand" href="#/store" data-nav="store" aria-label="深清商店首页">
+      <span class="brand-mark" aria-hidden="true">◈</span>
+      <span class="brand-text">深清商店</span>
+      <span class="brand-sub">专注主题 · 插件市场</span>
+    </a>
+    <nav class="main-nav" id="mainNav" aria-label="主导航">
+      <a class="nav-link" href="#/store" data-nav="store">商店</a>
+      <a class="nav-link" href="#/dev" data-nav="dev" hidden>开发者中心</a>
+      <a class="nav-link" href="#/admin" data-nav="admin" hidden>管理后台</a>
+    </nav>
+    <div class="auth-box" id="authBox"></div>
+  </header>
+
+  <main id="app">
+    <!-- ================= 商店 ================= -->
+    <section id="view-store" class="view" aria-labelledby="storeTitle">
+      <div class="store-hero">
+        <div class="store-hero-copy">
+          <p class="eyebrow">SHENQING · STORE</p>
+          <h1 id="storeTitle">深清商店</h1>
+          <p class="lede">为专注而生的主题与插件。挑一个喜欢的海洋，或让插件替你守住时间。</p>
+        </div>
+        <div class="hero-stats" id="storeStats" aria-live="polite"></div>
+      </div>
+
+      <div class="toolbar">
+        <label class="search">
+          <span class="search-icon" aria-hidden="true">⌕</span>
+          <input id="searchInput" type="search" placeholder="搜索主题、插件或作者…" autocomplete="off" aria-label="搜索商店" />
+        </label>
+        <div class="chips" id="kindChips" role="group" aria-label="类型筛选">
+          <button type="button" class="chip is-active" data-kind="" aria-pressed="true">全部</button>
+          <button type="button" class="chip" data-kind="theme" aria-pressed="false">主题</button>
+          <button type="button" class="chip" data-kind="plugin" aria-pressed="false">插件</button>
+        </div>
+        <label class="sort">
+          <span>排序</span>
+          <select id="sortSelect" aria-label="排序方式">
+            <option value="rating">评分最高</option>
+            <option value="downloads">下载最多</option>
+            <option value="newest">最新上架</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="grid" id="storeGrid" aria-live="polite"></div>
+      <div class="state-box" id="storeState" hidden></div>
+    </section>
+
+    <!-- ================= 登录 / 注册 ================= -->
+    <section id="view-auth" class="view auth-view" hidden aria-labelledby="authTitle">
+      <div class="auth-card">
+        <div class="auth-head">
+          <span class="brand-mark big" aria-hidden="true">◈</span>
+          <h1 id="authTitle">深清商店</h1>
+          <p class="auth-sub" id="authSub">登录后即可发表评论、提交主题与插件</p>
+        </div>
+        <div class="auth-tabs" role="tablist" aria-label="登录或注册">
+          <button type="button" class="auth-tab is-active" data-auth-mode="login" role="tab" aria-selected="true">登录</button>
+          <button type="button" class="auth-tab" data-auth-mode="register" role="tab" aria-selected="false">注册</button>
+        </div>
+        <form id="authForm" class="auth-form" novalidate>
+          <div class="field" id="nameField" hidden>
+            <label for="authName">昵称</label>
+            <input id="authName" name="name" type="text" maxlength="40" autocomplete="nickname" placeholder="展示在评论与作品上的名字" />
+          </div>
+          <div class="field">
+            <label for="authEmail">邮箱</label>
+            <input id="authEmail" name="email" type="email" autocomplete="username" placeholder="you@example.com" required />
+          </div>
+          <div class="field">
+            <label for="authPassword">密码</label>
+            <input id="authPassword" name="password" type="password" autocomplete="current-password" placeholder="至少 6 位" required />
+          </div>
+          <p class="form-error" id="authError" role="alert" hidden></p>
+          <button type="submit" class="btn primary block" id="authSubmit">登录</button>
+        </form>
+        <p class="auth-foot" id="authFoot">未登录也可以浏览公开商店 · <a href="#/store">先去逛逛</a></p>
+        <div class="auth-logged" id="authLoggedIn" hidden></div>
+      </div>
+    </section>
+
+    <!-- ================= 开发者中心 ================= -->
+    <section id="view-dev" class="view" hidden aria-labelledby="devTitle">
+      <div class="page-head">
+        <div>
+          <p class="eyebrow">DEVELOPER</p>
+          <h1 id="devTitle">开发者中心</h1>
+          <p class="lede">提交你的主题或插件：管理员审核通过后，会出现在公开商店与桌面端目录里。</p>
+        </div>
+        <button type="button" class="btn primary" id="newSubmissionBtn">＋ 新建提交</button>
+      </div>
+
+      <div class="panel form-panel" id="devFormWrap" hidden>
+        <div class="panel-head">
+          <h2 id="devFormTitle">新建提交</h2>
+          <button type="button" class="icon-btn" id="devFormClose" aria-label="收起表单">✕</button>
+        </div>
+        <form id="devForm" class="form-grid" novalidate>
+          <div class="field">
+            <label for="devKind">类型</label>
+            <select id="devKind" name="kind">
+              <option value="theme">主题</option>
+              <option value="plugin">插件</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="devItemId">条目 ID<span class="label-hint">（插件建议填写，与 plugin.json 一致）</span></label>
+            <input id="devItemId" name="id" type="text" maxlength="64" placeholder="com.example.my-plugin" />
+          </div>
+          <div class="field">
+            <label for="devName">名称</label>
+            <input id="devName" name="name" type="text" maxlength="80" placeholder="例如：深海微光" required />
+          </div>
+          <div class="field span-2">
+            <label for="devSummary">一句话简介</label>
+            <input id="devSummary" name="summary" type="text" maxlength="200" placeholder="用一句话说清它适合谁" required />
+          </div>
+          <div class="field span-2">
+            <label for="devDescription">详细介绍</label>
+            <textarea id="devDescription" name="description" rows="5" maxlength="2000" placeholder="功能、使用方式、注意事项…"></textarea>
+          </div>
+          <div class="field">
+            <label for="devVersion">版本号</label>
+            <input id="devVersion" name="version" type="text" maxlength="32" placeholder="1.0.0" />
+          </div>
+          <div class="field">
+            <label for="devDownload">下载地址<span class="label-hint" id="downloadHint">（插件必填）</span></label>
+            <input id="devDownload" name="download_url" type="url" placeholder="https://example.com/plugin.zip" />
+          </div>
+          <div class="field span-2">
+            <label for="devTags">标签</label>
+            <input id="devTags" name="tags" type="text" placeholder="深色, 海洋, 专注（用逗号分隔）" />
+          </div>
+          <div class="field span-2" id="paletteField">
+            <label for="devPalette">主题配色 JSON</label>
+            <textarea id="devPalette" name="palette" rows="7" spellcheck="false" placeholder='{"bgTop":"#0A1F2E","bgMid":"#06202C","bgBottom":"#04121A","accent":"#35E0C8","cardBg":"#0D2634","textPrimary":"#EAF8FC"}'></textarea>
+            <p class="hint">6 个键：<code>bgTop</code> / <code>bgMid</code> / <code>bgBottom</code> / <code>accent</code> / <code>cardBg</code> / <code>textPrimary</code>，均为 #RRGGBB。
+              <button type="button" class="link-btn" id="paletteTemplateBtn">填入示例配色</button>
+            </p>
+          </div>
+          <div class="field span-2">
+            <label for="devShots">截图地址（可选）</label>
+            <textarea id="devShots" name="screenshots" rows="2" spellcheck="false" placeholder="每行一个图片 URL"></textarea>
+          </div>
+          <p class="form-error span-2" id="devFormError" role="alert" hidden></p>
+          <div class="form-actions span-2">
+            <button type="button" class="btn ghost" id="devCancelBtn">取消</button>
+            <button type="submit" class="btn primary" id="devSubmitBtn">提交审核</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="section-head">
+        <h2>我的提交</h2>
+        <span class="muted" id="devCount"></span>
+      </div>
+      <div class="stack" id="devList" aria-live="polite"></div>
+    </section>
+
+    <!-- ================= 管理后台 ================= -->
+    <section id="view-admin" class="view" hidden aria-labelledby="adminTitle">
+      <div class="page-head">
+        <div>
+          <p class="eyebrow">ADMIN</p>
+          <h1 id="adminTitle">管理后台</h1>
+          <p class="lede">审核开发者提交、管理用户角色。审核通过后条目会立刻出现在商店与桌面端目录。</p>
+        </div>
+        <div class="seg-tabs" role="tablist" aria-label="管理后台分区">
+          <button type="button" class="seg-tab is-active" data-admin-tab="pending" role="tab" aria-selected="true">待审核 <span class="count" id="pendingCount">0</span></button>
+          <button type="button" class="seg-tab" data-admin-tab="comments" role="tab" aria-selected="false">评论审核 <span class="count" id="pendingCommentCount">0</span></button>
+          <button type="button" class="seg-tab" data-admin-tab="users" role="tab" aria-selected="false">用户</button>
+        </div>
+      </div>
+
+      <div id="adminPendingPanel" class="stack" aria-live="polite"></div>
+      <div id="adminCommentsPanel" class="stack" hidden aria-live="polite"></div>
+      <div id="adminUsersPanel" class="panel" hidden>
+        <div class="panel-head">
+          <h2>用户列表</h2>
+          <span class="muted" id="userCount"></span>
+        </div>
+        <div class="user-table" id="userTable"></div>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal-root" id="modalRoot"></div>
+  <div class="toast-root" id="toastRoot" aria-live="polite" aria-atomic="false"></div>
+
+  <noscript>
+    <div class="noscript">深清商店需要启用 JavaScript 才能使用。</div>
+  </noscript>
+  <script src="/app.js" defer></script>
+</body>
+</html>

@@ -19,6 +19,12 @@ RinUI/
 # 运行数据（不随仓库提交）
 *.log
 
+# 商店服务端运行数据
+server/store.db
+server/*.db
+server/__pycache__/
+server/**/__pycache__/
+
 # 编辑器
 .vscode/
 .idea/

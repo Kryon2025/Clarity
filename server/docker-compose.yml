@@ -1,0 +1,16 @@
+# 用法：cd server && cp .env.example .env && docker compose up -d --build
+services:
+  store:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8000:8000"
+    env_file:
+      - .env
+    environment:
+      DATABASE_PATH: /data/store.db
+    volumes:
+      - store-data:/data
+
+volumes:
+  store-data:
