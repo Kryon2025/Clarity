@@ -1,5 +1,5 @@
 import QtQuick
-import QtQuick.Controls
+import QtQuick.Controls.Basic
 import "../theme"
 import "../components"
 import "../components/Constants.js" as C

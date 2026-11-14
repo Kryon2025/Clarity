@@ -4,7 +4,7 @@ from __future__ import annotations
 
 __all__ = ["__version__", "APP_NAME", "APP_ID"]
 
-__version__ = "0.17.1"
+__version__ = "0.17.2"
 
 APP_NAME = "深清"
 APP_ALIAS = "Clarity"

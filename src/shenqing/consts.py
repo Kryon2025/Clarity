@@ -8,7 +8,7 @@ APP_NAME = "深清"
 #: 英文名（v0.4 起对外统一用 Clarity；「身轻」不再展示）
 APP_ALIAS = "Clarity"
 APP_ID = "ShenQing"
-APP_VERSION = "0.17.1"
+APP_VERSION = "0.17.2"
 
 #: GitHub 仓库（自动更新与反馈入口用）
 GITHUB_REPO = "Kryon2025/Clarity"
@@ -71,6 +71,15 @@ MAX_FONT_FAMILIES = 200
 
 #: 更新日志（最新在前；en 为空时用中文兜底）
 CHANGELOG = [
+    {
+        "version": "0.17.2",
+        "date": "2025-11-14",
+        "tag": "",
+        "items": [
+            "修复设置页滚动条使用原生样式导致的 QML 警告（改用 Basic 控件样式，恢复细圆角滚动条外观）",
+        ],
+        "items_en": ["Fixed QML warnings from the settings scrollbar by using the Basic controls style (slim rounded scrollbar restored)"],
+    },
     {
         "version": "0.17.1",
         "date": "2025-11-14",
