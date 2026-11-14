@@ -1415,7 +1415,7 @@ Fill in the provider and API key on the left, then send a message.</translation>
         <translation>About</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="1212"/>
+        <location filename="../qml/Main.qml" line="1213"/>
         <source>搜索空间 / 主题 / 插件</source>
         <translation>Search spaces / themes / plugins</translation>
     </message>
@@ -1480,7 +1480,7 @@ Fill in the provider and API key on the left, then send a message.</translation>
         <translation type="vanished">Search spaces, themes, plugins or settings</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="1300"/>
+        <location filename="../qml/Main.qml" line="1301"/>
         <source>没有找到匹配结果</source>
         <translation>No results</translation>
     </message>

@@ -1415,7 +1415,7 @@
         <translation>关于</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="1212"/>
+        <location filename="../qml/Main.qml" line="1213"/>
         <source>搜索空间 / 主题 / 插件</source>
         <translation>搜索空间 / 主题 / 插件</translation>
     </message>
@@ -1480,7 +1480,7 @@
         <translation type="vanished">搜索空间、主题、插件或设置</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="1300"/>
+        <location filename="../qml/Main.qml" line="1301"/>
         <source>没有找到匹配结果</source>
         <translation>没有找到匹配结果</translation>
     </message>
