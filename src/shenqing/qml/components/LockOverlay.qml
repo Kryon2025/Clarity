@@ -133,6 +133,11 @@ Window {
     property bool powerConfirmOpen: false
     property string pendingPower: ""
     property int volumeDraft: 50
+    // v0.17 覆清控制面板：静音快捷 / 控制面板入口图标
+    property bool volumeMuted: false
+    property int volumeBeforeMute: 50
+    readonly property string controlPanelIcon: (typeof App !== "undefined" && App.controlPanelIconUrl)
+                                               ? String(App.controlPanelIconUrl) : ""
     property bool widgetMenuOpen: false
     property var widgetIds: ["quote", "focusCount", "streak"]
     readonly property var allWidgetIds: ["clock", "quote", "countdown", "focusCount", "streak"]
@@ -225,15 +230,36 @@ Window {
         overlay.powerConfirmOpen = true
     }
     function confirmPower() {
-        if (typeof App !== "undefined" && typeof App.systemPower === "function")
-            App.systemPower(overlay.pendingPower)
+        var kind = String(overlay.pendingPower)
+        if (typeof App !== "undefined") {
+            // 优先使用 v0.17 的 shutdownSystem / restartSystem；旧后端回退 systemPower(kind)
+            if (kind === "shutdown") {
+                if (typeof App.shutdownSystem === "function") App.shutdownSystem()
+                else if (typeof App.systemPower === "function") App.systemPower("shutdown")
+            } else {
+                if (typeof App.restartSystem === "function") App.restartSystem()
+                else if (typeof App.systemPower === "function") App.systemPower("restart")
+            }
+        }
         overlay.powerConfirmOpen = false
         overlay.dockSettingsOpen = false
     }
     function setVolume(value) {
         overlay.volumeDraft = Math.max(0, Math.min(100, Math.round(Number(value))))
+        if (overlay.volumeDraft > 0) overlay.volumeMuted = false
         if (typeof App !== "undefined" && typeof App.setSystemVolume === "function")
             App.setSystemVolume(overlay.volumeDraft)
+    }
+    // 静音快捷：把音量压到 0；再点一次恢复到静音前的音量
+    function toggleMute() {
+        if (overlay.volumeDraft > 0) {
+            overlay.volumeBeforeMute = overlay.volumeDraft
+            overlay.volumeMuted = true
+            overlay.setVolume(0)
+        } else {
+            overlay.volumeMuted = false
+            overlay.setVolume(overlay.volumeBeforeMute > 0 ? overlay.volumeBeforeMute : 50)
+        }
     }
 
     Shortcut {
@@ -404,7 +430,7 @@ Window {
             visible: AppTheme.glass
             gradient: Gradient {
                 GradientStop { position: 0.0; color: AppTheme.bgTop }
-                GradientStop { position: 0.55; color: "#082330" }
+                GradientStop { position: 0.55; color: AppTheme.ocean ? "#082330" : "#06202C" }
                 GradientStop { position: 1.0; color: AppTheme.bgBottom }
             }
         }
@@ -414,7 +440,6 @@ Window {
             anchors.fill: parent
             tone: AppTheme.light ? "light" : "deep"
             intensity: 0.70
-            animated: overlay.animationsEnabled && (overlay.shouldShow || overlay.closing)
         }
 
         Item {
@@ -569,14 +594,14 @@ Window {
                 height: 26
                 radius: 9
                 gradient: Gradient {
-                    GradientStop { position: 0.0; color: "#BEEFF6" }
-                    GradientStop { position: 1.0; color: "#144F66" }
+                    GradientStop { position: 0.0; color: AppTheme.gradA }
+                    GradientStop { position: 1.0; color: AppTheme.gradDeep }
                 }
                 Glyph {
                     anchors.centerIn: parent
                     kind: "drop"
                     size: 15
-                    color: "#0B2B3A"
+                    color: AppTheme.onAccent
                 }
             }
 
@@ -682,9 +707,9 @@ Window {
                     radius: parent.height / 2
                     gradient: Gradient {
                         orientation: Gradient.Horizontal
-                        GradientStop { position: 0.0; color: "#2E9FBF" }
-                        GradientStop { position: 0.55; color: "#4FD0E0" }
-                        GradientStop { position: 1.0; color: "#BEEFF6" }
+                        GradientStop { position: 0.0; color: AppTheme.gradC }
+                        GradientStop { position: 0.55; color: AppTheme.gradB }
+                        GradientStop { position: 1.0; color: AppTheme.gradA }
                     }
                     Behavior on width { NumberAnimation { duration: 500; easing.type: Easing.OutCubic } }
                 }
@@ -1138,6 +1163,79 @@ Window {
                         }
                     }
                 }
+
+                // v0.17 控制面板入口：音量 / 关机重启（assets/control_panel.png）
+                Rectangle {
+                    visible: overlay.dockCount > 0
+                    width: 40
+                    height: 1
+                    color: AppTheme.divider
+                }
+
+                Item {
+                    id: controlEntry
+                    objectName: "DockControlEntry"
+                    width: 64
+                    height: 64
+
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: 18
+                        color: controlPointer.containsMouse
+                               ? (AppTheme.glass ? "#33FFFFFF" : AppTheme.buttonBgAlt)
+                               : (AppTheme.glass ? "#1FFFFFFF" : AppTheme.buttonBg)
+                        border.width: 1
+                        border.color: AppTheme.glass ? "#33FFFFFF" : AppTheme.buttonBorder
+                        Behavior on color { ColorAnimation { duration: 130 } }
+                    }
+
+                    Image {
+                        anchors.fill: parent
+                        anchors.margins: 10
+                        source: overlay.controlPanelIcon
+                        fillMode: Image.PreserveAspectFit
+                        asynchronous: true
+                        visible: source !== "" && status === Image.Ready
+                    }
+
+                    Glyph {
+                        anchors.centerIn: parent
+                        visible: overlay.controlPanelIcon === "" || !parent.visible
+                        kind: "gear"
+                        size: 24
+                        color: AppTheme.accent
+                    }
+
+                    MouseArea {
+                        id: controlPointer
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: overlay.openDockSettings()
+                    }
+
+                    Rectangle {
+                        visible: controlPointer.containsMouse
+                        z: 10
+                        anchors.right: parent.left
+                        anchors.rightMargin: 10
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: controlTip.implicitWidth + 20
+                        height: 28
+                        radius: 14
+                        color: AppTheme.glass ? "#E6122634" : AppTheme.cardBg
+                        border.width: 1
+                        border.color: AppTheme.glass ? "#33FFFFFF" : AppTheme.cardBorder
+                        Text {
+                            id: controlTip
+                            anchors.centerIn: parent
+                            text: qsTr("控制面板")
+                            color: AppTheme.textPrimary
+                            font.pixelSize: AppTheme.fs(12)
+                            font.family: AppTheme.fontFamily
+                        }
+                    }
+                }
             }
         }
 
@@ -1152,7 +1250,7 @@ Window {
             Rectangle {
                 anchors.fill: parent
                 radius: 13
-                color: AppTheme.glass ? "#26051620" : "#66051620"
+                color: AppTheme.glass ? AppTheme.chipScrimGlass : AppTheme.chipScrim
                 border.width: 1
                 border.color: AppTheme.glass ? "#33FFFFFF" : AppTheme.cardBorder
             }
@@ -1212,7 +1310,9 @@ Window {
             }
         }
 
-        // ---------- v0.8：dock 设置面板（音量 / 关机 / 重启） ----------
+        // ---------- v0.17：覆清控制面板（音量 / 静音 / 关机 / 重启 / 取消） ----------
+        // 使用 App.controlPanelIconUrl（assets/control_panel.png）作为模块图标；
+        // 一整条横向控制条 + 大圆角卡片；关机 / 重启二次确认防误触。
         Item {
             id: dockSettingsLayer
             anchors.fill: parent
@@ -1223,75 +1323,207 @@ Window {
                 acceptedButtons: Qt.AllButtons
                 onClicked: overlay.closeDockSettings()
             }
-            Rectangle { anchors.fill: parent; color: "#99050F18" }
+            Rectangle { anchors.fill: parent; color: AppTheme.scrimSoft }
 
             Rectangle {
                 id: dockSettingsPanel
+                objectName: "DockControlPanel"
                 anchors.centerIn: parent
-                width: 440
+                width: 600
                 height: settingsColumn.implicitHeight + 44
-                radius: 22
-                color: AppTheme.glass ? "#F2082430" : AppTheme.cardBg
+                radius: 26
+                color: AppTheme.glass ? AppTheme.dialogBg : AppTheme.cardBg
                 border.width: 1
                 border.color: AppTheme.glass ? "#4DFFFFFF" : AppTheme.cardBorderStrong
                 MouseArea { anchors.fill: parent; acceptedButtons: Qt.AllButtons; onClicked: {} }
 
                 Column {
                     id: settingsColumn
-                    x: 22
+                    x: 24
                     y: 20
-                    width: parent.width - 44
+                    width: parent.width - 48
                     spacing: 14
 
+                    // ---- 标题：控制面板图标 + 说明 ----
                     Row {
                         width: parent.width
-                        Text {
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: qsTr("声音与电源")
-                            color: AppTheme.textPrimary
-                            font.pixelSize: AppTheme.fs(16)
-                            font.weight: Font.DemiBold
-                            font.family: AppTheme.fontFamily
+                        spacing: 12
+
+                        Rectangle {
+                            width: 42
+                            height: 42
+                            radius: 14
+                            color: AppTheme.glass ? "#1FFFFFFF" : AppTheme.buttonBg
+                            border.width: 1
+                            border.color: AppTheme.glass ? "#33FFFFFF" : AppTheme.cardBorder
+
+                            Image {
+                                anchors.fill: parent
+                                anchors.margins: 7
+                                source: overlay.controlPanelIcon
+                                fillMode: Image.PreserveAspectFit
+                                asynchronous: true
+                                visible: source !== "" && status === Image.Ready
+                            }
+                            Glyph {
+                                anchors.centerIn: parent
+                                visible: overlay.controlPanelIcon === ""
+                                kind: "gear"
+                                size: 20
+                                color: AppTheme.accent
+                            }
                         }
+
+                        Column {
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 3
+                            Text {
+                                text: qsTr("控制面板")
+                                color: AppTheme.textPrimary
+                                font.pixelSize: AppTheme.fs(17)
+                                font.weight: Font.Bold
+                                font.family: AppTheme.fontFamily
+                            }
+                            Text {
+                                text: qsTr("音量与电源 · 覆清档右侧 dock")
+                                color: AppTheme.textTertiary
+                                font.pixelSize: AppTheme.fs(11)
+                                font.family: AppTheme.fontFamily
+                            }
+                        }
+
+                        Item { width: Math.max(0, parent.width - 360); height: 1 }
                     }
+
                     Rectangle { width: parent.width; height: 1; color: AppTheme.divider }
 
-                    Row {
+                    // ---- 横向控制条：音量滑块 + 静音 + 关机 / 重启 / 取消 ----
+                    Rectangle {
+                        id: controlBar
                         width: parent.width
-                        spacing: 10
+                        height: 64
+                        radius: 18
+                        color: AppTheme.glass ? "#14FFFFFF" : AppTheme.buttonBgAlt
+                        border.width: 1
+                        border.color: AppTheme.glass ? "#26FFFFFF" : AppTheme.cardBorder
+
                         Glyph {
+                            id: volumeIcon
+                            anchors.left: parent.left
+                            anchors.leftMargin: 16
                             anchors.verticalCenter: parent.verticalCenter
-                            kind: "volume"
-                            size: 16
-                            color: AppTheme.textSecondary
-                        }
-                        Text {
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: qsTr("系统音量")
-                            color: AppTheme.textPrimary
-                            font.pixelSize: AppTheme.fs(13)
-                            font.family: AppTheme.fontFamily
-                        }
-                        Item { width: parent.width - 260; height: 1 }
-                        Text {
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: Math.round(overlay.volumeDraft) + "%"
+                            kind: overlay.volumeDraft > 0 ? "volume" : "mute"
+                            size: 17
                             color: AppTheme.accent
+                        }
+
+                        Text {
+                            id: volumePercent
+                            anchors.right: muteButton.left
+                            anchors.rightMargin: 10
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 42
+                            horizontalAlignment: Text.AlignRight
+                            text: Math.round(overlay.volumeDraft) + "%"
+                            color: AppTheme.textPrimary
                             font.pixelSize: AppTheme.fs(13)
                             font.family: C.monoFont
                         }
-                    }
 
-                    GlassSlider {
-                        width: parent.width
-                        height: 30
-                        from: 0
-                        to: 100
-                        step: 1
-                        value: overlay.volumeDraft
-                        enabled: (typeof App !== "undefined" && App.systemVolume !== undefined
-                                  && Number(App.systemVolume) >= 0)
-                        onMoved: (value) => overlay.setVolume(value)
+                        // 静音快捷
+                        Rectangle {
+                            id: muteButton
+                            anchors.right: barDivider.left
+                            anchors.rightMargin: 12
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 34
+                            height: 34
+                            radius: 17
+                            color: muteArea.containsMouse
+                                   ? (AppTheme.glass ? "#26FFFFFF" : AppTheme.cardBgAlt)
+                                   : (overlay.volumeDraft > 0
+                                      ? "transparent"
+                                      : Qt.rgba(AppTheme.accent.r, AppTheme.accent.g, AppTheme.accent.b, 0.18))
+                            border.width: 1
+                            border.color: overlay.volumeDraft > 0
+                                          ? (AppTheme.glass ? "#33FFFFFF" : AppTheme.cardBorder)
+                                          : AppTheme.accent
+                            Behavior on color { ColorAnimation { duration: 120 } }
+
+                            Glyph {
+                                anchors.centerIn: parent
+                                kind: "mute"
+                                size: 15
+                                color: overlay.volumeDraft > 0 ? AppTheme.textSecondary : AppTheme.accent
+                            }
+
+                            MouseArea {
+                                id: muteArea
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: overlay.toggleMute()
+                            }
+                        }
+
+                        Rectangle {
+                            id: barDivider
+                            width: 1
+                            height: 30
+                            anchors.right: actionRow.left
+                            anchors.rightMargin: 14
+                            anchors.verticalCenter: parent.verticalCenter
+                            color: AppTheme.divider
+                        }
+
+                        GlassSlider {
+                            anchors.left: volumeIcon.right
+                            anchors.leftMargin: 14
+                            anchors.right: volumePercent.left
+                            anchors.rightMargin: 8
+                            anchors.verticalCenter: parent.verticalCenter
+                            height: 30
+                            from: 0
+                            to: 100
+                            step: 1
+                            value: overlay.volumeDraft
+                            enabled: (typeof App !== "undefined" && App.systemVolume !== undefined
+                                      && Number(App.systemVolume) >= 0)
+                            onMoved: (value) => overlay.setVolume(value)
+                        }
+
+                        Row {
+                            id: actionRow
+                            anchors.right: parent.right
+                            anchors.rightMargin: 12
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 8
+
+                            GlassButton {
+                                text: qsTr("关机")
+                                tone: "ghost"
+                                fontSize: 13
+                                padH: 18
+                                minHeight: 36
+                                onClicked: overlay.requestPower("shutdown")
+                            }
+                            GlassButton {
+                                text: qsTr("重启")
+                                tone: "ghost"
+                                fontSize: 13
+                                padH: 18
+                                minHeight: 36
+                                onClicked: overlay.requestPower("restart")
+                            }
+                            GlassButton {
+                                text: qsTr("取消")
+                                tone: "light"
+                                fontSize: 12
+                                padH: 16
+                                minHeight: 34
+                                onClicked: overlay.closeDockSettings()
+                            }
+                        }
                     }
 
                     Text {
@@ -1304,41 +1536,9 @@ Window {
                         font.family: AppTheme.fontFamily
                     }
 
-                    Rectangle { width: parent.width; height: 1; color: AppTheme.divider }
-
-                    Row {
-                        width: parent.width
-                        spacing: 10
-                        GlassButton {
-                            text: qsTr("关机")
-                            tone: "ghost"
-                            fontSize: 13
-                            padH: 22
-                            minHeight: 38
-                            onClicked: overlay.requestPower("shutdown")
-                        }
-                        GlassButton {
-                            text: qsTr("重启")
-                            tone: "ghost"
-                            fontSize: 13
-                            padH: 22
-                            minHeight: 38
-                            onClicked: overlay.requestPower("restart")
-                        }
-                        Item { width: parent.width - 260; height: 1 }
-                        GlassButton {
-                            text: qsTr("关闭")
-                            tone: "light"
-                            fontSize: 12
-                            padH: 16
-                            minHeight: 34
-                            onClicked: overlay.closeDockSettings()
-                        }
-                    }
-
                     Text {
                         width: parent.width
-                        text: qsTr("关机 / 重启会先弹出确认，避免误触。")
+                        text: qsTr("拖动滑块实时调整系统音量；关机 / 重启会先弹出确认，避免误触。")
                         color: AppTheme.textTertiary
                         font.pixelSize: AppTheme.fs(11)
                         font.family: AppTheme.fontFamily
@@ -1346,57 +1546,82 @@ Window {
                 }
             }
 
+            // ---- 关机 / 重启二次确认 ----
             Rectangle {
                 visible: overlay.powerConfirmOpen
                 anchors.fill: parent
-                color: "#AA051620"
+                color: AppTheme.scrimMedium
                 MouseArea { anchors.fill: parent; acceptedButtons: Qt.AllButtons; onClicked: overlay.powerConfirmOpen = false }
+
                 Rectangle {
                     anchors.centerIn: parent
-                    width: 400
-                    height: confirmColumn.implicitHeight + 40
-                    radius: 20
-                    color: AppTheme.cardBg
+                    width: 420
+                    height: confirmColumn.implicitHeight + 44
+                    radius: 24
+                    color: AppTheme.glass ? AppTheme.dialogBg : AppTheme.cardBg
                     border.width: 1
                     border.color: AppTheme.cardBorderStrong
+
                     Column {
                         id: confirmColumn
-                        x: 22
-                        y: 20
-                        width: parent.width - 44
+                        x: 24
+                        y: 22
+                        width: parent.width - 48
                         spacing: 14
-                        Text {
+
+                        Row {
                             width: parent.width
-                            text: overlay.pendingPower === "shutdown" ? qsTr("确认关机？") : qsTr("确认重启？")
-                            color: AppTheme.textPrimary
-                            font.pixelSize: AppTheme.fs(17)
-                            font.weight: Font.Bold
-                            font.family: AppTheme.fontFamily
+                            spacing: 12
+                            Rectangle {
+                                width: 38
+                                height: 38
+                                radius: 13
+                                color: overlay.pendingPower === "shutdown"
+                                       ? Qt.rgba(AppTheme.danger.r, AppTheme.danger.g, AppTheme.danger.b, 0.18)
+                                       : Qt.rgba(AppTheme.accent.r, AppTheme.accent.g, AppTheme.accent.b, 0.18)
+                                Glyph {
+                                    anchors.centerIn: parent
+                                    kind: "power"
+                                    size: 19
+                                    color: overlay.pendingPower === "shutdown" ? AppTheme.danger : AppTheme.accent
+                                }
+                            }
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: overlay.pendingPower === "shutdown" ? qsTr("确认关机？") : qsTr("确认重启？")
+                                color: AppTheme.textPrimary
+                                font.pixelSize: AppTheme.fs(18)
+                                font.weight: Font.Bold
+                                font.family: AppTheme.fontFamily
+                            }
                         }
+
                         Text {
                             width: parent.width
                             text: qsTr("系统会立即执行该操作，未保存的工作可能丢失。")
                             color: AppTheme.textSecondary
-                            font.pixelSize: AppTheme.fs(12)
+                            font.pixelSize: AppTheme.fs(13)
                             font.family: AppTheme.fontFamily
                             wrapMode: Text.WordWrap
+                            lineHeight: 1.35
                         }
+
                         Row {
                             width: parent.width
                             spacing: 10
-                            Item { width: parent.width - 200; height: 1 }
+                            Item { width: Math.max(0, parent.width - 228); height: 1 }
                             GlassButton {
                                 text: qsTr("取消")
                                 tone: "ghost"
                                 fontSize: 13
-                                padH: 18
-                                minHeight: 36
+                                padH: 20
+                                minHeight: 38
                                 onClicked: overlay.powerConfirmOpen = false
                             }
                             Rectangle {
-                                width: 118
-                                height: 36
-                                radius: 18
+                                width: 128
+                                height: 38
+                                radius: 19
                                 color: confirmArea.containsMouse ? "#F06870" : AppTheme.danger
                                 Text {
                                     anchors.centerIn: parent
@@ -1418,6 +1643,7 @@ Window {
                     }
                 }
             }
+
         // ================= v0.16 连点时间 10 次 · 退出警告弹窗 =================
         Item {
             id: exitWarningLayer
@@ -1428,7 +1654,7 @@ Window {
 
             Rectangle {
                 anchors.fill: parent
-                color: "#B3051620"
+                color: AppTheme.scrimStrong
             }
 
             MouseArea {
@@ -1442,7 +1668,7 @@ Window {
                 width: Math.min(460, overlay.width * 0.6)
                 height: warningColumn.implicitHeight + 44
                 radius: 22
-                color: AppTheme.glass ? "#F2082430" : AppTheme.cardBg
+                color: AppTheme.glass ? AppTheme.dialogBg : AppTheme.cardBg
                 border.width: 1
                 border.color: AppTheme.cardBorderStrong
 
@@ -1540,6 +1766,6 @@ Window {
             }
         }
 
-        }
     }
+}
 }

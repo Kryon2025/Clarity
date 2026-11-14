@@ -12,7 +12,7 @@ from .paths import app_data_dir
 
 DEFAULTS: dict[str, Any] = {
     "theme": "Auto",            # 窗口 chrome：Auto / Light / Dark
-    "theme_mode": "solid",      # 应用主题：solid / light / glass
+    "theme_mode": "solid",      # 应用主题：solid / light / glass / ocean（v0.17）
     "default_mode": "medium",   # 默认强度：light / medium / heavy
     "language": "auto",  # auto / zh_CN / en_US
     "autostart": False,

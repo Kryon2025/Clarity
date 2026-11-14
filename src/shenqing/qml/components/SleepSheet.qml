@@ -89,7 +89,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: "#99050F18"
+        color: AppTheme.scrimSoft
     }
     MouseArea {
         anchors.fill: parent

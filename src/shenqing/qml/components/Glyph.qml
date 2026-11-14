@@ -199,15 +199,23 @@ Canvas {
             ctx.lineTo(14.7, 9.9)
             ctx.stroke()
         } else if (kind === "restart") {
-            // 重启：逆时针循环箭头 + 箭头
+            // 重启：环形箭头（顶部留缺口，箭头在右上，顺时针方向）
+            var restartStart = -Math.PI * 0.22
+            var restartEnd = restartStart + Math.PI * 1.62
             ctx.beginPath()
-            ctx.arc(12, 12, 7.2, Math.PI * 0.35, Math.PI * 1.35)
+            ctx.arc(12, 12.4, 6.9, restartStart, restartEnd)
             ctx.stroke()
+
+            var headX = 12 + Math.cos(restartStart) * 6.9
+            var headY = 12.4 + Math.sin(restartStart) * 6.9
+            var tanX = -Math.sin(restartStart)
+            var tanY = Math.cos(restartStart)
             ctx.beginPath()
-            ctx.moveTo(5.0, 5.4)
-            ctx.lineTo(4.6, 10.0)
-            ctx.lineTo(9.2, 9.6)
-            ctx.stroke()
+            ctx.moveTo(headX + tanX * 2.6, headY + tanY * 2.6)
+            ctx.lineTo(headX - tanX * 1.0 - tanY * 2.1, headY - tanY * 1.0 + tanX * 2.1)
+            ctx.lineTo(headX - tanX * 1.0 + tanY * 2.1, headY - tanY * 1.0 - tanX * 2.1)
+            ctx.closePath()
+            ctx.fill()
         } else if (kind === "shield") {
             // 管理员盾牌
             ctx.beginPath()
@@ -359,6 +367,41 @@ Canvas {
             glyph.rrect(ctx, 3.8, 13, 7.2, 7.2, 2.2)
             ctx.stroke()
             glyph.rrect(ctx, 13, 13, 7.2, 7.2, 2.2)
+            ctx.stroke()
+        } else if (kind === "volume" || kind === "mute") {
+            // 音量 / 静音：喇叭 + 声波（静音换成叉号）
+            ctx.beginPath()
+            ctx.moveTo(4.0, 9.4)
+            ctx.lineTo(7.2, 9.4)
+            ctx.lineTo(11.2, 5.6)
+            ctx.lineTo(11.2, 18.4)
+            ctx.lineTo(7.2, 14.6)
+            ctx.lineTo(4.0, 14.6)
+            ctx.closePath()
+            ctx.stroke()
+            if (kind === "volume") {
+                ctx.beginPath()
+                ctx.arc(11.4, 12, 4.2, -Math.PI * 0.32, Math.PI * 0.32)
+                ctx.stroke()
+                ctx.beginPath()
+                ctx.arc(11.4, 12, 7.2, -Math.PI * 0.30, Math.PI * 0.30)
+                ctx.stroke()
+            } else {
+                ctx.beginPath()
+                ctx.moveTo(14.4, 9.4)
+                ctx.lineTo(19.2, 14.2)
+                ctx.moveTo(19.2, 9.4)
+                ctx.lineTo(14.4, 14.2)
+                ctx.stroke()
+            }
+        } else if (kind === "power") {
+            // 电源：上方留口的圆环 + 竖线
+            ctx.beginPath()
+            ctx.arc(12, 12.6, 7.0, -Math.PI * 0.34, Math.PI * 1.34)
+            ctx.stroke()
+            ctx.beginPath()
+            ctx.moveTo(12, 4.2)
+            ctx.lineTo(12, 11.2)
             ctx.stroke()
         }
     }

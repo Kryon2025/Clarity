@@ -49,12 +49,18 @@ class UISettingsBridgeTest(unittest.TestCase):
         return self.bridge
 
     def test_font_families(self) -> None:
+        from shenqing.consts import PREFERRED_CJK_FONTS
+
         families = self.bridge.uiFontFamilies
         self.assertIsInstance(families, list)
         self.assertGreater(len(families), 0)
         self.assertLessEqual(len(families), 200)
-        self.assertEqual(families, sorted(families))
+        self.assertEqual(len(families), len(set(families)))
         self.assertTrue(all(not family.startswith("@") for family in families))
+        # v0.17：精选中文字体（仅已安装的）按固定顺序排在最前，其余系统字体有序
+        present = [family for family in PREFERRED_CJK_FONTS if family in families]
+        self.assertEqual(families[: len(present)], present)
+        self.assertEqual(families[len(present) :], sorted(families[len(present) :]))
         self.assertTrue(self.bridge.defaultFontFamily)
 
     def test_font_family_setting_persists(self) -> None:

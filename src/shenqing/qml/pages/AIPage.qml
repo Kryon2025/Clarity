@@ -295,7 +295,6 @@ Item {
                     anchors.bottomMargin: -78
                     tone: AppTheme.light ? "light" : "deep"
                     intensity: 0.50
-                    animated: false
                     z: -1
                 }
 

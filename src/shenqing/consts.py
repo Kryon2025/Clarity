@@ -8,7 +8,7 @@ APP_NAME = "深清"
 #: 英文名（v0.4 起对外统一用 Clarity；「身轻」不再展示）
 APP_ALIAS = "Clarity"
 APP_ID = "ShenQing"
-APP_VERSION = "0.16.3"
+APP_VERSION = "0.17.0"
 
 #: GitHub 仓库（自动更新与反馈入口用）
 GITHUB_REPO = "Kryon2025/Clarity"
@@ -19,7 +19,7 @@ SPACE_NAME = "清空间"
 #: 三档强度（界面文案；枚举值仍是 light/medium/heavy）
 MODE_LABELS = {"light": "浅清", "medium": "覆清", "heavy": "深清"}
 
-#: 主题：纯色（默认）/ 清空间浅色 / 液态玻璃（实验性）
+#: 主题：纯色（默认）/ 清空间浅色 / 液态玻璃（实验性）/ 海洋（静态波浪）
 THEMES = [
     {"value": "solid", "label": "纯色", "desc": "平面纯色，无需 GPU 特效", "experimental": False},
     {
@@ -34,11 +34,64 @@ THEMES = [
         "desc": "折射玻璃与拖拽高光（实验性）",
         "experimental": True,
     },
+    {
+        "value": "ocean",
+        "label": "海洋",
+        "desc": "深海渐变与静态浪花",
+        "experimental": False,
+    },
 ]
 DEFAULT_THEME = "solid"
 
+#: v0.17：CW2 风格字体下拉 —— 精选中文字体优先。
+#: 只有系统里真正安装了的字体才会出现在列表顶部（按下面的固定顺序）；
+#: 未安装的自动跳过，其余系统字体按名称排序跟在后面。
+PREFERRED_CJK_FONTS = (
+    "微软雅黑",
+    "Microsoft YaHei UI",
+    "等线",
+    "DengXian",
+    "思源黑体",
+    "Source Han Sans SC",
+    "思源宋体",
+    "Source Han Serif SC",
+    "霞鹜文楷",
+    "LXGW WenKai",
+    "得意黑",
+    "Smiley Sans",
+    "HarmonyOS Sans SC",
+    "MiSans",
+    "苹方",
+    "PingFang SC",
+    "微软正黑体",
+)
+
+#: 字体下拉最多返回的条目数
+MAX_FONT_FAMILIES = 200
+
 #: 更新日志（最新在前；en 为空时用中文兜底）
 CHANGELOG = [
+    {
+        "version": "0.17.0",
+        "date": "2025-11-14",
+        "tag": "",
+        "items": [
+            "默认外观恢复原样，海洋波浪改为第 4 个内置主题（静态浪花，不再有动态背景）",
+            "数据页标题改为「空间的心事」，分类切换改为与空间页一致的下划线 tab",
+            "清番提到离浅清相同的位置并排第一：空间页首个档位、速启面板第一个，点开即番茄钟",
+            "速启面板重做：去图标、档位横向滑动可露出还清、关闭/重启/管理员重启同位置纯图标（管理员时隐藏管理员重启）",
+            "覆清控制面板重做（control 图标 + 音量滑块 + 关机/重启二次确认）",
+            "重复打开深清会直接激活主界面（单实例）；字体列表精选中文字体优先（微软雅黑/等线/思源黑体/霞鹜文楷/得意黑等）",
+        ],
+        "items_en": [
+            "Default look restored; the ocean wave style is now a 4th built-in theme (static foam, no animated background)",
+            "Stats title now reads Whispers of your space; category switch uses the same underline tabs as Spaces",
+            "Pomodoro (Qingfan) now sits first, in the same slot as Light, on both Spaces and the quick panel; tap to open the timer",
+            "Quick panel redesign: no logo, draggable tier strip revealing Huanqing, icon-only close/restart/restart-as-admin in one spot (admin restart hidden when elevated)",
+            "Veil control panel redesigned (control icon + volume slider + shutdown/restart with confirmation)",
+            "Launching ShenQing again activates the main window (single instance); curated Chinese fonts first in the font list",
+        ],
+    },
     {
         "version": "0.16.3",
         "date": "2025-11-14",

@@ -353,6 +353,7 @@ Item {
 
     Flickable {
         id: flick
+        objectName: "SettingsFlick"
         anchors.fill: parent
         contentWidth: width
         contentHeight: pageColumn.height + 60
@@ -381,7 +382,6 @@ Item {
                     anchors.bottomMargin: -78
                     tone: AppTheme.light ? "light" : "deep"
                     intensity: 0.55
-                    animated: false
                     z: -1
                 }
 
@@ -673,39 +673,81 @@ Item {
                         width: parent.width
                         spacing: 8
                         Text {
-                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.top: parent.top
+                            anchors.topMargin: 4
                             width: 88
                             text: qsTr("字号")
                             color: AppTheme.textSecondary
                             font.pixelSize: AppTheme.fs(12)
                             font.family: AppTheme.fontFamily
                         }
+                        Item {
+                            width: parent.width - 88 - 54 - 16
+                            height: 48
+
+                            GlassSlider {
+                                id: fontScaleSlider
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.top: parent.top
+                                height: 26
+                                from: 0.8
+                                to: 1.4
+                                step: 0.05
+                                value: page.currentFontScale
+                                onMoved: (value) => page.setFontScale(value)
+                            }
+
+                            // 刻度提示：小（80%）/ 标准（100%）/ 大（140%）
+                            Item {
+                                id: fontScaleTicks
+                                anchors.left: parent.left
+                                anchors.leftMargin: 1
+                                anchors.right: parent.right
+                                anchors.rightMargin: 1
+                                anchors.top: fontScaleSlider.bottom
+                                anchors.topMargin: 1
+                                height: 19
+
+                                Repeater {
+                                    model: [
+                                        { pos: 0.0, label: qsTr("小") },
+                                        { pos: 0.3333, label: qsTr("标准") },
+                                        { pos: 1.0, label: qsTr("大") }
+                                    ]
+
+                                    delegate: Item {
+                                        width: 40
+                                        height: fontScaleTicks.height
+                                        x: Math.max(0, Math.min(fontScaleTicks.width - width,
+                                                                modelData.pos * fontScaleTicks.width - width / 2))
+
+                                        Rectangle {
+                                            anchors.horizontalCenter: parent.horizontalCenter
+                                            anchors.top: parent.top
+                                            width: 2
+                                            height: 4
+                                            radius: 1
+                                            color: modelData.pos === 0.3333 ? AppTheme.accent : AppTheme.textTertiary
+                                            opacity: modelData.pos === 0.3333 ? 0.95 : 0.55
+                                        }
+
+                                        Text {
+                                            anchors.bottom: parent.bottom
+                                            anchors.horizontalCenter: parent.horizontalCenter
+                                            text: modelData.label
+                                            color: modelData.pos === 0.3333 ? AppTheme.accent : AppTheme.textTertiary
+                                            font.pixelSize: AppTheme.fs(10)
+                                            font.family: AppTheme.fontFamily
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
-                            text: "A 小"
-                            color: AppTheme.textTertiary
-                            font.pixelSize: AppTheme.fs(10)
-                            font.family: AppTheme.fontFamily
-                        }
-                        GlassSlider {
-                            width: parent.width - 88 - 34 - 34 - 48 - 40
-                            anchors.verticalCenter: parent.verticalCenter
-                            from: 0.8
-                            to: 1.4
-                            step: 0.05
-                            value: page.currentFontScale
-                            onMoved: (value) => page.setFontScale(value)
-                        }
-                        Text {
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: "A 大"
-                            color: AppTheme.textSecondary
-                            font.pixelSize: AppTheme.fs(12)
-                            font.family: AppTheme.fontFamily
-                        }
-                        Text {
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: 48
+                            width: 54
                             horizontalAlignment: Text.AlignRight
                             text: Math.round(page.currentFontScale * 100) + "%"
                             color: AppTheme.accent
@@ -745,14 +787,13 @@ Item {
                                 font.pixelSize: AppTheme.fs(12)
                                 font.family: AppTheme.fontFamily
                             }
-                            Text {
+                            Glyph {
                                 anchors.right: parent.right
                                 anchors.rightMargin: 10
                                 anchors.verticalCenter: parent.verticalCenter
-                                text: "▾"
-                                color: AppTheme.textTertiary
-                                font.pixelSize: AppTheme.fs(12)
-                                font.family: AppTheme.fontFamily
+                                kind: "chevronDown"
+                                size: 12
+                                color: fontFieldArea.containsMouse ? AppTheme.accent : AppTheme.textTertiary
                             }
                             MouseArea {
                                 id: fontFieldArea
@@ -1354,7 +1395,7 @@ Item {
         opacity: page.backupConfirmOpen ? 1 : 0
         Behavior on opacity { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
 
-        Rectangle { anchors.fill: parent; color: "#B3051620" }
+        Rectangle { anchors.fill: parent; color: AppTheme.scrimStrong }
         MouseArea {
             anchors.fill: parent
             acceptedButtons: Qt.AllButtons
@@ -1451,6 +1492,7 @@ Item {
         rowHeight: 32
         maxPopupHeight: 300
         minPopupHeight: 120
+        previewFontFamily: true
         onSelected: (value) => page.setFontFamily(String(value))
     }
 

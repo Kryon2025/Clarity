@@ -7,16 +7,21 @@ import os
 import sys
 import threading
 import time
+from collections.abc import Callable
 from pathlib import Path
 
 from PySide6.QtCore import (
     QCoreApplication,
     QLockFile,
+    QObject,
     QTimer,
+    Qt,
     QtMsgType,
+    Signal,
     qInstallMessageHandler,
 )
 from PySide6.QtGui import QIcon
+from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import QApplication
 from RinUI import RinUIWindow
 from RinUI.core.config import Theme
@@ -77,21 +82,167 @@ def _parse_args(argv: list[str]) -> tuple[argparse.Namespace, list[str]]:
     return parser.parse_known_args(argv[1:] if argv else [])
 
 
+# ================= v0.17 单实例（QLocalServer / QLocalSocket） =================
+
+#: 主实例监听的本地套接字名
+SINGLE_INSTANCE_NAME = f"{APP_ID}-SingleInstance"
+#: 第二个实例发给主实例的消息：激活主界面
+SHOW_MAIN_MESSAGE = "show-main"
+
+
+class SingleInstanceServer(QObject):
+    """主实例的本地套接字服务端：收到 show-main 时通知主窗口激活。"""
+
+    showMainRequested = Signal()
+    messageReceived = Signal(str)
+
+    def __init__(self, name: str = SINGLE_INSTANCE_NAME, parent: QObject | None = None) -> None:
+        super().__init__(parent)
+        self._name = str(name or SINGLE_INSTANCE_NAME)
+        self._sockets: list[QLocalSocket] = []
+        #: 单实例锁（QLockFile 被回收会自动解锁，由服务端持有到进程退出）
+        self._instance_lock: QLockFile | None = None
+        self._server = QLocalServer(self)
+        self._server.newConnection.connect(self._accept_connections)
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def listening(self) -> bool:
+        return bool(self._server.isListening())
+
+    def start(self) -> bool:
+        """开始监听；同名服务端已存在说明已有主实例，返回 False。"""
+        if self._server.isListening():
+            return True
+        if self._server.listen(self._name):
+            return True
+        # 异常退出可能留下同名服务端文件：清理后再试一次（调用方此时已持有单实例锁）
+        try:
+            QLocalServer.removeServer(self._name)
+        except Exception:  # noqa: BLE001
+            pass
+        return bool(self._server.listen(self._name))
+
+    def stop(self) -> None:
+        for socket in list(self._sockets):
+            try:
+                socket.abort()
+            except (RuntimeError, AttributeError):
+                pass
+        self._sockets.clear()
+        self._server.close()
+        # 释放单实例锁（进程退出时也会自动解锁，这里让测试/重启可以立刻再次启动）
+        if self._instance_lock is not None:
+            try:
+                self._instance_lock.unlock()
+            except (RuntimeError, AttributeError):
+                pass
+            self._instance_lock = None
+
+    def errorString(self) -> str:
+        try:
+            return str(self._server.errorString())
+        except Exception:  # noqa: BLE001
+            return ""
+
+    def _accept_connections(self) -> None:
+        while self._server.hasPendingConnections():
+            socket = self._server.nextPendingConnection()
+            if socket is None:
+                break
+            self._sockets.append(socket)
+            socket.readyRead.connect(lambda sock=socket: self._read_socket(sock))
+            socket.disconnected.connect(lambda sock=socket: self._drop_socket(sock))
+
+    def _read_socket(self, socket: QLocalSocket) -> None:
+        try:
+            payload = bytes(socket.readAll())
+        except (RuntimeError, AttributeError):
+            return
+        if not payload:
+            return
+        text = payload.decode("utf-8", errors="replace")
+        for line in text.splitlines():
+            message = line.strip()
+            if not message:
+                continue
+            self.messageReceived.emit(message)
+            if message == SHOW_MAIN_MESSAGE:
+                self.showMainRequested.emit()
+
+    def _drop_socket(self, socket: QLocalSocket) -> None:
+        # socket 是 QLocalServer 的子对象，随服务端一起销毁；这里只丢掉 Python 引用
+        if socket in self._sockets:
+            self._sockets.remove(socket)
+
+
+def _send_single_instance_message(
+    message: str = SHOW_MAIN_MESSAGE,
+    name: str = SINGLE_INSTANCE_NAME,
+    timeout_ms: int = 400,
+) -> bool:
+    """连上已有主实例并发送一条消息；没有主实例/连接失败时返回 False。"""
+    socket = QLocalSocket()
+    socket.connectToServer(name)
+    if not socket.waitForConnected(max(1, int(timeout_ms))):
+        return False
+    try:
+        socket.write(str(message).encode("utf-8"))
+        socket.flush()
+        if not socket.waitForBytesWritten(max(1, int(timeout_ms))):
+            # 同进程/无事件循环（单元测试）时写事件要靠事件循环派发，否则数据会随对象回收丢失
+            for _ in range(3):
+                QCoreApplication.processEvents()
+                time.sleep(0.005)
+            socket.waitForBytesWritten(max(1, int(timeout_ms)))
+    except (RuntimeError, AttributeError, OSError):
+        return False
+    finally:
+        try:
+            socket.disconnectFromServer()
+        except (RuntimeError, AttributeError):
+            pass
+    return True
+
+
+def _notify_existing_instance(
+    name: str = SINGLE_INSTANCE_NAME, timeout_ms: int = 400
+) -> bool:
+    """第二个实例：让已有主实例激活主界面（发送 show-main）。"""
+    return _send_single_instance_message(SHOW_MAIN_MESSAGE, name, timeout_ms)
+
+
+def _single_instance_enabled(args) -> bool:  # noqa: ANN001
+    """冒烟模式禁用单实例逻辑，避免测试/截图进程互相抢占。"""
+    return not bool(getattr(args, "smoke", False))
+
+
 def _single_instance_lock(
     retries: int = 12,
     interval_ms: int = 400,
     restarted: bool = False,
+    notify: Callable[[], bool] | None = None,
 ) -> QLockFile | None:
     """拿单实例锁；提权重启时旧进程还在退出，所以重试几秒。
 
     --restarted 表示本进程由看门狗拉起，旧进程是被强杀的，锁文件大概率已失效：
     首次失败时主动清理一次陈旧锁，避免保活变成「反复拉起又退出」。
+    v0.17：等待期间顺带尝试连接已有主实例（notify 返回 True 时立即结束等待）。
     """
     lock = QLockFile(str(app_data_dir() / "shenqing.lock"))
     lock.setStaleLockTime(0)
     for attempt in range(max(1, retries)):
         if lock.tryLock(100):
             return lock
+        if notify is not None:
+            try:
+                if notify():
+                    return None
+            except Exception:  # noqa: BLE001 - 通知失败不能影响拿锁
+                pass
         if restarted and attempt == 0:
             try:
                 lock.removeStaleLockFile()
@@ -99,6 +250,133 @@ def _single_instance_lock(
                 pass
         time.sleep(interval_ms / 1000.0)
     return None
+
+
+def acquire_single_instance(
+    args,  # noqa: ANN001
+    name: str = SINGLE_INSTANCE_NAME,
+) -> tuple[bool, SingleInstanceServer | None]:
+    """v0.17 单实例入口：已有主实例时通知它 show-main，并返回「不要启动第二窗口」。
+
+    返回值 (should_start, server)：
+    - (False, None)：已有主实例（已请求它激活主界面），调用方应立即返回 0；
+    - (True, None)：冒烟模式，单实例逻辑禁用；
+    - (True, server)：本进程就是主实例，server 由调用方持有并连接 showMainRequested。
+    """
+    if not _single_instance_enabled(args):
+        return True, None
+
+    restarted = bool(getattr(args, "restarted", False))
+    notified = {"value": False}
+
+    def _notify() -> bool:
+        if _notify_existing_instance(name):
+            notified["value"] = True
+            return True
+        return False
+
+    if not restarted and _notify():
+        print("深清已经在运行了，已激活主界面", file=sys.stderr)
+        return False, None
+    lock = _single_instance_lock(restarted=restarted, notify=None if restarted else _notify)
+    if lock is None:
+        if notified["value"]:
+            print("深清已经在运行了，已激活主界面", file=sys.stderr)
+        else:
+            print("深清已经在运行了（单实例模式）", file=sys.stderr)
+        return False, None
+
+    server = SingleInstanceServer(name)
+    if not server.start():
+        print(f"单实例服务端启动失败：{server.errorString()}", file=sys.stderr)
+        return True, None
+    # QLockFile 一旦被回收就会自动解锁，必须由主实例服务端持有到进程退出
+    server._instance_lock = lock  # type: ignore[attr-defined]
+    return True, server
+
+
+def _window_state_value(state) -> int:  # noqa: ANN001
+    """把 Qt.WindowState 枚举/标志位转成 int（PySide6 的枚举实例不能直接 int()）。"""
+    raw = getattr(state, "value", state)
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _raise_window(root) -> None:  # noqa: ANN001
+    """尽力把窗口提到最前（QWindow 用 raise/requestActivate，QWidget 用 activateWindow）。"""
+    for name in ("raise_", "raise", "activateWindow", "requestActivate"):
+        method = getattr(root, name, None)
+        if not callable(method):
+            continue
+        try:
+            method()
+        except (RuntimeError, TypeError, AttributeError):
+            pass
+
+
+def _activate_main_window(window, bridge=None) -> str:  # noqa: ANN001
+    """第二个实例请求 show-main 时激活主界面。
+
+    返回 "activated" / "locked" / "onboarding" / "none"，方便单测断言。
+    专注锁定或首次引导进行中只做置顶提示，不打断当前流程（不 show 主窗口）。
+    """
+    root = getattr(window, "root_window", None) if window is not None else None
+    if root is None:
+        return "none"
+    locked = False
+    onboarding = False
+    if bridge is not None:
+        try:
+            locked = bool(bridge.busy)
+        except (RuntimeError, AttributeError, TypeError):
+            locked = False
+        try:
+            onboarding = bool(getattr(bridge, "needsOnboarding", False))
+        except (RuntimeError, AttributeError, TypeError):
+            onboarding = False
+    if locked or onboarding:
+        _raise_window(root)
+        if locked:
+            message = QCoreApplication.translate(
+                "ShenQing", "深清正在专注中，结束后自动恢复主界面"
+            )
+        else:
+            message = QCoreApplication.translate(
+                "ShenQing", "首次使用引导进行中，请先完成引导"
+            )
+        toast = getattr(bridge, "toast", None)
+        if toast is not None:
+            try:
+                toast.emit(message)
+            except (RuntimeError, AttributeError, TypeError):
+                pass
+        return "locked" if locked else "onboarding"
+
+    state = None
+    try:
+        state = root.windowState()
+    except (RuntimeError, AttributeError, TypeError):
+        state = None
+    minimized = False
+    if state is not None:
+        minimized = bool(_window_state_value(state) & _window_state_value(Qt.WindowState.WindowMinimized))
+    try:
+        if minimized:
+            root.showNormal()
+        else:
+            root.show()
+    except (RuntimeError, AttributeError, TypeError):
+        pass
+    if state is not None:
+        try:
+            # 取消最小化（WindowActive 由系统设置，这里只清掉最小化位）
+            root.setWindowState(state & ~Qt.WindowState.WindowMinimized)
+        except (RuntimeError, AttributeError, TypeError):
+            pass
+    _raise_window(root)
+    return "activated"
 
 
 def _install_crash_safety() -> None:
@@ -143,10 +421,23 @@ def main(argv: list[str] | None = None) -> int:
 
     qInstallMessageHandler(_message_handler)
 
-    lock = _single_instance_lock(restarted=args.restarted)
-    if lock is None and not args.smoke:
-        print("深清已经在运行了（单实例模式）", file=sys.stderr)
+    # v0.17：单实例 —— 第二个实例连主实例的本地套接字发送 show-main 后立即以 0 退出，
+    # 主实例收到后激活主界面；--restarted（重启自己）不复用这条「已有实例」路径。
+    pending_show_main = {"value": False}
+    main_window: dict[str, object] = {"window": None, "bridge": None}
+
+    def _request_show_main() -> None:
+        if main_window["window"] is None:
+            pending_show_main["value"] = True
+            return
+        _activate_main_window(main_window["window"], main_window["bridge"])
+
+    should_start, instance_server = acquire_single_instance(args)
+    if not should_start:
         return 0
+    if instance_server is not None:
+        instance_server.showMainRequested.connect(_request_show_main)
+        app.aboutToQuit.connect(instance_server.stop)
 
     settings = Settings()
     if args.smoke:
@@ -193,6 +484,13 @@ def main(argv: list[str] | None = None) -> int:
     bridge.onboardingFinished.connect(lambda: _show_window(window))
     if not args.smoke and not bool(settings.get("onboarding_done", False)):
         _hide_window(window)
+
+    # v0.17：窗口就绪；若启动期间第二个实例已经发来 show-main，补一次激活
+    main_window["window"] = window
+    main_window["bridge"] = bridge
+    if pending_show_main["value"]:
+        pending_show_main["value"] = False
+        _activate_main_window(window, bridge)
 
     tray: TrayController | None = None
     quick_panel: QuickPanelController | None = None

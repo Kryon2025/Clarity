@@ -33,6 +33,8 @@ Item {
     property var badgeWhen: null
     // 模型列表用等宽字体
     property bool mono: false
+    // 字体列表预览：每行用该字体自身渲染（CW2 风格），未知字体自动回退
+    property bool previewFontFamily: false
     // 列表为空时显示的文案（空字符串则不显示）
     property string emptyText: ""
 
@@ -189,6 +191,20 @@ Item {
                             height: root.rowHeight
                             readonly property bool current: root.itemValue(modelData) === String(root.currentValue)
                             readonly property bool showBadge: root.itemBadge(modelData)
+                            function previewableFamily(name) {
+                                var lower = String(name).toLowerCase()
+                                var iconHints = ["icon", "symbol", "mdl2", "awesome", "material",
+                                                 "wingding", "webding", "emoji", "segmdl2"]
+                                for (var i = 0; i < iconHints.length; i++) {
+                                    if (lower.indexOf(iconHints[i]) >= 0) return false
+                                }
+                                return true
+                            }
+                            readonly property string previewFamily: root.previewFontFamily
+                                && root.itemValue(modelData) !== ""
+                                && previewableFamily(root.itemValue(modelData))
+                                ? String(root.itemValue(modelData))
+                                : (root.mono ? C.monoFont : AppTheme.fontFamily)
 
                             Rectangle {
                                 anchors.fill: parent
@@ -211,7 +227,7 @@ Item {
                                 text: root.itemLabel(modelData)
                                 color: current ? AppTheme.accent : AppTheme.textSecondary
                                 font.pixelSize: AppTheme.fs(root.mono ? 10 : 11)
-                                font.family: root.mono ? C.monoFont : AppTheme.fontFamily
+                                font.family: parent.previewFamily
                                 elide: Text.ElideRight
                             }
 

@@ -230,7 +230,6 @@ Window {
             anchors.fill: parent
             tone: AppTheme.light ? "light" : "deep"
             intensity: 0.80
-            animated: overlay.animationsEnabled && overlay.showing
             z: 0
         }
 
@@ -259,8 +258,8 @@ Window {
                     height: 30
                     radius: 10
                     gradient: Gradient {
-                        GradientStop { position: 0.0; color: "#BEEFF6" }
-                        GradientStop { position: 1.0; color: "#2E9FBF" }
+                        GradientStop { position: 0.0; color: AppTheme.gradA }
+                        GradientStop { position: 1.0; color: AppTheme.gradC }
                     }
                     Image {
                         anchors.fill: parent
@@ -271,7 +270,7 @@ Window {
                     Glyph {
                         anchors.centerIn: parent
                         visible: !(typeof App !== "undefined" && App.appIconUrl)
-                        kind: "drop"; size: 17; color: "#0B2B3A"
+                        kind: "drop"; size: 17; color: AppTheme.onAccent
                     }
                 }
                 Text {
@@ -331,13 +330,13 @@ Window {
                         height: 104
                         radius: 32
                         gradient: Gradient {
-                            GradientStop { position: 0.0; color: "#BEEFF6" }
-                            GradientStop { position: 0.55; color: "#4FD0E0" }
-                            GradientStop { position: 1.0; color: "#144F66" }
+                            GradientStop { position: 0.0; color: AppTheme.gradA }
+                            GradientStop { position: 0.55; color: AppTheme.gradB }
+                            GradientStop { position: 1.0; color: AppTheme.gradDeep }
                         }
                         border.width: 1
                         border.color: "#66FFFFFF"
-                        Glyph { anchors.centerIn: parent; kind: "drop"; size: 46; color: "#0B2B3A" }
+                        Glyph { anchors.centerIn: parent; kind: "drop"; size: 46; color: AppTheme.onAccent }
                     }
                     Text {
                         width: parent.width
@@ -629,7 +628,7 @@ Window {
                                   hint: qsTr("在「空间 → 还清」里设置作息") },
                                 { icon: "clock", title: qsTr("清番（置顶番茄钟）"),
                                   desc: qsTr("25 分钟专注 + 5 分钟休息，每 4 轮长休息。无边框置顶小窗，可随时暂停或关闭。"),
-                                  hint: qsTr("在「空间」页右上角打开清番") }
+                                  hint: qsTr("在「空间 → 清番」档位打开番茄钟") }
                             ]
                             delegate: Rectangle {
                                 width: (parent.width - 14) / 2
@@ -651,11 +650,11 @@ Window {
                                         height: 46
                                         radius: 15
                                         gradient: Gradient {
-                                            GradientStop { position: 0.0; color: "#BEEFF6" }
-                                            GradientStop { position: 1.0; color: "#2E9FBF" }
+                                            GradientStop { position: 0.0; color: AppTheme.gradA }
+                                            GradientStop { position: 1.0; color: AppTheme.gradC }
                                         }
                                         Glyph { anchors.centerIn: parent; kind: String(modelData.icon); size: 22
-                                                color: "#0B2B3A" }
+                                                color: AppTheme.onAccent }
                                     }
                                     Text {
                                         text: String(modelData.title)
@@ -782,10 +781,10 @@ Window {
                         height: 96
                         radius: 32
                         gradient: Gradient {
-                            GradientStop { position: 0.0; color: "#BEEFF6" }
-                            GradientStop { position: 1.0; color: "#2E9FBF" }
+                            GradientStop { position: 0.0; color: AppTheme.gradA }
+                            GradientStop { position: 1.0; color: AppTheme.gradC }
                         }
-                        Glyph { anchors.centerIn: parent; kind: "check"; size: 44; color: "#0B2B3A" }
+                        Glyph { anchors.centerIn: parent; kind: "check"; size: 44; color: AppTheme.onAccent }
                     }
                     Text {
                         width: parent.width

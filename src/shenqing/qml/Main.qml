@@ -2,6 +2,7 @@ import QtQuick
 import "theme"
 import RinUI
 import "components"
+import "bus"
 import "pages"
 import "glass"
 import "components/Constants.js" as C
@@ -72,8 +73,6 @@ FluentWindow {
 
     // 页面切换动画开关（截图/低功耗场景可关闭，动画依赖渲染帧，被系统节流时会停在过渡态）
     property bool pageTransitions: true
-    // v0.17 海洋波浪根背景强度（0~1；低端机可调低，并把 pageTransitions 设为 false 关闭漂移）
-    property real waveIntensity: AppTheme.light ? 0.60 : 0.85
 
     // ---------- 专注结束「今日专注卡片」状态 ----------
     property bool sessionWasLocked: false
@@ -194,11 +193,9 @@ FluentWindow {
         function onSettingsChanged() { win.applyAppearance() }
     }
 
-    // 根背景 = 深海渐变 + 全幅分层波浪（所有页面之后），波浪动画跟随页面动画开关
+    // 根背景 = 主题渐变（默认恢复 v0.16.3 之前的深海渐变；海洋主题叠加静态浪花）
     background: Backdrop {
         id: appBackdrop
-        waveIntensity: win.waveIntensity
-        waveAnimated: win.pageTransitions && win.visible
     }
 
     // ================= 导航逻辑 =================
@@ -1495,14 +1492,35 @@ FluentWindow {
         animationsEnabled: win.pageTransitions
     }
 
-    // ---------- v0.16 清番：无边框置顶番茄钟（空间页入口打开） ----------
+    // ---------- v0.16 清番：无边框置顶番茄钟（空间页 / 速启面板入口打开） ----------
     PomodoroPanel {
         id: pomodoroPanel
         animationsEnabled: win.pageTransitions
     }
 
+    // v0.17：独立窗口（速启面板）通过 AppBus 请求打开同一个清番番茄钟小窗
+    Connections {
+        target: AppBus
+        function onOpenPomodoroRequested() { pomodoroPanel.openPanel() }
+    }
+
     Connections {
         target: (typeof App !== "undefined") ? App : null
         function onLockedChanged() { win.checkFocusSession() }
+    }
+
+    // ---------- v0.17 单实例 / 速启「打开主界面」 ----------
+    // 后端负责 show/raise/activate（专注锁定或引导中只置顶提示，不打断）；
+    // QML 这里只保证回到空间页，避免重复打开深清时停在数据 / 设置等子页面。
+    Connections {
+        target: (typeof App !== "undefined") ? App : null
+        function onShowMainRequested() {
+            win.goToPage(0)
+            win.closeOverlay()
+            // 引导 / 锁定中不主动抢焦点，交给后端与遮罩自己处理
+            var locked = (typeof App !== "undefined" && App.locked === true)
+            if (!locked && !onboarding.showing && win.visible)
+                win.requestActivate()
+        }
     }
 }

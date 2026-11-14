@@ -307,7 +307,7 @@ Window {
                     Rectangle {
                         anchors.fill: parent
                         radius: width / 2
-                        color: "#BEEFF6"
+                        color: AppTheme.gradA
                     }
                 }
             }
@@ -334,7 +334,7 @@ Window {
                     width: 40
                     height: 40
                     radius: 20
-                    color: "#4FD0E0"
+                    color: AppTheme.chartA
                     opacity: 0.25
                 }
             }
@@ -355,14 +355,14 @@ Window {
                 id: cardBg
                 anchors.fill: parent
                 radius: 28
-                color: "#0C2E3C"
+                color: AppTheme.cardBg
                 border.width: 1
                 border.color: "#33FFFFFF"
 
                 gradient: Gradient {
-                    GradientStop { position: 0.0; color: "#144F66" }
-                    GradientStop { position: 0.55; color: "#0C2E3C" }
-                    GradientStop { position: 1.0; color: "#0B2B3A" }
+                    GradientStop { position: 0.0; color: AppTheme.summaryTop }
+                    GradientStop { position: 0.55; color: AppTheme.summaryMid }
+                    GradientStop { position: 1.0; color: AppTheme.summaryBottom }
                 }
             }
 
@@ -400,8 +400,8 @@ Window {
                     orientation: Gradient.Vertical
                     GradientStop { position: 0.0; color: overlay.bgStyle === 1 ? "#2E4B6E"
                                                           : overlay.bgStyle === 2 ? "#5A3C4F"
-                                                          : (overlay.bgStyle === 3 ? "#12212B" : "#144F66") }
-                    GradientStop { position: 1.0; color: "#071E29" }
+                                                          : (overlay.bgStyle === 3 ? "#12212B" : AppTheme.summaryBackdropTop) }
+                    GradientStop { position: 1.0; color: AppTheme.summaryBackdropBottom }
                 }
             }
 
@@ -427,7 +427,6 @@ Window {
                 height: Math.round(overlay.cardHeight * 0.42)
                 tone: "deep"
                 intensity: 0.55
-                animated: overlay.animationsEnabled && (overlay.showing || overlay.closing)
             }
 
             Column {
@@ -447,13 +446,13 @@ Window {
                         Rectangle {
                             anchors.fill: parent
                             radius: width / 2
-                            color: "#4FD0E0"
+                            color: AppTheme.chartA
                             visible: overlay.avatarUrl === ""
 
                             Text {
                                 anchors.centerIn: parent
                                 text: "深"
-                                color: "#0B2B3A"
+                                color: AppTheme.onAccent
                                 font.pixelSize: AppTheme.fs(22)
                                 font.weight: Font.Bold
                                 font.family: AppTheme.fontFamily
@@ -615,7 +614,7 @@ Window {
                 Rectangle {
                     anchors.fill: parent
                     radius: 12
-                    color: "#F20C2E3C"
+                    color: AppTheme.summaryPanelBg
                     border.width: 1
                     border.color: "#40FFFFFF"
                 }
@@ -802,7 +801,7 @@ Window {
             Rectangle {
                 anchors.fill: parent
                 radius: 17
-                color: "#CC08242F"
+                color: AppTheme.summaryChipBg
                 border.width: 1
                 border.color: "#4DFFFFFF"
             }

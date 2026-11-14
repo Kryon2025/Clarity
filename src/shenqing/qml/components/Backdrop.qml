@@ -3,31 +3,30 @@ import QtQuick.Effects
 import "../theme"
 import "Constants.js" as C
 
-// 页面底：深海渐变 + 分层波浪 +（液态玻璃主题额外加光斑 + 噪点）
-// v0.17 海洋主题：渐变改为「上浅下深」的深海色，叠一层可复用的 WaveBackdrop。
+// 页面底：深海渐变 +（液态玻璃主题额外加光斑 + 噪点）
+// v0.17：默认 solid 恢复 v0.16.3 之前的背景；波浪只在「海洋」主题（AppTheme.ocean）下静态显示。
 Item {
     id: root
     property real blobStrength: 1.0
     property real noiseOpacity: 0.13
-    // v0.17：波浪强度 / 是否动画（低端机或截图时传 false）
-    property real waveIntensity: AppTheme.light ? 0.60 : 0.85
-    property bool waveAnimated: true
+    // 海洋主题的波浪强度（静态；其他主题不显示波浪）
+    property real waveIntensity: 0.85
 
     Rectangle {
         anchors.fill: parent
         gradient: Gradient {
-            GradientStop { position: 0.0; color: AppTheme.bgTop }
-            GradientStop { position: 0.55; color: AppTheme.bgMid }
+            GradientStop { position: 0.0; color: AppTheme.bgStart }
+            GradientStop { position: 0.55; color: AppTheme.bgCenter }
             GradientStop { position: 1.0; color: AppTheme.bgBottom }
         }
     }
 
-    // ---------- 全幅海洋波浪（所有页面之后 / 之上） ----------
+    // ---------- 全幅海洋波浪（仅第 4 个内置主题「海洋」显示，且完全静态） ----------
     WaveBackdrop {
         anchors.fill: parent
+        visible: AppTheme.ocean
         tone: AppTheme.light ? "light" : "deep"
         intensity: root.waveIntensity
-        animated: root.waveAnimated
     }
 
     // ---------- 以下仅液态玻璃主题 ----------
@@ -98,7 +97,7 @@ Item {
         Rectangle {
             anchors.fill: parent
             gradient: Gradient {
-                GradientStop { position: 0.0; color: "#3304121A" }
+                GradientStop { position: 0.0; color: "#33040F18" }
                 GradientStop { position: 0.34; color: "#00000000" }
                 GradientStop { position: 0.76; color: "#00000000" }
                 GradientStop { position: 1.0; color: "#3D041018" }

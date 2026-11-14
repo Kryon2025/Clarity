@@ -96,7 +96,7 @@ Window {
         id: sceneRoot
         anchors.fill: parent
 
-        Rectangle { anchors.fill: parent; color: "#AA051620" }
+        Rectangle { anchors.fill: parent; color: AppTheme.scrimMedium }
         MouseArea {
             anchors.fill: parent
             acceptedButtons: Qt.AllButtons
@@ -109,7 +109,7 @@ Window {
             height: Math.min(600, panel.height * 0.76)
             anchors.centerIn: parent
             radius: 24
-            color: AppTheme.glass ? "#F2082430" : AppTheme.cardBg
+            color: AppTheme.glass ? AppTheme.dialogBg : AppTheme.cardBg
             border.width: 1
             border.color: AppTheme.glass ? "#4DFFFFFF" : AppTheme.cardBorderStrong
             MouseArea { anchors.fill: parent; acceptedButtons: Qt.AllButtons; onClicked: {} }
@@ -125,10 +125,10 @@ Window {
                     width: 30; height: 30; radius: 15
                     anchors.verticalCenter: parent.verticalCenter
                     gradient: Gradient {
-                        GradientStop { position: 0.0; color: "#BEEFF6" }
-                        GradientStop { position: 1.0; color: "#2E9FBF" }
+                        GradientStop { position: 0.0; color: AppTheme.gradA }
+                        GradientStop { position: 1.0; color: AppTheme.gradC }
                     }
-                    Glyph { anchors.centerIn: parent; kind: "sparkle"; size: 16; color: "#0B2B3A" }
+                    Glyph { anchors.centerIn: parent; kind: "sparkle"; size: 16; color: AppTheme.onAccent }
                 }
                 Text {
                     anchors.verticalCenter: parent.verticalCenter

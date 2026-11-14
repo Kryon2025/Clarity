@@ -303,10 +303,10 @@ Window {
                     height: 24
                     radius: 8
                     gradient: Gradient {
-                        GradientStop { position: 0.0; color: "#BEEFF6" }
-                        GradientStop { position: 1.0; color: "#2E9FBF" }
+                        GradientStop { position: 0.0; color: AppTheme.gradA }
+                        GradientStop { position: 1.0; color: AppTheme.gradC }
                     }
-                    Glyph { anchors.centerIn: parent; kind: "clock"; size: 14; color: "#0B2B3A" }
+                    Glyph { anchors.centerIn: parent; kind: "clock"; size: 14; color: AppTheme.onAccent }
                 }
                 Text {
                     anchors.verticalCenter: parent.verticalCenter

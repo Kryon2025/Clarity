@@ -34,9 +34,11 @@ from ..consts import (
     ATMOSPHERES,
     DEFAULT_THEME,
     FEEDBACK_URLS,
+    MAX_FONT_FAMILIES,
     MAX_MINUTES,
     MIN_MINUTES,
     MODE_LABELS,
+    PREFERRED_CJK_FONTS,
     PRESET_MINUTES,
     QUOTES,
     SPACE_MAX_MINUTES,
@@ -237,6 +239,11 @@ class AppBridge(QObject):
         self._site_blocker = site_blocker.HostsSiteBlocker()
         self._site_block_applied = False
         self._volume = -1
+        # v0.17：系统音量定时刷新（用户在系统里改音量时，遮罩/面板的滑杆能跟上）
+        self._volume_timer = QTimer(self)
+        self._volume_timer.setInterval(2000)
+        self._volume_timer.timeout.connect(self._refresh_system_volume)
+        self._volume_timer.start()
         self._sleep_lock_active = False
         self._clock_clicks: deque[float] = deque()
         # v0.16：覆清/深清连点时间显示 10 次 → 退出警告；标记强制结束写 interrupted
@@ -801,6 +808,20 @@ class AppBridge(QObject):
             self._volume = level
             self._settings.set("volume_panel", level)
         self.settingsChanged.emit()
+
+    def _refresh_system_volume(self) -> int:
+        """v0.17：定时读取系统音量；值有变化才 emit settingsChanged（避免 QML 抖动）。"""
+        try:
+            value = system_control.get_volume()
+        except Exception as exc:  # noqa: BLE001 - 音量读取失败不能影响定时器
+            logger.info("定时读取系统音量失败：%s", exc)
+            return self._volume
+        if value < 0:
+            return self._volume
+        if value != self._volume:
+            self._volume = value
+            self.settingsChanged.emit()
+        return value
 
     @Slot(str)
     def systemPower(self, action: str) -> None:
@@ -1871,6 +1892,10 @@ class AppBridge(QObject):
         except Exception as exc:  # noqa: BLE001
             logger.warning("停止清番番茄钟失败：%s", exc)
         try:
+            self._volume_timer.stop()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("停止系统音量刷新失败：%s", exc)
+        try:
             self._app_usage.shutdown()
         except Exception as exc:  # noqa: BLE001
             logger.warning("停止应用使用统计失败：%s", exc)
@@ -2657,29 +2682,59 @@ class AppBridge(QObject):
 
     @Property(list, constant=True)
     def uiFontFamilies(self) -> list[str]:
-        """系统可选中文字体（过滤 @ 开头的竖排字体，排序，最多 200）。"""
+        """CW2 风格字体列表：精选中文字体（已安装才加，按固定顺序）→ 其他系统字体（排序）。
+
+        - 过滤 @ 开头的竖排字体、去重、最多 MAX_FONT_FAMILIES 条；
+        - 离屏/无字体目录环境枚举为空时，仍返回默认字体兜底，避免下拉框空白。
+        """
         try:
             from PySide6.QtGui import QFontDatabase
 
-            families = {
-                str(name)
+            available = {
+                str(name).strip()
                 for name in QFontDatabase.families()
                 if name and not str(name).startswith("@")
             }
-            result = sorted(families)[:200]
-            if result:
-                return result
-            # 离屏/无字体目录环境可能枚举为空：至少返回默认字体，避免下拉框空白
-            fallback = str(self.defaultFontFamily or "Sans Serif")
-            return [fallback]
+            if not available:
+                # 离屏/无字体目录环境可能枚举为空：至少返回默认字体，避免下拉框空白
+                fallback = str(self.defaultFontFamily or "Sans Serif")
+                return [fallback]
+            result: list[str] = []
+            seen: set[str] = set()
+            # 1) 精选中文字体：已安装的才加，按固定顺序排在顶部
+            for family in PREFERRED_CJK_FONTS:
+                if family in available and family not in seen:
+                    result.append(family)
+                    seen.add(family)
+            # 2) 其余系统字体：按名称排序跟在后面
+            for family in sorted(available):
+                if family in seen:
+                    continue
+                result.append(family)
+                seen.add(family)
+                if len(result) >= MAX_FONT_FAMILIES:
+                    break
+            return result[:MAX_FONT_FAMILIES]
         except Exception:  # noqa: BLE001 - 字体枚举失败不能影响界面
             return []
 
+    #: 内置默认字体（v0.17：默认仍是微软雅黑）
+    DEFAULT_FONT_FAMILY = "Microsoft YaHei UI"
+    DEFAULT_FONT_FAMILY_ALIASES = ("Microsoft YaHei UI", "微软雅黑")
+
     @Property(str, constant=True)
     def defaultFontFamily(self) -> str:
-        """内置默认字体（QML 在 ui_font_family 为空时使用）。"""
+        """内置默认字体（QML 在 ui_font_family 为空时使用）：优先微软雅黑 UI。"""
         try:
             from PySide6.QtGui import QFontDatabase
+
+            installed = {str(name) for name in QFontDatabase.families()}
+            for family in self.DEFAULT_FONT_FAMILY_ALIASES:
+                if family in installed:
+                    return family
+        except Exception:  # noqa: BLE001 - 字体枚举失败不致命
+            pass
+        try:
             from PySide6.QtWidgets import QApplication
 
             application = QApplication.instance()
@@ -3062,7 +3117,10 @@ class AppBridge(QObject):
 
     @Property(str, notify=settingsChanged)
     def themeMode(self) -> str:
-        return str(self._settings.get("theme_mode", DEFAULT_THEME))
+        """当前主题模式；旧设置里缺失/未知的值统一回落到默认 solid。"""
+        value = str(self._settings.get("theme_mode", DEFAULT_THEME) or "")
+        valid = {item["value"] for item in THEMES}
+        return value if value in valid else DEFAULT_THEME
 
     @Slot(str)
     def setThemeMode(self, theme: str) -> None:

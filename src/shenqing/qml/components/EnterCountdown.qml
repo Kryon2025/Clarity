@@ -185,7 +185,7 @@ Window {
         Rectangle {
             anchors.fill: parent
             gradient: Gradient {
-                GradientStop { position: 0.0; color: Qt.rgba(AppTheme.bgTop.r, AppTheme.bgTop.g, AppTheme.bgTop.b, 0.55) }
+                GradientStop { position: 0.0; color: Qt.rgba(AppTheme.bgStart.r, AppTheme.bgStart.g, AppTheme.bgStart.b, 0.55) }
                 GradientStop { position: 1.0; color: Qt.rgba(AppTheme.overlayBottom.r, AppTheme.overlayBottom.g, AppTheme.overlayBottom.b, 0.55) }
             }
         }
@@ -194,8 +194,6 @@ Window {
             anchors.fill: parent
             tone: AppTheme.light ? "light" : "deep"
             intensity: 0.72
-            animated: overlay.animationsEnabled && (overlay.shouldShow || overlay.closing
-                                                     || overlay.expanding || overlay.canceling)
         }
         MouseArea { anchors.fill: parent; acceptedButtons: Qt.AllButtons; onClicked: overlay.cancel() }
 
@@ -240,15 +238,15 @@ Window {
                 if (progress > 0.001) {
                     var lw = 3 + 6 * progress
                     var grad = ctx.createLinearGradient(cx - ringR, cy - ringR, cx + ringR, cy + ringR)
-                    grad.addColorStop(0.0, "#4FD0E0")
-                    grad.addColorStop(0.55, "#BEEFF6")
-                    grad.addColorStop(1.0, "#2E9FBF")
+                    grad.addColorStop(0.0, AppTheme.ocean ? "#4FD0E0" : "#2ED3C6")
+                    grad.addColorStop(0.55, AppTheme.ocean ? "#BEEFF6" : "#7FE7DA")
+                    grad.addColorStop(1.0, AppTheme.ocean ? "#2E9FBF" : "#2B86FF")
                     var endA = startA + twoPi * progress
 
                     // 外发光
                     ctx.globalAlpha = 0.16
                     ctx.beginPath(); ctx.arc(cx, cy, ringR, startA, endA)
-                    ctx.strokeStyle = "#4FD0E0"; ctx.lineWidth = lw + 12; ctx.lineCap = "round"; ctx.stroke()
+                    ctx.strokeStyle = AppTheme.ocean ? "#4FD0E0" : "#2ED3C6"; ctx.lineWidth = lw + 12; ctx.lineCap = "round"; ctx.stroke()
 
                     // 主弧
                     ctx.globalAlpha = 1
@@ -267,7 +265,7 @@ Window {
                     ctx.strokeStyle = "#FFFFFF"; ctx.lineWidth = 2 + 16 * fade; ctx.stroke()
                     ctx.globalAlpha = 0.45 * fade
                     ctx.beginPath(); ctx.arc(cx, cy, waveR * 0.92, 0, twoPi)
-                    ctx.strokeStyle = "#BEEFF6"; ctx.lineWidth = 2 + 10 * fade; ctx.stroke()
+                    ctx.strokeStyle = AppTheme.ocean ? "#BEEFF6" : "#7FE7DA"; ctx.lineWidth = 2 + 10 * fade; ctx.stroke()
                     ctx.globalAlpha = 1
                     ctx.globalCompositeOperation = "source-over"
                 }
@@ -286,7 +284,7 @@ Window {
                 font.weight: Font.Light
                 font.family: C.monoFont
                 style: Text.Outline
-                styleColor: "#88040F17"
+                styleColor: AppTheme.shadowDeep
             }
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -296,7 +294,7 @@ Window {
                 font.family: AppTheme.fontFamily
                 font.letterSpacing: 1
                 style: Text.Outline
-                styleColor: "#88040F17"
+                styleColor: AppTheme.shadowDeep
             }
         }
 
@@ -310,7 +308,7 @@ Window {
                 anchors.horizontalCenter: parent.horizontalCenter
                 width: hintLabel.implicitWidth + 24
                 height: 26
-                Rectangle { anchors.fill: parent; radius: 13; color: "#5A041018" }
+                Rectangle { anchors.fill: parent; radius: 13; color: AppTheme.hintScrim }
                 Text {
                     id: hintLabel
                     anchors.centerIn: parent

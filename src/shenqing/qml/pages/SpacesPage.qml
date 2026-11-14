@@ -16,6 +16,7 @@ import "../components/Constants.js" as C
 // - 全局搜索在 Main.qml 的窗口右上角，所有页面可见
 Item {
     id: page
+    objectName: "SpacesPage"
 
     property Item glassSource: null
     // Main.pageTransitions 传入；false 时所有动画瞬时完成
@@ -38,7 +39,14 @@ Item {
         return base
     }
 
+    // v0.17：清番（置顶番茄钟）作为第一个档位 tab，内容是一张和浅清同款的空间卡
     readonly property bool sleepMode: page.activeMode === "sleep"
+    readonly property bool pomodoroMode: page.activeMode === "pomodoro"
+    readonly property var tabList: {
+        var out = [{ value: "pomodoro", label: qsTr("清番") }]
+        for (var i = 0; i < page.modeList.length; i++) out.push(page.modeList[i])
+        return out
+    }
     readonly property var sleepSummary: (typeof App !== "undefined" && App.sleepModeSummary !== undefined
                                         && App.sleepModeSummary !== null) ? App.sleepModeSummary : ({})
     readonly property string sleepTimesText: {
@@ -81,8 +89,8 @@ Item {
     onActiveModeChanged: page.syncSpaces()
 
     readonly property int activeModeIndex: {
-        for (var i = 0; i < page.modeList.length; i++) {
-            if (String(page.modeList[i].value) === page.activeMode) return i
+        for (var i = 0; i < page.tabList.length; i++) {
+            if (String(page.tabList[i].value) === page.activeMode) return i
         }
         return 0
     }
@@ -91,6 +99,7 @@ Item {
     property string expandedSpaceId: ""
 
     readonly property bool addEnabled: page.activeMode !== "heavy" && page.activeMode !== "sleep"
+                                        && page.activeMode !== "pomodoro"
 
     // 只有「新增空间」触发的短窗口内，新建卡片才做入场动画（避免切标签时所有卡片乱入）
     property bool entryAnimationEnabled: false
@@ -323,7 +332,8 @@ Item {
     // ---------- 档位标签 ----------
     function selectMode(mode) {
         var value = String(mode)
-        if (value !== "light" && value !== "medium" && value !== "heavy" && value !== "sleep") return
+        if (value !== "light" && value !== "medium" && value !== "heavy"
+                && value !== "sleep" && value !== "pomodoro") return
         if (page.activeMode === value) return
         page.expandedSpaceId = ""
         page.playCardsIn()
@@ -402,7 +412,6 @@ Item {
             anchors.bottomMargin: -96
             tone: AppTheme.light ? "light" : "deep"
             intensity: 0.60
-            animated: false
             z: -1
         }
 
@@ -430,54 +439,6 @@ Item {
                     }
                 }
 
-                // v0.16 清番入口：无边框置顶番茄钟小窗
-                Item {
-                    id: pomodoroEntry
-                    objectName: "PomodoroEntry"
-                    anchors.right: parent.right
-                    anchors.bottom: parent.bottom
-                    anchors.bottomMargin: 4
-                    width: pomodoroLabel.implicitWidth + 58
-                    height: 36
-
-                    Rectangle {
-                        anchors.fill: parent
-                        radius: 18
-                        color: pomodoroArea.containsMouse
-                               ? (AppTheme.glass ? "#22FFFFFF" : AppTheme.buttonBgAlt)
-                               : (AppTheme.glass ? "#12FFFFFF" : AppTheme.buttonBg)
-                        border.width: 1
-                        border.color: pomodoroArea.containsMouse ? AppTheme.accent : AppTheme.cardBorder
-                        Behavior on color { ColorAnimation { duration: 120 } }
-                    }
-
-                    Row {
-                        anchors.centerIn: parent
-                        spacing: 7
-                        Glyph {
-                            anchors.verticalCenter: parent.verticalCenter
-                            kind: "clock"
-                            size: 15
-                            color: AppTheme.accent
-                        }
-                        Text {
-                            id: pomodoroLabel
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: qsTr("清番 · 置顶番茄钟")
-                            color: AppTheme.textPrimary
-                            font.pixelSize: AppTheme.fs(12)
-                            font.family: AppTheme.fontFamily
-                        }
-                    }
-
-                    MouseArea {
-                        id: pomodoroArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: page.pomodoroRequested()
-                    }
-                }
             }
 
     // ---------- 浏览器式标签页：浅清 / 覆清 / 深清（固定顶部） ----------
@@ -532,7 +493,7 @@ Item {
 
                     Repeater {
                         id: tabRepeater
-                        model: page.modeList
+                        model: page.tabList
 
                         delegate: Item {
                             id: tabItem
@@ -570,6 +531,80 @@ Item {
                     }
                 }
             }
+
+    // ---------- v0.17 清番 tab 内容：置顶番茄钟（和浅清同款的空间卡） ----------
+    GlassCard {
+        id: pomodoroCard
+        objectName: "PomodoroSpaceCard"
+        visible: page.pomodoroMode
+        x: page.contentX
+        y: tabBar.y + tabBar.height + 16
+        width: page.cardWidth
+        height: 156
+        radius: 22
+        interactive: false
+        glassSource: page.glassSource
+        accentTint: AppTheme.accent
+
+        MouseArea {
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: page.pomodoroRequested()
+        }
+
+        Column {
+            anchors.left: parent.left
+            anchors.leftMargin: 20
+            anchors.top: parent.top
+            anchors.topMargin: 20
+            spacing: 8
+
+            Row {
+                spacing: 8
+                Glyph {
+                    anchors.verticalCenter: parent.verticalCenter
+                    kind: "clock"
+                    size: 20
+                    color: AppTheme.accent
+                }
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: qsTr("清番")
+                    color: AppTheme.textPrimary
+                    font.pixelSize: AppTheme.fs(24)
+                    font.weight: Font.DemiBold
+                    font.family: AppTheme.fontFamily
+                }
+            }
+
+            Text {
+                text: qsTr("置顶番茄钟 · 25 分钟专注")
+                color: AppTheme.textSecondary
+                font.pixelSize: AppTheme.fs(13)
+                font.family: AppTheme.fontFamily
+            }
+
+            Text {
+                text: qsTr("不进入专注 · 无边框置顶小窗")
+                color: AppTheme.textTertiary
+                font.pixelSize: AppTheme.fs(11)
+                font.family: AppTheme.fontFamily
+            }
+        }
+
+        GlassButton {
+            anchors.right: parent.right
+            anchors.rightMargin: 22
+            anchors.verticalCenter: parent.verticalCenter
+            text: qsTr("打开番茄钟")
+            tone: "light"
+            fontSize: 15
+            padH: 22
+            minHeight: 40
+            onClicked: page.pomodoroRequested()
+        }
+    }
 
     // ---------- 还清 tab 内容：按作息自动锁定，不提供手动开始 ----------
     GlassCard {
@@ -656,7 +691,7 @@ Item {
 
     // ---------- 可滚动区域（从标签栏下方开始，标签永远不动） ----------
     Flickable {
-        visible: !page.sleepMode
+        visible: !page.sleepMode && !page.pomodoroMode
         id: flick
         objectName: "SpaceFlick"
         x: page.contentX
@@ -1333,7 +1368,7 @@ Item {
             height: infoColumn.implicitHeight + 44
             radius: 20
             anchors.centerIn: parent
-            color: AppTheme.glass ? "#F2082430" : AppTheme.cardBg
+            color: AppTheme.glass ? AppTheme.dialogBg : AppTheme.cardBg
             border.width: 1
             border.color: AppTheme.glass ? "#4DFFFFFF" : AppTheme.cardBorderStrong
 

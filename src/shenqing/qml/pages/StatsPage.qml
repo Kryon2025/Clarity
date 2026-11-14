@@ -4,7 +4,7 @@ import "../components"
 import "../glass"
 import "../components/Constants.js" as C
 
-// 数据页（v0.8 Patina 风格骨架）
+// 数据页（v0.8 横向分类统计骨架）
 // - 顶部统计卡片横排：今日专注次数 / 今日时长 / 连续打卡 / 今日会话
 // - 最近 7 天柱状图
 // - 最近会话列表（后端 session 明细接口未就绪时显示今日汇总占位）
@@ -18,8 +18,7 @@ Item {
     property var demoUsageWeek: null
     property var demoCategories: null
     property int usageRange: 0   // 0=今日，1=本周
-    readonly property var appUsageColors: ["#4FD0E0", "#7FD8EA", "#F2C879", "#C9A7FF",
-                                           "#F27E7E", "#8FD1A8", "#E8B86B", "#7ED7E8"]
+    readonly property var appUsageColors: AppTheme.appUsageColors
     function itemName(item) {
         if (item === null || item === undefined) return ""
         if (item.name !== undefined) return String(item.name)
@@ -129,8 +128,8 @@ Item {
     }
 
     readonly property var statCards: [
-        { label: qsTr("今日专注"), value: page.todaySessions, unit: qsTr("次"), accent: "#4FD0E0" },
-        { label: qsTr("今日时长"), value: Math.round(page.todayMinutes), unit: qsTr("分钟"), accent: "#7FD8EA" },
+        { label: qsTr("今日专注"), value: page.todaySessions, unit: qsTr("次"), accent: AppTheme.chartA },
+        { label: qsTr("今日时长"), value: Math.round(page.todayMinutes), unit: qsTr("分钟"), accent: AppTheme.chartB },
         { label: qsTr("连续打卡"), value: page.streakDays, unit: qsTr("天"), accent: "#F2C879" },
         { label: qsTr("今日会话"), value: page.cardSessions, unit: qsTr("次"), accent: "#C9A7FF" }
     ]
@@ -230,10 +229,10 @@ Item {
     function heatColor(minutes) {
         if (Number(minutes) <= 0) return AppTheme.glass ? "#12FFFFFF" : AppTheme.divider
         var ratio = Number(minutes) / Math.max(1, page.heatmapMax)
-        if (ratio > 0.75) return "#4FD0E0"
-        if (ratio > 0.5) return "#4FD0E0"
-        if (ratio > 0.25) return "#2E9FBF"
-        return "#0B5E73"
+        if (ratio > 0.75) return AppTheme.chartA
+        if (ratio > 0.5) return AppTheme.chartA
+        if (ratio > 0.25) return AppTheme.heatMid
+        return AppTheme.heatLow
     }
     readonly property var hourlyValues: {
         var values = page.demoHourly
@@ -292,7 +291,6 @@ Item {
                     anchors.bottomMargin: -78
                     tone: AppTheme.light ? "light" : "deep"
                     intensity: 0.55
-                    animated: false
                     z: -1
                 }
 
@@ -310,7 +308,7 @@ Item {
                         font.letterSpacing: 1
                     }
                     Text {
-                        text: qsTr("Patina · 看得见的专注，才守得住")
+                        text: qsTr("空间的心事 · 看得见的专注，才守得住")
                         color: AppTheme.textSecondary
                         font.pixelSize: AppTheme.fs(13)
                         font.family: AppTheme.fontFamily
@@ -339,44 +337,87 @@ Item {
                 }
             }
 
-            // ---------- v0.13 横向分类 ----------
-            Row {
+            // ---------- v0.17 横向分类：与空间页档位一致的「文字 + 下划线」tab ----------
+            Item {
                 width: parent.width
-                spacing: 8
+                height: 44
 
-                Repeater {
-                    model: [
-                        { key: "overview", label: qsTr("概览") },
-                        { key: "apps", label: qsTr("应用") },
-                        { key: "category", label: qsTr("分类") },
-                        { key: "heatmap", label: qsTr("热力图") },
-                        { key: "sessions", label: qsTr("会话") }
-                    ]
-                    delegate: Item {
-                        width: chipLabel.implicitWidth + 30
-                        height: 34
-                        readonly property bool selected: page.section === index
-                        Rectangle {
-                            anchors.fill: parent
-                            radius: 17
-                            color: selected ? AppTheme.accentSoft : AppTheme.cardBg
-                            border.width: 1
-                            border.color: selected ? AppTheme.accent : AppTheme.cardBorder
-                        }
-                        Text {
-                            id: chipLabel
-                            anchors.centerIn: parent
-                            text: String(modelData.label)
-                            color: selected ? AppTheme.textPrimary : AppTheme.textSecondary
-                            font.pixelSize: AppTheme.fs(12)
-                            font.weight: selected ? Font.DemiBold : Font.Normal
-                            font.family: AppTheme.fontFamily
-                        }
-                        MouseArea {
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: page.section = index
+                // 底部基线
+                Rectangle {
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    height: 1
+                    color: AppTheme.glass ? "#26FFFFFF" : AppTheme.divider
+                }
+
+                // 选中下划线：240ms 滑动
+                Rectangle {
+                    id: statTabIndicator
+                    anchors.bottom: parent.bottom
+                    height: 2.5
+                    radius: 1.25
+                    color: AppTheme.accent
+                    x: {
+                        var item = statTabRepeater.itemAt(page.section)
+                        return item ? statTabRow.x + item.x : 0
+                    }
+                    width: {
+                        var item = statTabRepeater.itemAt(page.section)
+                        return item ? Math.max(20, item.width) : 24
+                    }
+                    Behavior on x {
+                        NumberAnimation { duration: 240; easing.type: Easing.OutCubic }
+                    }
+                    Behavior on width {
+                        NumberAnimation { duration: 240; easing.type: Easing.OutCubic }
+                    }
+                }
+
+                Row {
+                    id: statTabRow
+                    anchors.left: parent.left
+                    anchors.bottom: parent.bottom
+                    spacing: 30
+
+                    Repeater {
+                        id: statTabRepeater
+                        model: [
+                            { key: "overview", label: qsTr("概览") },
+                            { key: "apps", label: qsTr("应用") },
+                            { key: "category", label: qsTr("分类") },
+                            { key: "heatmap", label: qsTr("热力图") },
+                            { key: "sessions", label: qsTr("会话") }
+                        ]
+                        delegate: Item {
+                            id: statTabItem
+                            width: statTabLabel.implicitWidth + 4
+                            height: 42
+                            readonly property bool selected: page.section === index
+
+                            Text {
+                                id: statTabLabel
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: String(modelData.label)
+                                color: statTabItem.selected
+                                       ? AppTheme.textPrimary
+                                       : (statTabArea.containsMouse ? AppTheme.textSecondary
+                                                                    : AppTheme.textTertiary)
+                                font.pixelSize: AppTheme.fs(16)
+                                font.weight: statTabItem.selected ? Font.DemiBold : Font.Medium
+                                font.family: AppTheme.fontFamily
+                                font.letterSpacing: 1
+                                Behavior on color { ColorAnimation { duration: 120 } }
+                            }
+
+                            MouseArea {
+                                id: statTabArea
+                                anchors.fill: parent
+                                anchors.topMargin: 4
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: page.section = index
+                            }
                         }
                     }
                 }
@@ -541,8 +582,8 @@ Item {
                                                               * (Number(modelData.minutes) || 0) / page.dayMax)
                                         radius: 8
                                         gradient: Gradient {
-                                            GradientStop { position: 0.0; color: "#BEEFF6" }
-                                            GradientStop { position: 1.0; color: "#2E9FBF" }
+                                            GradientStop { position: 0.0; color: AppTheme.gradA }
+                                            GradientStop { position: 1.0; color: AppTheme.gradC }
                                         }
                                         opacity: 0.9
                                     }
@@ -1041,7 +1082,7 @@ Item {
                             font.family: AppTheme.fontFamily
                         }
                         Repeater {
-                            model: ["#0B5E73", "#2E9FBF", "#4FD0E0"]
+                            model: AppTheme.heatLegend
                             delegate: Rectangle {
                                 width: 11
                                 height: 11
@@ -1172,7 +1213,7 @@ Item {
                                         height: 28
                                         radius: 2
                                         anchors.verticalCenter: parent.verticalCenter
-                                        color: modelData.completed === true ? "#4FD0E0" : "#7FD8EA"
+                                        color: modelData.completed === true ? AppTheme.chartA : AppTheme.chartB
                                     }
                                     Column {
                                         anchors.verticalCenter: parent.verticalCenter
@@ -1228,7 +1269,7 @@ Item {
 
             Text {
                 width: parent.width
-                text: qsTr("Patina · 统计卡片与图表结构已就绪，等待补充更多细节。")
+                text: qsTr("统计卡片与图表结构已就绪，等待补充更多细节。")
                 color: AppTheme.textTertiary
                 font.pixelSize: AppTheme.fs(11)
                 font.family: AppTheme.fontFamily

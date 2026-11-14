@@ -12,13 +12,24 @@ Item {
     // 从搜索点进来时可指定要闪亮提示的主题值
     property string highlightValue: ""
 
-    readonly property var themes: (typeof App !== "undefined" && App.themes && App.themes.length > 0)
-                                  ? App.themes
-                                  : [
-                                        { value: "solid", label: qsTr("纯色"), desc: qsTr("平面纯色，无需 GPU 特效"), experimental: false },
-                                        { value: "light", label: qsTr("清空间浅色"), desc: qsTr("浅色底的清空间主题"), experimental: false },
-                                        { value: "glass", label: qsTr("液态玻璃"), desc: qsTr("折射玻璃与拖拽高光（实验性）"), experimental: true }
-                                    ]
+    // 内置主题：solid / light / glass / ocean（海洋为 v0.17 新增的第 4 个内置主题）
+    readonly property var themes: {
+        var list = (typeof App !== "undefined" && App.themes && App.themes.length > 0)
+                   ? App.themes
+                   : [
+                         { value: "solid", label: qsTr("纯色"), desc: qsTr("平面纯色，无需 GPU 特效"), experimental: false },
+                         { value: "light", label: qsTr("清空间浅色"), desc: qsTr("浅色底的清空间主题"), experimental: false },
+                         { value: "glass", label: qsTr("液态玻璃"), desc: qsTr("折射玻璃与拖拽高光（实验性）"), experimental: true }
+                     ]
+        for (var i = 0; i < list.length; i++) {
+            if (String(list[i].value) === "ocean") return list
+        }
+        // 兼容旧后端：本地补一张「海洋」卡片，选中仍走 App.setThemeMode("ocean")
+        var out = []
+        for (var j = 0; j < list.length; j++) out.push(list[j])
+        out.push({ value: "ocean", label: qsTr("海洋"), desc: qsTr("深海渐变与静态浪花"), experimental: false })
+        return out
+    }
 
     readonly property string currentTheme: (typeof App !== "undefined" && App.themeMode)
                                            ? String(App.themeMode) : "solid"
@@ -74,7 +85,6 @@ Item {
                     anchors.bottomMargin: -78
                     tone: AppTheme.light ? "light" : "deep"
                     intensity: 0.55
-                    animated: false
                     z: -1
                 }
 
@@ -151,8 +161,8 @@ Item {
                                 radius: 16
                                 visible: String(modelData.value) === "solid"
                                 gradient: Gradient {
-                                    GradientStop { position: 0.0; color: "#0C2E3C" }
-                                    GradientStop { position: 1.0; color: "#071E29" }
+                                    GradientStop { position: 0.0; color: "#0E2A38" }
+                                    GradientStop { position: 1.0; color: "#04121C" }
                                 }
                                 border.width: 1
                                 border.color: "#2BFFFFFF"
@@ -163,7 +173,7 @@ Item {
                                     width: 34
                                     height: 10
                                     radius: 5
-                                    color: "#4FD0E0"
+                                    color: "#2ED3C6"
                                 }
                                 Rectangle {
                                     x: 12
@@ -187,7 +197,7 @@ Item {
                                     width: 40
                                     height: 14
                                     radius: 7
-                                    color: "#4FD0E0"
+                                    color: "#2ED3C6"
                                     opacity: 0.85
                                 }
                             }
@@ -209,7 +219,7 @@ Item {
                                     width: 34
                                     height: 10
                                     radius: 5
-                                    color: "#0E7E99"
+                                    color: "#0E9E95"
                                 }
                                 Rectangle {
                                     x: 12
@@ -233,7 +243,7 @@ Item {
                                     width: 40
                                     height: 14
                                     radius: 7
-                                    color: "#0E7E99"
+                                    color: "#0E9E95"
                                     opacity: 0.9
                                 }
                             }
@@ -243,9 +253,9 @@ Item {
                                 radius: 16
                                 visible: String(modelData.value) === "glass"
                                 gradient: Gradient {
-                                    GradientStop { position: 0.0; color: "#144F66" }
-                                    GradientStop { position: 0.55; color: "#4FD0E0" }
-                                    GradientStop { position: 1.0; color: "#0B2B3A" }
+                                    GradientStop { position: 0.0; color: "#1F6FD0" }
+                                    GradientStop { position: 0.55; color: "#2ED3C6" }
+                                    GradientStop { position: 1.0; color: "#0A2A36" }
                                 }
                                 opacity: 0.55
                                 border.width: 1
@@ -265,6 +275,54 @@ Item {
                                     kind: "sparkle"
                                     size: 20
                                     color: "#FFFFFF"
+                                }
+                            }
+
+                            // 海洋主题预览：深海渐变 + 静态分层浪花
+                            Item {
+                                id: oceanPreview
+                                anchors.fill: parent
+                                visible: String(modelData.value) === "ocean"
+                                clip: true
+
+                                Rectangle {
+                                    anchors.fill: parent
+                                    radius: 16
+                                    gradient: Gradient {
+                                        GradientStop { position: 0.0; color: "#1B5A73" }
+                                        GradientStop { position: 0.55; color: "#0E3546" }
+                                        GradientStop { position: 1.0; color: "#071E29" }
+                                    }
+                                    border.width: 1
+                                    border.color: "#2BFFFFFF"
+                                }
+
+                                Rectangle {
+                                    x: 4; y: 44; width: 78; height: 16; radius: 8
+                                    color: "#334FD0E0"
+                                }
+                                Rectangle {
+                                    x: 0; y: 56; width: 86; height: 18; radius: 9
+                                    color: "#4D2E9FBF"
+                                }
+                                Rectangle {
+                                    x: 6; y: 68; width: 74; height: 16; radius: 8
+                                    color: "#6655C7DA"
+                                }
+
+                                // 浪花高光（静态，强调海洋主题的层叠浪尖）
+                                Rectangle { x: 8; y: 43; width: 62; height: 2; radius: 1; color: "#BEEFF6"; opacity: 0.55 }
+                                Rectangle { x: 4; y: 55; width: 70; height: 2; radius: 1; color: "#BEEFF6"; opacity: 0.42 }
+                                Rectangle { x: 10; y: 67; width: 54; height: 2; radius: 1; color: "#DFF8FC"; opacity: 0.35 }
+
+                                Rectangle {
+                                    x: 12; y: 14; width: 34; height: 10; radius: 5
+                                    color: "#4FD0E0"
+                                }
+                                Rectangle {
+                                    x: 12; y: 30; width: 44; height: 6; radius: 3
+                                    color: "#BEEFF6"
+                                    opacity: 0.85
                                 }
                             }
                         }

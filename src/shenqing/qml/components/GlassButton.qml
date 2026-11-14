@@ -97,8 +97,8 @@ Item {
         tintAlpha: root.tone === "light" ? (root.selected ? 0.30 : 0.14)
                    : root.tone === "accent" ? 0.42
                    : root.tone === "danger" ? 0.42 : 0.12
-        tint: root.tone === "light" ? "#E2F8FC"
-              : root.tone === "accent" ? "#144F66"
+        tint: root.tone === "light" ? AppTheme.tintLight
+              : root.tone === "accent" ? AppTheme.gradDeep
               : root.tone === "danger" ? "#3A0F16" : AppTheme.glassTint
         sheen: 0.5
         pointer: root.pressPoint
@@ -131,9 +131,9 @@ Item {
         anchors.fill: parent
         visible: root.selected
         radius: height / 2
-        color: root.useGlass ? "#144FD0E0" : "transparent"
+        color: root.useGlass ? Qt.rgba(AppTheme.gradB.r, AppTheme.gradB.g, AppTheme.gradB.b, 0.08) : "transparent"
         border.width: 1
-        border.color: root.useGlass ? "#A64FD0E0" : AppTheme.accent
+        border.color: root.useGlass ? Qt.rgba(AppTheme.gradB.r, AppTheme.gradB.g, AppTheme.gradB.b, 0.65) : AppTheme.accent
         opacity: root.useGlass ? 1.0 : 0.9
     }
 
@@ -144,7 +144,7 @@ Item {
         radius: height / 2
         color: "transparent"
         border.width: 1
-        border.color: root.tone === "light" ? "#5CDFF8FF" : "#38BEEFF6"
+        border.color: root.tone === "light" ? AppTheme.tintBorderLight : AppTheme.tintBorderSoft
     }
 
     Rectangle {
@@ -156,7 +156,7 @@ Item {
         gradient: Gradient {
             orientation: Gradient.Horizontal
             GradientStop { position: 0.0; color: "#00FFFFFF" }
-            GradientStop { position: 0.3; color: "#CCEAFEFF" }
+            GradientStop { position: 0.3; color: AppTheme.sheenHighlight }
             GradientStop { position: 0.8; color: "#4DFFFFFF" }
             GradientStop { position: 1.0; color: "#00FFFFFF" }
         }
