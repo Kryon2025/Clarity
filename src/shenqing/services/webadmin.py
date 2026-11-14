@@ -33,10 +33,12 @@ from ..consts import (
     APP_NAME,
     APP_VERSION,
     CUSTOM_THEME_PREFIX,
-    DEFAULT_THEME,
+    DEFAULT_THEME_SCHEME,
+    DEFAULT_THEME_STYLE,
     MAX_MINUTES,
     MIN_MINUTES,
     MODE_LABELS,
+    THEME_SCHEMES,
     THEMES,
 )
 
@@ -64,7 +66,8 @@ MODES = ("light", "medium", "heavy")
 
 #: POST /api/settings 白名单（不允许改 token / 端口）
 SETTINGS_KEYS = (
-    "theme_mode",
+    "theme_style",
+    "theme_scheme",
     "language",
     "ui_font_scale",
     "ui_font_family",
@@ -107,7 +110,9 @@ __all__ = [
     "WebAdminNotFound",
     "WebAdminService",
     "normalize_setting",
-    "valid_theme_mode",
+    "legacy_theme_pair",
+    "valid_theme_scheme",
+    "valid_theme_style",
 ]
 
 
@@ -169,9 +174,9 @@ def _language_codes() -> set[str]:
         return {"auto", "zh_CN", "en_US"}
 
 
-def valid_theme_mode(settings: Any, mode: Any) -> bool:
-    """主题模式是否可用：内置主题或已安装的 custom:<id>。"""
-    value = str(mode or "").strip()
+def valid_theme_style(settings: Any, style: Any) -> bool:
+    """外观样式是否可用：内置样式（solid/glass/ocean）或已安装的 custom:<id>。"""
+    value = str(style or "").strip()
     if not value:
         return False
     if value.startswith(CUSTOM_THEME_PREFIX):
@@ -181,16 +186,44 @@ def valid_theme_mode(settings: Any, mode: Any) -> bool:
     return value in {item["value"] for item in THEMES}
 
 
+#: 兼容旧名字（旧代码/测试可能还在导入）
+valid_theme_mode = valid_theme_style
+
+
+def valid_theme_scheme(scheme: Any) -> bool:
+    """配色方案是否可用：auto / light / dark。"""
+    return str(scheme or "").strip() in {item["value"] for item in THEME_SCHEMES}
+
+
+def legacy_theme_pair(mode: Any) -> tuple[str, str] | None:
+    """旧主题值 → (样式, 配色)；与桌面端 setThemeMode 的兼容映射一致。"""
+    value = str(mode or "").strip()
+    if value == "light":
+        return (DEFAULT_THEME_STYLE, "light")
+    if value == "solid":
+        return (DEFAULT_THEME_STYLE, "dark")
+    if value in ("glass", "ocean"):
+        return (value, "dark")
+    if value.startswith(CUSTOM_THEME_PREFIX):
+        return (value, "auto")
+    return None
+
+
 def normalize_setting(settings: Any, key: str, value: Any) -> Any:
     """把网页传来的设置值归一化；不合法抛 WebAdminError。"""
     name = str(key or "").strip()
     if name not in SETTINGS_KEYS:
         raise WebAdminError(f"不支持的设置项：{name}")
-    if name == "theme_mode":
-        mode = str(value or "").strip()
-        if not valid_theme_mode(settings, mode):
-            raise WebAdminError("未知主题")
-        return mode
+    if name == "theme_style":
+        style = str(value or "").strip()
+        if not valid_theme_style(settings, style):
+            raise WebAdminError("未知主题样式")
+        return style
+    if name == "theme_scheme":
+        scheme = str(value or "").strip()
+        if not valid_theme_scheme(scheme):
+            raise WebAdminError("未知配色方案")
+        return scheme
     if name == "language":
         code = str(value or "").strip()
         if code not in _language_codes():
@@ -258,9 +291,26 @@ class WebAdminHost:
         self._on_spaces_changed = on_spaces_changed
 
     # ---------- 读取 ----------
+    def theme_style(self) -> str:
+        """外观样式：solid / glass / ocean / custom:<id>。"""
+        value = str(self.settings.get("theme_style", DEFAULT_THEME_STYLE) or "")
+        return value if valid_theme_style(self.settings, value) else DEFAULT_THEME_STYLE
+
+    def theme_scheme(self) -> str:
+        """配色方案：auto / light / dark。"""
+        value = str(self.settings.get("theme_scheme", DEFAULT_THEME_SCHEME) or "")
+        return value if valid_theme_scheme(value) else DEFAULT_THEME_SCHEME
+
     def theme_mode(self) -> str:
-        value = str(self.settings.get("theme_mode", DEFAULT_THEME) or "")
-        return value if valid_theme_mode(self.settings, value) else DEFAULT_THEME
+        """兼容旧字段：等于样式（custom:<id> 原样）。"""
+        return self.theme_style()
+
+    def theme_schemes(self) -> list[dict]:
+        """配色方案列表：[{value,label}]。"""
+        return [
+            {"value": str(item["value"]), "label": str(item["label"])}
+            for item in THEME_SCHEMES
+        ]
 
     def themes(self) -> list[dict]:
         result = [
@@ -433,7 +483,12 @@ class WebAdminHost:
         """写设置（白名单 + 归一化），成功后通知界面即时生效。"""
         name = str(key or "").strip()
         try:
+            if name == "theme_style":
+                return self.set_theme_style(str(value or ""))
+            if name == "theme_scheme":
+                return self.set_theme_scheme(str(value or ""))
             if name == "theme_mode":
+                # 兼容旧网页管理页提交的单一主题值
                 return self.set_theme(str(value or ""))
             normalized = normalize_setting(self.settings, name, value)
         except WebAdminError as exc:
@@ -442,12 +497,36 @@ class WebAdminHost:
         self.notify_settings(name, normalized)
         return True, ""
 
+    def set_theme_style(self, style: str) -> tuple[bool, str]:
+        """切换外观样式（内置样式或已安装的 custom:<id>）。"""
+        value = str(style or "").strip()
+        if not valid_theme_style(self.settings, value):
+            return False, "未知主题样式"
+        self.settings.set("theme_style", value)
+        self.notify_settings("theme_style", value)
+        return True, ""
+
+    def set_theme_scheme(self, scheme: str) -> tuple[bool, str]:
+        """切换配色方案（auto / light / dark）。"""
+        value = str(scheme or "").strip()
+        if not valid_theme_scheme(value):
+            return False, "未知配色方案"
+        self.settings.set("theme_scheme", value)
+        self.notify_settings("theme_scheme", value)
+        return True, ""
+
     def set_theme(self, mode: str) -> tuple[bool, str]:
-        value = str(mode or "").strip()
-        if not valid_theme_mode(self.settings, value):
+        """兼容旧接口：旧主题值映射成 样式 + 配色（light→solid+light 等）。"""
+        pair = legacy_theme_pair(mode)
+        if pair is None:
             return False, "未知主题"
-        self.settings.set("theme_mode", value)
-        self.notify_settings("theme_mode", value)
+        style, scheme = pair
+        if not valid_theme_style(self.settings, style):
+            return False, "未知主题"
+        self.settings.set("theme_style", style)
+        self.settings.set("theme_scheme", scheme)
+        self.notify_settings("theme_style", style)
+        self.notify_settings("theme_scheme", scheme)
         return True, ""
 
     def start_session(self, mode: str, minutes: Any, space_id: str) -> tuple[bool, str]:
@@ -494,8 +573,8 @@ class WebAdminHost:
                 "palette": palette,
             }
             self.settings.set("custom_themes", stored)
-            self.settings.set("theme_mode", CUSTOM_THEME_PREFIX + theme_id)
-            self.notify_settings("theme_mode", CUSTOM_THEME_PREFIX + theme_id)
+            self.settings.set("theme_style", CUSTOM_THEME_PREFIX + theme_id)
+            self.notify_settings("theme_style", CUSTOM_THEME_PREFIX + theme_id)
             return True, f"已安装主题：{name}"
         if kind != "plugin":
             return False, "未知的商店条目类型"
@@ -884,8 +963,10 @@ class WebAdminService:
 
     # ---------- 状态 ----------
     def _setting_value(self, key: str) -> Any:
-        if key == "theme_mode":
-            return self._host.theme_mode()
+        if key == "theme_style":
+            return self._host.theme_style()
+        if key == "theme_scheme":
+            return self._host.theme_scheme()
         raw = self._host.settings.get(key, _SETTING_FALLBACK.get(key))
         try:
             return normalize_setting(self._host.settings, key, raw)
@@ -960,7 +1041,10 @@ class WebAdminService:
             "appName": APP_NAME,
             "version": host.version,
             "themeMode": host.theme_mode(),
+            "themeStyle": host.theme_style(),
+            "themeScheme": host.theme_scheme(),
             "themes": host.themes(),
+            "themeSchemes": host.theme_schemes(),
             "modes": [
                 {"value": mode, "label": MODE_LABELS.get(mode, mode)} for mode in MODES
             ],
@@ -1088,17 +1172,33 @@ class WebAdminService:
         raise WebAdminError("未知的会话操作（start / stop）")
 
     def _post_theme(self, body: dict) -> tuple[int, dict]:
-        mode = str(body.get("mode") or "").strip()
-        if not mode:
-            raise WebAdminError("缺少 mode")
-        ok, message = self._host.set_theme(mode)
-        if not ok:
-            return 400, {"ok": False, "message": message or "无法切换主题"}
+        """切换外观：新参数 {style, scheme}；兼容旧参数 {mode}。"""
+        style = str(body.get("style") or "").strip()
+        scheme = str(body.get("scheme") or "").strip()
+        message = "已切换主题"
+        if style:
+            ok, message = self._host.set_theme_style(style)
+            if not ok:
+                return 400, {"ok": False, "message": message or "无法切换主题样式"}
+        if scheme:
+            ok, message = self._host.set_theme_scheme(scheme)
+            if not ok:
+                return 400, {"ok": False, "message": message or "无法切换配色方案"}
+        if not style and not scheme:
+            mode = str(body.get("mode") or "").strip()
+            if not mode:
+                raise WebAdminError("缺少 style / scheme / mode")
+            ok, message = self._host.set_theme(mode)
+            if not ok:
+                return 400, {"ok": False, "message": message or "无法切换主题"}
         return 200, {
             "ok": True,
-            "message": "已切换主题",
+            "message": message or "已切换主题",
             "themeMode": self._host.theme_mode(),
+            "themeStyle": self._host.theme_style(),
+            "themeScheme": self._host.theme_scheme(),
             "themes": self._host.themes(),
+            "themeSchemes": self._host.theme_schemes(),
         }
 
     def _post_store_install(self, body: dict) -> tuple[int, dict]:
@@ -1355,7 +1455,14 @@ button.small{padding:6px 11px;font-size:12px}
   var editing = {};
 
   var SETTING_ROWS = [
-    { key: 'theme_mode', title: '应用主题', type: 'theme' },
+    { key: 'theme_style', title: '主题样式', type: 'theme' },
+    {
+      key: 'theme_scheme', title: '主题配色', type: 'select', options: [
+        { value: 'auto', label: '跟随系统' },
+        { value: 'light', label: '浅色' },
+        { value: 'dark', label: '深色' }
+      ]
+    },
     {
       key: 'language', title: '界面语言', type: 'select', options: [
         { value: 'auto', label: '跟随系统' },
@@ -1457,10 +1564,28 @@ button.small{padding:6px 11px;font-size:12px}
 
   function themeLabel() {
     var list = (data && data.themes) || [];
+    var current = data ? data.themeStyle : '';
     for (var i = 0; i < list.length; i += 1) {
-      if (list[i].value === data.themeMode) return list[i].label;
+      if (list[i].value === current) return list[i].label;
     }
-    return data && data.themeMode ? data.themeMode : '—';
+    return current || '—';
+  }
+
+  function schemeLabel() {
+    var list = (data && data.themeSchemes) || [];
+    var current = data ? data.themeScheme : '';
+    for (var i = 0; i < list.length; i += 1) {
+      if (list[i].value === current) return list[i].label;
+    }
+    return current || '—';
+  }
+
+  function schemeOptions(selected) {
+    var list = (data && data.themeSchemes) || [];
+    return list.map(function (item) {
+      return '<option value="' + esc(item.value) + '"' +
+        (item.value === selected ? ' selected' : '') + '>' + esc(item.label) + '</option>';
+    }).join('');
   }
 
   function sessionText() {
@@ -1485,7 +1610,7 @@ button.small{padding:6px 11px;font-size:12px}
     var title = $('#title');
     if (title && data.appName) title.textContent = data.appName + ' · 网页管理';
     $('#pill-version').textContent = 'v' + String(data.version || '—');
-    $('#pill-theme').textContent = '主题 ' + themeLabel();
+    $('#pill-theme').textContent = '外观 ' + themeLabel() + ' · ' + schemeLabel();
     var pill = $('#pill-status');
     pill.textContent = sessionText();
     pill.className = 'pill' + (data.session && data.session.state === 'running' ? ' busy' : '');
@@ -1533,9 +1658,10 @@ button.small{padding:6px 11px;font-size:12px}
       '<button class="danger" data-act="session-stop"' + (running ? '' : ' disabled') + '>结束</button>' +
       '</div><p class="hint">当前状态：' + esc(sessionText()) + '。覆清 / 深清开始后不可提前结束。</p></div>';
 
-    html += '<div class="card"><h2>主题</h2><div class="row">' +
-      '<label class="field">应用主题<select id="theme-select">' + themeOptions(data.themeMode) + '</select></label>' +
-      '</div><p class="hint">切换后桌面端立即生效。</p></div>';
+    html += '<div class="card"><h2>外观</h2><div class="row">' +
+      '<label class="field">主题样式<select data-setting="theme_style">' + themeOptions(data.themeStyle) + '</select></label>' +
+      '<label class="field">配色方案<select data-setting="theme_scheme">' + schemeOptions(data.themeScheme) + '</select></label>' +
+      '</div><p class="hint">样式与配色互相独立；切换后桌面端立即生效。</p></div>';
 
     pane('overview').innerHTML = html;
   }
@@ -1574,7 +1700,7 @@ button.small{padding:6px 11px;font-size:12px}
   function settingControl(row) {
     var value = (data.settings || {})[row.key];
     if (row.type === 'theme') {
-      return '<select data-setting="' + row.key + '">' + themeOptions(data.themeMode) + '</select>';
+      return '<select data-setting="' + row.key + '">' + themeOptions(data.themeStyle) + '</select>';
     }
     if (row.type === 'select') {
       return '<select data-setting="' + row.key + '">' + row.options.map(function (item) {

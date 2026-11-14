@@ -1,8 +1,10 @@
 # 深清商店服务端（FastAPI + SQLite）
 
 深清（Clarity）主题 / 插件商店的可部署后端：账号登录、角色权限、开发者提交、
-管理员审核、评论、公开商店页面，桌面端兼容的 /api/catalog.json，以及
-账户云同步（/api/sync，跨设备同步专注数据）。
+管理员审核、评论、公开商店页面，桌面端兼容的 /api/catalog.json，账户云同步
+（/api/sync，跨设备同步专注数据），以及 CW2 风格的 **GitHub 发布源自动同步**
+（开发者必填仓库 / 发布页地址，后台从 GitHub Releases 同步版本与下载地址）
+和 **开发者发布 Token**（cwpt_...，给 CI 持续发布用）。
 
 - 技术栈：Python 3.13 + FastAPI + uvicorn + SQLite（stdlib sqlite3）
 - 认证：JWT（HS256，stdlib hmac/base64）+ PBKDF2-SHA256（stdlib hashlib）
@@ -19,6 +21,8 @@ server/
 ├── auth.py               密码哈希与 JWT（纯 stdlib）
 ├── mailer.py             邮箱验证码发信（smtplib，未配 SMTP 时走开发模式）
 ├── ratelimit.py          验证码发送 / 云同步写入限流（内存滑动窗口）
+├── services/
+│   └── github_sync.py    GitHub 发布源：地址解析 + Releases API + 版本/资产解析
 ├── seed.py               演示数据（3 主题 + 2 插件 + 示例账号）
 ├── static/               前端静态文件（index.html / app.js / style.css，由前端提供）
 ├── tests/                单元测试（fastapi.testclient.TestClient）
@@ -82,6 +86,10 @@ curl http://127.0.0.1:8000/api/health          # {"status":"ok",...}
 | MAIL_DEV_MODE | 否 | 0 | 强制开发模式：不发信、响应里带 dev_code。**生产严禁开启** |
 | EMAIL_CODE_TTL_SECONDS | 否 | 600 | 验证码有效期（秒） |
 | EMAIL_CODE_MAX_ATTEMPTS | 否 | 5 | 单个验证码最多尝试次数，超限返回 429 |
+| GITHUB_TOKEN | 否 | 空 | GitHub API Token：匿名 60 次/小时，配置后 5000 次/小时（只读公开仓库即可，无需任何权限） |
+| GITHUB_TIMEOUT_SECONDS | 否 | 6 | 单次 GitHub API 请求超时（秒） |
+| GITHUB_SYNC_INTERVAL_SECONDS | 否 | 21600 | 后台同步周期（秒），默认 6 小时 |
+| GITHUB_SYNC_ENABLED | 否 | 1 | 设为 0 可关闭后台同步线程（仍可手动 POST /api/admin/sync）；测试环境建议关 |
 
 配置也可以写在 server/.env（KEY=VALUE，# 注释），环境变量优先于 .env。
 
@@ -184,9 +192,14 @@ python -m server.seed          # 仓库根目录
 | GET | /api/store/items/{id} | 公开 | 详情；pending/rejected 仅作者与管理员可见 |
 | GET | /api/store/items/{id}/comments | 公开 | 已过审评论 |
 | POST | /api/store/items/{id}/comments | 登录 | 发评论（status=pending） |
-| POST | /api/dev/items | developer/admin | 提交主题/插件 |
+| POST | /api/dev/items | developer/admin 或发布 Token | 提交主题/插件（github_url 必填） |
 | GET | /api/dev/items | developer/admin | 自己的全部提交与状态 |
-| PUT | /api/dev/items/{id} | developer/admin | 修改自己的 pending 条目 |
+| PUT | /api/dev/items/{id} | developer/admin 或发布 Token | 修改自己的 pending 条目 |
+| POST | /api/dev/tokens | developer/admin | 创建发布 Token {name, scope?, expires_days?} → 含一次性明文 token |
+| GET | /api/dev/tokens | developer/admin | 我的 Token 列表（prefix/status/created/last_used/expires，无明文） |
+| POST | /api/dev/tokens/{id}/revoke | developer/admin | 撤销自己的 Token（幂等） |
+| POST | /api/admin/sync | admin | 立即同步所有已过审条目的 GitHub 版本（同步执行，返回统计） |
+| GET | /api/admin/sync/status | admin | 上次同步时间 / 成功数 / 失败数 / 错误明细 |
 | GET | /api/admin/submissions?status=pending | admin | 审核队列（status=all 看全部） |
 | POST | /api/admin/review | admin | {item_id, action: approve/reject, reason} |
 | GET | /api/admin/users | admin | 用户列表 |
@@ -224,6 +237,8 @@ python -m server.seed          # 仓库根目录
       "tags": ["深色", "青绿"],
       "screenshots": [],
       "download_url": "",
+      "github_url": "https://github.com/example/aurora-theme",
+      "last_sync_at": "2026-11-14T12:00:00Z",
       "palette": {
         "bgTop": "#0A1F2E",
         "bgMid": "#06202C",
@@ -240,6 +255,8 @@ python -m server.seed          # 仓库根目录
 
 桌面端设置里的 store_catalog_url 填 https://你的域名/api/catalog.json 即可。
 download_url 若在数据库里是站内相对路径（以 / 开头），会拼成绝对地址。
+v0.26 起目录条目额外带 github_url（发布源）与 last_sync_at（最近一次同步时间），
+桌面端可以忽略这些字段；商店列表 / 详情接口同样返回它们，以及 last_sync_error。
 
 ## 账户云同步（跨设备同步专注数据）
 
@@ -292,6 +309,79 @@ curl -X PUT http://127.0.0.1:8000/api/sync \
 # → {"detail": "revision 不匹配：服务端当前版本为 1，请先拉取最新数据", "revision": 1}
 ~~~
 
+## GitHub 发布源与发布 Token（v0.26）
+
+参考 CW2 插件广场的做法：开发者发布时必须填 **GitHub 仓库 / 发布页地址**，
+商店后台从 GitHub Releases 自动同步版本号与下载地址；给 CI 持续发布用的
+**发布 Token**（cwpt_...）则可以像 JWT 一样调用提交 / 更新接口。
+
+### 条目字段
+
+| 列 | 默认 | 说明 |
+| --- | --- | --- |
+| github_url | ''（必填） | 只接受 http(s)://github.com/&lt;owner&gt;/&lt;repo&gt; 与 /releases 页面，统一归一化成 https |
+| repo_branch | main | 发布源分支，允许 release/1.0 这种写法 |
+| api_version | 空 | 发布源声明的 API 版本（可选，≤32 字符） |
+| readme_path | README.md | 发布源里 README 的相对路径 |
+| icon_path | icon.png | 发布源里图标的相对路径 |
+| last_sync_at | 空 | 最近一次成功同步的时间（ISO8601 UTC） |
+| last_sync_error | 空 | 最近一次同步失败的原因，成功时清空 |
+
+提交（POST）时 github_url 为空或不是 GitHub 地址 → 400
+「请填写 GitHub 仓库或发布页地址」；更新（PUT）时不传表示保持原值，
+原值为空时同样要求补填。旧库由 init_db 幂等补列，历史条目 github_url 为空，
+前端据此不展示 GitHub 链接。
+
+### 同步规则
+
+- 用的是 GitHub API `repos/{owner}/{repo}/releases/latest`，单次超时 6 秒；
+  配置 GITHUB_TOKEN 可把匿名 60 次/小时 的限额提高到 5000 次/小时；
+- 版本 = release 的 tag_name（去掉 v 前缀，v1.2.3 → 1.2.3）；
+- 下载地址 = 资产名匹配 Setup / Portable 的（优先 Setup），否则第一个资产，
+  再退化成 release 页面地址；
+- 同步成功只改 version / download_url / last_sync_at / updated_at，并清空
+  last_sync_error；开发者留空的版本（含 0.0.0）在首次同步后即变成真实版本；
+- 同步失败只写 last_sync_error：版本、下载地址、审核状态、公开可见性都不变；
+- 后台线程每 GITHUB_SYNC_INTERVAL_SECONDS（默认 6 小时）同步所有已过审且填了
+  github_url 的条目；管理员也可以 `POST /api/admin/sync` 立即同步（同步执行，
+  返回 {total, success, failed, errors}），`GET /api/admin/sync/status` 看上次
+  同步时间 / 成功数 / 失败数 / 错误明细。
+
+~~~bash
+# 管理员立即同步（Bearer 管理员 JWT）
+curl -X POST -H "Authorization: Bearer $ADMIN_JWT" http://127.0.0.1:8000/api/admin/sync
+
+# 同步状态
+curl -H "Authorization: Bearer $ADMIN_JWT" http://127.0.0.1:8000/api/admin/sync/status
+# → {"running": false, "last_run_at": "2026-11-14T12:00:00Z", "total": 3,
+#    "success": 2, "failed": 1, "errors": [{"item_id": "...", "name": "...", "error": "..."}]}
+~~~
+
+### 发布 Token
+
+开发者在「发布 Token」页面创建（名称 + 有效期，0 天表示永久）。响应里的明文
+形如 `cwpt_3Qn...`，**只返回这一次**；库里只存 sha256 摘要和列表用的前缀
+（cwpt_ + 8 位），因此忘记只能重新创建。
+
+~~~bash
+# 创建（返回一次性明文 token 字段）
+curl -X POST -H "Authorization: Bearer $DEV_JWT" -H "Content-Type: application/json" \
+  -d '{"name": "GitHub Actions 发布", "expires_days": 90}' \
+  http://127.0.0.1:8000/api/dev/tokens
+
+# 用 Token 提交条目（与登录 JWT 二选一）
+curl -X POST -H "Authorization: Bearer cwpt_xxx" -H "Content-Type: application/json" \
+  -d '{"kind": "plugin", "name": "示例插件", "github_url": "https://github.com/me/plugin"}' \
+  http://127.0.0.1:8000/api/dev/items
+
+# 撤销
+curl -X POST -H "Authorization: Bearer $DEV_JWT" http://127.0.0.1:8000/api/dev/tokens/3/revoke
+~~~
+
+校验顺序：存在 → 未撤销 → 未过期；通过后刷新 last_used_at。Token 只对
+`POST/PUT /api/dev/items` 生效（不能代替登录访问其它接口），且账号必须仍是
+developer / admin。每个账号最多保留 20 个 Token（含已撤销）。
+
 ## 前端静态页面
 
 - 目录固定 server/static（index.html / app.js / style.css），由同一个服务提供；
@@ -308,10 +398,16 @@ python -m unittest discover -s server/tests
 # 或指定文件
 python -m unittest server.tests.test_store_api -v
 python -m unittest server.tests.test_sync -v
+python -m unittest server.tests.test_github_market -v
 ~~~
 
 覆盖：注册/登录/鉴权、角色权限、待审不可见、审核通过后可见、拒绝原因、
 评论 pending 与评分、catalog 结构、管理员调整角色、排序筛选、输入校验、静态回退，
+GitHub 发布源（地址必填与格式校验、发布源附加字段、版本/下载地址同步（mock
+GitHub API，不联网）、Setup/Portable 资产优先、同步失败只写错误、同步统计与
+管理员权限、商店/catalog 的 github_url 与 last_sync_at、新列迁移幂等），
+发布 Token（一次性明文、列表不含明文、撤销幂等与越权 404、过期/撤销后 401、
+last_used_at 刷新、用 Token 提交与更新、数量与有效期上限），
 以及邮箱验证码（建档只存摘要、dev_code 开发模式、注册需 code、错误/过期/用后即废/
 尝试超限、邮箱/IP 限流、验证码登录、找回密码后旧密码失效、SMTP 失败返回 503），
 以及账户云同步（未登录 401、空快照 revision=0、首次写入 revision=1、重复写入递增、

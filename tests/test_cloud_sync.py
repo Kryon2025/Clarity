@@ -178,11 +178,15 @@ class FakeStoreServer:
         return Handler
 
 
-def _remote_payload(theme_mode: str = "ocean") -> dict:
+def _remote_payload(theme_style: str = "ocean") -> dict:
     return {
         "version": APP_VERSION,
         "exported_at": "2026-11-14T22:00:00",
-        "settings": {"theme_mode": theme_mode, "default_minutes": 30},
+        "settings": {
+            "theme_style": theme_style,
+            "theme_scheme": "dark",
+            "default_minutes": 30,
+        },
         "spaces": {
             "schemaVersion": 6,
             "items": [
@@ -356,7 +360,8 @@ class CloudSyncPayloadTest(unittest.TestCase):
         self._tmp.cleanup()
 
     def test_payload_fields(self) -> None:
-        self.settings.set("theme_mode", "ocean")
+        self.settings.set("theme_style", "ocean")
+        self.settings.set("theme_scheme", "light")
         self.settings.set("default_minutes", 40)
         self.settings.set("ai_api_key", "sk-should-not-sync")
         self.settings.set("pin", "1234")
@@ -372,8 +377,10 @@ class CloudSyncPayloadTest(unittest.TestCase):
         self.assertTrue(payload["exported_at"])
         # 设置：只带白名单键，敏感键一个都不出现
         synced = payload["settings"]
-        self.assertEqual(synced["theme_mode"], "ocean")
+        self.assertEqual(synced["theme_style"], "ocean")
+        self.assertEqual(synced["theme_scheme"], "light")
         self.assertEqual(synced["default_minutes"], 40)
+        self.assertNotIn("theme_mode", synced)
         self.assertTrue(set(synced).issubset(set(cloud_sync.SYNC_SETTINGS_KEYS)))
         for key in ("ai_api_key", "pin", "pin_enabled", "cloud_sync_token", "web_admin_token"):
             self.assertNotIn(key, synced)
@@ -428,12 +435,16 @@ class CloudSyncBackupApplyTest(unittest.TestCase):
 
     def test_apply_payload_merges_settings_only(self) -> None:
         counts = cloud_sync.apply_payload(_remote_payload("ocean"), self.root)
-        self.assertEqual(counts["settings"], 2)
+        # theme_style + theme_scheme + default_minutes
+        self.assertEqual(counts["settings"], 3)
         self.assertEqual(counts["spaces"], 3)
         self.assertEqual(counts["stats"], 1)
         settings = json.loads((self.root / "settings.json").read_text(encoding="utf-8"))
-        self.assertEqual(settings["theme_mode"], "ocean")
+        self.assertEqual(settings["theme_style"], "ocean")
+        self.assertEqual(settings["theme_scheme"], "dark")
         self.assertEqual(settings["default_minutes"], 30)
+        # 旧键在写回时被清理
+        self.assertNotIn("theme_mode", settings)
         # 非白名单键保持不变（本机 pin 不能被云端覆盖 / 也没上传）
         self.assertEqual(settings["pin"], "keep-me")
         spaces = json.loads((self.root / "spaces.json").read_text(encoding="utf-8"))
@@ -445,6 +456,19 @@ class CloudSyncBackupApplyTest(unittest.TestCase):
     def test_apply_payload_ignores_garbage(self) -> None:
         counts = cloud_sync.apply_payload({"settings": "nope", "spaces": 5}, self.root)
         self.assertEqual(counts, {"settings": 0, "spaces": 0, "stats": 0})
+
+    def test_apply_payload_migrates_legacy_theme_mode(self) -> None:
+        """v0.21：旧客户端上传 theme_mode 时按迁移规则拆成样式 + 配色。"""
+        counts = cloud_sync.apply_payload(
+            {"settings": {"theme_mode": "light", "default_minutes": 20}}, self.root
+        )
+        # theme_mode → theme_style + theme_scheme 计 2 条，加 default_minutes
+        self.assertEqual(counts["settings"], 3)
+        settings = json.loads((self.root / "settings.json").read_text(encoding="utf-8"))
+        self.assertEqual(settings["theme_style"], "solid")
+        self.assertEqual(settings["theme_scheme"], "light")
+        self.assertNotIn("theme_mode", settings)
+        self.assertEqual(settings["pin"], "keep-me")
 
 
 class CloudSyncBridgeTest(unittest.TestCase):
@@ -529,7 +553,8 @@ class CloudSyncBridgeTest(unittest.TestCase):
         self.assertEqual(payload.get("version"), APP_VERSION)
         self.assertEqual(self.server.device_name, self.bridge.cloudSyncDevice)
         self.assertIn("settings", payload)
-        self.assertEqual(payload["settings"]["theme_mode"], "solid")
+        self.assertEqual(payload["settings"]["theme_style"], "solid")
+        self.assertEqual(payload["settings"]["theme_scheme"], "auto")
         self.assertTrue(self.bridge.cloudSyncLastAt)
 
     def test_pull_creates_backup_and_applies(self) -> None:
@@ -543,9 +568,11 @@ class CloudSyncBridgeTest(unittest.TestCase):
         self.assertEqual(len(backups), 1)
         self.assertEqual(self.bridge._settings.get("cloud_sync_revision"), 4)
         # 写回后内存里的设置也刷新了
-        self.assertEqual(self.bridge.themeMode, "ocean")
+        self.assertEqual(self.bridge.themeStyle, "ocean")
+        self.assertEqual(self.bridge.themeScheme, "dark")
         saved = json.loads((self.data_dir / "settings.json").read_text(encoding="utf-8"))
-        self.assertEqual(saved["theme_mode"], "ocean")
+        self.assertEqual(saved["theme_style"], "ocean")
+        self.assertEqual(saved["theme_scheme"], "dark")
         self.assertTrue(self.bridge.cloudSyncLastAt)
 
     def test_pull_empty_cloud(self) -> None:

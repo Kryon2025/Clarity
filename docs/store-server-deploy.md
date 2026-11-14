@@ -178,6 +178,27 @@ EMAIL_CODE_MAX_ATTEMPTS=5
 - 服务端不解析 payload，仅存储；如担心隐私，客户端可自行加密后再上传（后续可加）；
 - 接口：`GET /api/sync`、`PUT /api/sync`、`DELETE /api/sync`，需要登录令牌。
 
+## 4.8 托管平台选择（Cloudflare Pages 只适合静态页）
+
+深清商店是 **Python(FastAPI) + SQLite** 的服务，需要长期运行的进程和可写磁盘，Cloudflare Pages 只能托管静态文件，不能直接跑它。按预算选：
+
+| 平台 | 免费/低成本 | 说明 |
+| --- | --- | --- |
+| **自己的 VPS（推荐）** | ¥30–60/月 | 按本文档 Docker Compose + Nginx + HTTPS 部署，SQLite 直接可用 |
+| **Render / Railway / Fly.io / Zeabur** | 有免费或低价档 | 直接构建 `server/Dockerfile`，挂载持久卷存 `store.db`；注意免费档会休眠 |
+| **Cloudflare Tunnel（家里电脑）** | 免费 | 本机跑 docker compose，用 `cloudflared tunnel --url http://127.0.0.1:8000` 拿临时公网地址；适合测试/小规模 |
+| **Cloudflare Pages + Workers/D1** | 免费 | 需要把 FastAPI 重写成 Workers（JS）+ D1 数据库，工作量大，不建议现在做 |
+| **Cloudflare Pages（仅前端）** | 免费 | 可把 `server/static` 放 Pages 当纯展示站，但登录/提交/审核仍需 API 域名（CORS + 跨域 token） |
+
+**如果只想先把网页跑起来：**
+
+1. 本机装 Docker，`cd server && docker compose up -d`；
+2. 装 cloudflared：`cloudflared tunnel --url http://127.0.0.1:8000`，会得到一个 `https://xxx.trycloudflare.com` 地址；
+3. 用这个地址访问网页商店；桌面端把商店目录地址填 `https://xxx.trycloudflare.com/api/catalog.json`；
+4. 长期使用再换 VPS 或 Render，并把临时隧道换成固定域名。
+
+> Cloudflare Pages 的拖拽上传（截图）只适用于纯 HTML/JS/CSS 静态站点；首页必须是 `index.html`，否则 404 —— 深清商店的主页正是静态文件，但 /api/* 需要后端，因此不能只靠 Pages。
+
 ## 5. 首次使用
 
 1. 浏览器打开 `https://你的域名/`，用 `ADMIN_EMAIL/ADMIN_PASSWORD` 登录；

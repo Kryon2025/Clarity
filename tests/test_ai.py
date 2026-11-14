@@ -46,7 +46,8 @@ def _chat_payload(text: str = "你好") -> dict:
 
 
 SETTINGS_ITEMS = [
-    {"key": "theme_mode", "title": "主题", "hint": "纯色 / 浅色 / 液态玻璃"},
+    {"key": "theme_style", "title": "主题样式", "hint": "纯色 / 液态玻璃 / 海洋"},
+    {"key": "theme_scheme", "title": "主题配色", "hint": "跟随系统 / 浅色 / 深色"},
     {"key": "autostart", "title": "开机自启", "hint": "登录时启动"},
     {"key": "ai_enabled", "title": "AI 助手", "hint": "问答与设置搜索"},
     {"key": "sleepRemindersEnabled", "title": "睡眠提醒", "hint": "提前提醒"},
@@ -316,10 +317,10 @@ class AIServiceTest(unittest.TestCase):
         with mock.patch.object(
             self.service,
             "chat",
-            return_value={"ok": True, "text": '[{"key":"theme_mode","title":"主题"}]', "error": ""},
+            return_value={"ok": True, "text": '[{"key":"theme_style","title":"主题样式"}]', "error": ""},
         ):
             results = self.service.search_settings("换主题", SETTINGS_ITEMS)
-        self.assertEqual(results, [{"key": "theme_mode", "title": "主题"}])
+        self.assertEqual(results, [{"key": "theme_style", "title": "主题样式"}])
 
     def test_search_settings_fallback(self) -> None:
         with mock.patch.object(
@@ -327,7 +328,7 @@ class AIServiceTest(unittest.TestCase):
         ):
             results = self.service.search_settings("睡眠提醒", SETTINGS_ITEMS)
         self.assertEqual(results[0]["key"], "sleepRemindersEnabled")
-        self.assertEqual(local_search("主题", SETTINGS_ITEMS)[0]["key"], "theme_mode")
+        self.assertEqual(local_search("主题", SETTINGS_ITEMS)[0]["key"], "theme_style")
 
     def test_bad_json_falls_back(self) -> None:
         with mock.patch.object(
@@ -397,7 +398,7 @@ class AIBridgeTest(unittest.TestCase):
         self.bridge.setAIEnabled(False)
         results = self.bridge.aiSearchSettings("主题")
         self.assertTrue(results)
-        self.assertEqual(results[0]["key"], "theme_mode")
+        self.assertEqual(results[0]["key"], "theme_style")
 
     def test_ai_models_default_and_fetched(self) -> None:
         bridge = self.bridge

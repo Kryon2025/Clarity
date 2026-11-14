@@ -36,6 +36,10 @@ logger = logging.getLogger("shenqing.updater")
 
 # ---------- 内置下载源 ----------
 GITHUB_LATEST = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
+GITHUB_RELEASES = f"https://api.github.com/repos/{GITHUB_REPO}/releases"
+#: 更新渠道：stable 正式版（不含预发布）/ preview 预览版（含预发布）
+CHANNELS = ("stable", "preview")
+DEFAULT_CHANNEL = "stable"
 RELEASES_PAGE = f"https://github.com/{GITHUB_REPO}/releases"
 
 GITLINK_REPO = "Kryon/Clarity"
@@ -387,9 +391,16 @@ def release_from_manifest(payload: object) -> dict | None:
 
 
 # ---------- 拉取 ----------
+def normalize_channel(value: object) -> str:
+    """更新渠道归一化：preview 开头即预览渠道，其余一律正式版。"""
+    text = str(value or "").strip().lower()
+    return "preview" if text.startswith("prev") else DEFAULT_CHANNEL
+
+
 def fetch_release_detail(
     source_id: object = DEFAULT_SOURCE_ID,
     custom_sources: list[dict] | None = None,
+    channel: object = DEFAULT_CHANNEL,
 ) -> tuple[dict | None, str]:
     """按源拉取 release；返回 (归一化 release, 可读错误信息)。"""
     source = resolve_source(source_id, custom_sources)
@@ -399,6 +410,26 @@ def fetch_release_detail(
     name = str(source.get("name") or kind)
 
     if kind == "github":
+        selected = normalize_channel(channel)
+        if selected == "preview":
+            # 预览渠道：读取 releases 列表，取最新一个（含预发布，跳过 draft）
+            try:
+                releases = _read_json(GITHUB_RELEASES)
+            except Exception as exc:  # noqa: BLE001
+                return None, "GitHub 预览渠道检查失败：" + describe_error(exc)
+            if not isinstance(releases, list) or not releases:
+                return None, "GitHub 预览渠道没有可用的发布"
+            chosen = next(
+                (
+                    item
+                    for item in releases
+                    if isinstance(item, Mapping) and not item.get("draft")
+                ),
+                None,
+            )
+            if chosen is None:
+                return None, "GitHub 预览渠道没有可用的发布"
+            return _release_from_payload(chosen, "GitHub 预览")
         try:
             payload = _fetch_release()
         except Exception as exc:  # noqa: BLE001 - 后台线程不能崩
@@ -499,13 +530,14 @@ def check_latest_detail(
     current_version: str | None = None,
     source_id: object = None,
     custom_sources: list[dict] | None = None,
+    channel: object = DEFAULT_CHANNEL,
 ) -> tuple[dict | None, str]:
-    """检查当前源最新版本；返回 (更新信息, 错误信息)，两者互斥。"""
+    """检查当前源最新版本（channel: stable 正式版 / preview 预览版）；返回 (更新信息, 错误信息)。"""
     current = current_version or APP_VERSION
     source = resolve_source(source_id, custom_sources)
     if source is None:
         return None, f"未知的更新源：{source_id}"
-    release, error = fetch_release_detail(source.get("id"), custom_sources)
+    release, error = fetch_release_detail(source.get("id"), custom_sources, channel)
     if error:
         logger.warning("检查更新失败：%s", error)
         return None, error
@@ -528,6 +560,7 @@ def check_latest_detail(
         "assetSize": int(asset.get("size") or 0) if asset else 0,
         "source": str(source.get("id") or ""),
         "sourceName": str(source.get("name") or ""),
+        "channel": normalize_channel(channel),
     }, ""
 
 
@@ -535,9 +568,10 @@ def check_latest(
     current_version: str | None = None,
     source_id: object = None,
     custom_sources: list[dict] | None = None,
+    channel: object = DEFAULT_CHANNEL,
 ) -> dict | None:
     """检查最新版本；有更新返回信息 dict，否则/失败返回 None（兼容旧接口）。"""
-    info, _error = check_latest_detail(current_version, source_id, custom_sources)
+    info, _error = check_latest_detail(current_version, source_id, custom_sources, channel)
     return info
 
 

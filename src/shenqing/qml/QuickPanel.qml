@@ -34,10 +34,29 @@ Window {
     property int requestTick: 0
     onRequestTickChanged: panel.toggleAt(requestX, requestY)
 
-    // 主题跟随 Python 设置（typeof 兜底：单独加载面板时退回纯色）
-    readonly property string resolvedThemeMode: (typeof App !== "undefined" && App.themeMode)
-                                                ? String(App.themeMode) : "solid"
-    onResolvedThemeModeChanged: AppTheme.mode = panel.resolvedThemeMode
+    // 主题跟随 Python 设置（v0.21：样式 + 配色；typeof 兜底：单独加载面板时退回纯色 + 跟随系统）
+    readonly property string resolvedThemeStyle: (typeof App !== "undefined" && App.themeStyle)
+                                                 ? String(App.themeStyle) : "solid"
+    readonly property string resolvedThemeScheme: (typeof App !== "undefined" && App.themeScheme)
+                                                  ? String(App.themeScheme) : "auto"
+    readonly property string resolvedEffectiveScheme: (typeof App !== "undefined" && App.effectiveScheme)
+                                                      ? String(App.effectiveScheme) : "dark"
+    readonly property string resolvedSystemScheme: (typeof App !== "undefined" && App.systemScheme)
+                                                   ? String(App.systemScheme) : panel.resolvedEffectiveScheme
+    readonly property string themeSignature: panel.resolvedThemeStyle + "|" + panel.resolvedThemeScheme
+                                             + "|" + panel.resolvedEffectiveScheme
+    onThemeSignatureChanged: panel.syncTheme()
+    function syncTheme() {
+        AppTheme.style = panel.resolvedThemeStyle
+        AppTheme.scheme = panel.resolvedThemeScheme
+        AppTheme.effectiveScheme = panel.resolvedEffectiveScheme
+        AppTheme.systemScheme = panel.resolvedSystemScheme
+        var palette = ({})
+        if (typeof App !== "undefined" && App.customThemePalette !== undefined
+                && App.customThemePalette !== null && typeof App.customThemePalette === "object")
+            palette = App.customThemePalette
+        AppTheme.customPalette = palette
+    }
 
     onActiveChanged: {
         if (active) return
@@ -219,11 +238,130 @@ Window {
         panel.hide()
     }
 
-    // v0.17：档位卡点选 = 选中高亮 + 直接按该档位开始专注
+    // v0.17：档位卡点选 = 选中高亮 + 开始专注
+    // v0.21：开始前先弹二次确认卡；后端有 confirmationPending/confirmStart/cancelStart 时走后端挂起流程
     function startMode(value) {
-        panel.selectedMode = String(value)
+        var mode = String(value)
+        panel.selectedMode = mode
+        // 还清 / 清番不走「开始专注」确认（还清按作息自动锁定，清番另有小窗）
+        if (mode !== "light" && mode !== "medium" && mode !== "heavy") {
+            if (typeof App.startMode === "function")
+                App.startMode(mode)
+            panel.hide()
+            return
+        }
+        panel.pendingStartInfo = panel.spaceInfoForMode(mode)
+        // 后端挂起流程：只登记待确认（不会开始倒计时），confirmStart 才真正开始
+        if (panel.backendConfirm) {
+            if (typeof App.requestStartMode === "function")
+                App.requestStartMode(mode)
+        }
+    }
+
+    // ---------- v0.21 开始前二次确认 ----------
+    property var pendingStartInfo: null        // { spaceId, mode, name, minutes, allowedCount }
+    readonly property bool backendConfirm: (typeof App !== "undefined"
+                                           && (App.confirmationActive !== undefined
+                                               || App.confirmationPending !== undefined))
+    // 新契约：confirmationActive(bool) + confirmationPending(dict)；旧契约：confirmationPending(bool)
+    readonly property bool backendPending: {
+        if (!panel.backendConfirm) return false
+        if (App.confirmationActive !== undefined) return App.confirmationActive === true
+        if (App.confirmationPending === true) return true
+        return false
+    }
+    readonly property bool confirming: panel.pendingStartInfo !== null || panel.backendPending
+
+    // 按档位找对应空间（优先当前空间，其次该档位第一张）
+    function modeSpace(value) {
+        var first = null
+        var list = (typeof App !== "undefined" && App.spaces) ? App.spaces : []
+        for (var i = 0; i < list.length; i++) {
+            if (list[i] !== null && list[i] !== undefined && String(list[i].mode) === String(value)) {
+                first = list[i]
+                break
+            }
+        }
+        var current = (typeof App !== "undefined" && App.space !== undefined) ? App.space : null
+        if (current !== null && current !== undefined && String(current.mode) === String(value))
+            return current
+        return first
+    }
+
+    function spaceInfoForMode(value) {
+        var space = panel.modeSpace(value)
+        var sameAsDefault = String(panel.defaultModeValue) === String(value)
+        return {
+            spaceId: (space !== null && space !== undefined && space.id !== undefined) ? String(space.id) : "",
+            mode: String(value),
+            name: (space !== null && space !== undefined && space.name !== undefined)
+                  ? String(space.name) : qsTr("%1空间").arg(panel.modeLabel(value)),
+            minutes: (space !== null && space !== undefined && space.minutes !== undefined)
+                     ? Number(space.minutes) : (sameAsDefault ? panel.spaceMinutes : 0),
+            allowedCount: (space !== null && space !== undefined && space.allowedCount !== undefined)
+                          ? Number(space.allowedCount) : -1
+        }
+    }
+
+    readonly property var confirmInfo: {
+        var summary = null
+        if (typeof App !== "undefined") {
+            if (App.confirmationSummary !== undefined && App.confirmationSummary !== null
+                    && typeof App.confirmationSummary === "object")
+                summary = App.confirmationSummary
+            else if (App.confirmationPending !== undefined && App.confirmationPending !== null
+                     && typeof App.confirmationPending === "object")
+                summary = App.confirmationPending
+        }
+        if (summary !== null) {
+            var s = summary
+            return {
+                spaceName: s.spaceName !== undefined ? String(s.spaceName)
+                                                      : (s.name !== undefined ? String(s.name) : ""),
+                mode: s.mode !== undefined ? String(s.mode) : "medium",
+                modeLabel: s.modeLabel !== undefined ? String(s.modeLabel) : "",
+                minutes: s.minutes !== undefined ? Number(s.minutes) : 0,
+                allowedCount: s.allowedCount !== undefined ? Number(s.allowedCount) : -1,
+                whitelistSummary: s.whitelistSummary !== undefined ? String(s.whitelistSummary) : ""
+            }
+        }
+        var local = panel.pendingStartInfo
+        if (local === null || local === undefined)
+            return ({ spaceName: "", mode: "medium", modeLabel: "", minutes: 0,
+                       allowedCount: -1, whitelistSummary: "" })
+        return {
+            spaceName: String(local.name !== undefined ? local.name : ""),
+            mode: String(local.mode !== undefined ? local.mode : "medium"),
+            modeLabel: panel.modeLabel(local.mode),
+            minutes: Number(local.minutes !== undefined ? local.minutes : 0),
+            allowedCount: Number(local.allowedCount !== undefined ? local.allowedCount : -1),
+            whitelistSummary: ""
+        }
+    }
+
+    function cancelStart() {
+        panel.pendingStartInfo = null
+        if (panel.backendConfirm && typeof App.cancelStart === "function")
+            App.cancelStart()
+    }
+
+    function confirmStart() {
+        var info = panel.pendingStartInfo
+        panel.pendingStartInfo = null
+        var backendPending = panel.backendPending
+        if (backendPending && typeof App.confirmStart === "function") {
+            App.confirmStart()
+            panel.hide()
+            return
+        }
+        if (info === null || info === undefined) {
+            panel.hide()
+            return
+        }
         if (typeof App.startMode === "function")
-            App.startMode(String(value))
+            App.startMode(String(info.mode))
+        else if (typeof App.startSpace === "function" && String(info.spaceId) !== "")
+            App.startSpace(String(info.spaceId))
         panel.hide()
     }
 
@@ -246,7 +384,7 @@ Window {
     }
 
     Component.onCompleted: {
-        AppTheme.mode = (typeof App !== "undefined" && App.themeMode) ? App.themeMode : "solid"
+        panel.syncTheme()
         panel.selectedMode = panel.defaultModeValue
     }
 
@@ -862,6 +1000,25 @@ Window {
                     onClicked: panel.openSpaces(panel.defaultModeValue)
                 }
             }
+        }
+
+        // ---------- v0.21 开始专注二次确认卡（340 宽容器自动紧凑排版） ----------
+        StartConfirmSheet {
+            id: startConfirmSheet
+            objectName: "QuickPanelStartConfirmSheet"
+            anchors.fill: parent
+            z: 90
+            animationsEnabled: panel.animationsEnabled
+            opened: panel.confirming
+            spaceName: panel.confirmInfo.spaceName !== undefined ? String(panel.confirmInfo.spaceName) : ""
+            mode: panel.confirmInfo.mode !== undefined ? String(panel.confirmInfo.mode) : "medium"
+            modeLabel: panel.confirmInfo.modeLabel !== undefined ? String(panel.confirmInfo.modeLabel) : ""
+            minutes: panel.confirmInfo.minutes !== undefined ? Number(panel.confirmInfo.minutes) : 0
+            whitelistCount: panel.confirmInfo.allowedCount !== undefined ? Number(panel.confirmInfo.allowedCount) : -1
+            whitelistSummary: panel.confirmInfo.whitelistSummary !== undefined
+                              ? String(panel.confirmInfo.whitelistSummary) : ""
+            onConfirmed: panel.confirmStart()
+            onCancelled: panel.cancelStart()
         }
     }
 }

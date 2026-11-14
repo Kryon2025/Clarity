@@ -90,6 +90,11 @@ class PomodoroTimer(QObject):
         return self._int_setting(LONG_BREAK_KEY, DEFAULT_LONG_BREAK_MINUTES)
 
     @property
+    def rounds_total(self) -> int:
+        """一轮清番包含的番茄个数（1~20，默认 4）。"""
+        return self._int_setting("pomodoro_rounds", 4, 1, 20)
+
+    @property
     def rounds_before_long(self) -> int:
         return self._int_setting(ROUNDS_KEY, DEFAULT_ROUNDS_BEFORE_LONG, 1, 20)
 
@@ -199,6 +204,30 @@ class PomodoroTimer(QObject):
 
     def _advance(self, *, notify: bool) -> None:
         finished = self._phase
+        # 达到本轮清番的番茄个数：工作阶段结束后直接收尾，不再进入休息
+        if finished == PHASE_WORK and self._round >= self.rounds_total:
+            self._running = False
+            self._paused = False
+            self._phase = PHASE_WORK
+            self._round = 0
+            self._preset_total = self.work_minutes * 60
+            self._remaining = 0
+            try:
+                self._timer.stop()
+            except Exception:  # noqa: BLE001 - 计时器可能已销毁
+                pass
+            self.phaseFinished.emit(finished)
+            if notify:
+                try:
+                    self.notify.emit(
+                        "清番 · 完成",
+                        f"本轮 {self.rounds_total} 个番茄已完成，休息一下吧",
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("清番完成通知发送失败：%s", exc)
+            self.changed.emit()
+            self.tick.emit(0)
+            return
         if finished == PHASE_WORK:
             self._long_break = self._round % self.rounds_before_long == 0
             minutes = self.long_break_minutes if self._long_break else self.break_minutes
@@ -227,10 +256,10 @@ class PomodoroTimer(QObject):
                     body = f"该长休息了，{self.long_break_minutes} 分钟后再战"
                 else:
                     title = "清番 · 专注结束"
-                    body = f"休息 {self.break_minutes} 分钟"
+                    body = f"完成第 {self._round} / {self.rounds_total} 个番茄，休息 {self.break_minutes} 分钟"
             else:
                 title = "清番 · 休息结束"
-                body = f"开始第 {self._round} 轮专注（{self.work_minutes} 分钟）"
+                body = f"开始第 {self._round} / {self.rounds_total} 个番茄（{self.work_minutes} 分钟）"
             self.notify.emit(title, body)
         except Exception as exc:  # noqa: BLE001 - 通知失败不能中断番茄钟
             logger.warning("清番通知发送失败：%s", exc)

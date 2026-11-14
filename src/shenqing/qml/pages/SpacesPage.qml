@@ -385,6 +385,112 @@ Item {
             App.startMode(String(mode))
     }
 
+    // ---------- v0.21 开始专注前的二次确认 ----------
+    // 后端若提供 App.confirmationPending / confirmStart / cancelStart，就走后端挂起流程；
+    // 否则由前端本地弹确认卡，确认后才真正调用 App.startSpace / App.startMode。
+    property var pendingStartInfo: null        // { spaceId, mode, name, minutes, allowedCount }
+    readonly property bool backendConfirm: (typeof App !== "undefined"
+                                           && (App.confirmationActive !== undefined
+                                               || App.confirmationPending !== undefined))
+    // 后端挂起态（接口缺失时恒为 false）。新契约：confirmationActive(bool) + confirmationPending(dict)；
+    // 旧契约：confirmationPending 为 bool。两种都兼容。
+    readonly property bool backendPending: {
+        if (!page.backendConfirm) return false
+        if (App.confirmationActive !== undefined) return App.confirmationActive === true
+        if (App.confirmationPending === true) return true
+        return false
+    }
+    readonly property bool confirming: page.pendingStartInfo !== null || page.backendPending
+
+    // 从 App.spaces 里找这张卡对应的空间信息（用于确认卡摘要）
+    function spaceInfo(spaceId, mode) {
+        var target = null
+        var list = (typeof App !== "undefined" && App.spaces) ? App.spaces : []
+        for (var i = 0; i < list.length; i++) {
+            if (list[i] !== null && list[i] !== undefined && String(list[i].id) === String(spaceId)) {
+                target = list[i]
+                break
+            }
+        }
+        return {
+            spaceId: String(spaceId),
+            mode: (target !== null && target.mode !== undefined) ? String(target.mode) : String(mode),
+            name: (target !== null && target.name !== undefined) ? String(target.name) : "",
+            minutes: (target !== null && target.minutes !== undefined) ? Number(target.minutes) : 0,
+            allowedCount: (target !== null && target.allowedCount !== undefined) ? Number(target.allowedCount) : -1
+        }
+    }
+
+    // 确认卡展示内容：优先用后端摘要，其次用本地记录的待开始空间
+    readonly property var confirmInfo: {
+        var summary = null
+        if (typeof App !== "undefined") {
+            if (App.confirmationSummary !== undefined && App.confirmationSummary !== null
+                    && typeof App.confirmationSummary === "object")
+                summary = App.confirmationSummary
+            else if (App.confirmationPending !== undefined && App.confirmationPending !== null
+                     && typeof App.confirmationPending === "object")
+                summary = App.confirmationPending
+        }
+        if (summary !== null) {
+            var s = summary
+            return {
+                spaceName: s.spaceName !== undefined ? String(s.spaceName)
+                                                      : (s.name !== undefined ? String(s.name) : ""),
+                mode: s.mode !== undefined ? String(s.mode) : "medium",
+                modeLabel: s.modeLabel !== undefined ? String(s.modeLabel) : "",
+                minutes: s.minutes !== undefined ? Number(s.minutes) : 0,
+                allowedCount: s.allowedCount !== undefined ? Number(s.allowedCount) : -1,
+                whitelistSummary: s.whitelistSummary !== undefined ? String(s.whitelistSummary) : ""
+            }
+        }
+        var local = page.pendingStartInfo
+        if (local === null || local === undefined)
+            return ({ spaceName: "", mode: "medium", modeLabel: "", minutes: 0,
+                       allowedCount: -1, whitelistSummary: "" })
+        return {
+            spaceName: String(local.name !== undefined ? local.name : ""),
+            mode: String(local.mode !== undefined ? local.mode : "medium"),
+            modeLabel: page.modeLabel(local.mode),
+            minutes: Number(local.minutes !== undefined ? local.minutes : 0),
+            allowedCount: Number(local.allowedCount !== undefined ? local.allowedCount : -1),
+            whitelistSummary: ""
+        }
+    }
+
+    // 点「开始」：先弹确认卡，不直接开始
+    function requestStart(spaceId, mode) {
+        if (page.busy) return
+        page.pendingStartInfo = page.spaceInfo(spaceId, mode)
+        // 后端实现了挂起流程时先登记待确认（不会开始倒计时），由 confirmStart 真正开始
+        if (page.backendConfirm) {
+            if (typeof App.requestStart === "function")
+                App.requestStart(String(spaceId))
+            else if (typeof App.requestStartMode === "function")
+                App.requestStartMode(String(mode))
+        }
+    }
+
+    function cancelStart() {
+        page.pendingStartInfo = null
+        // 后端挂起时负责清 pending；无 pending 时调用也只会返回 false
+        if (page.backendConfirm && typeof App.cancelStart === "function")
+            App.cancelStart()
+    }
+
+    function confirmStart() {
+        var info = page.pendingStartInfo
+        page.pendingStartInfo = null
+        // 后端已登记待确认 → 交给后端开始；否则（后端无挂起态 / 接口缺失）前端本地开始
+        var backendPending = page.backendPending
+        if (backendPending && typeof App.confirmStart === "function") {
+            App.confirmStart()
+            return
+        }
+        if (info === null || info === undefined) return
+        page.startSpace(String(info.spaceId), String(info.mode))
+    }
+
     function openWhitelist(spaceId, mode) {
         // 深清固定不含白名单：UI 层直接拒绝
         if (String(mode) === "heavy") return
@@ -1146,6 +1252,7 @@ Item {
                         // ---- 开始（右侧白色胶囊，深色/浅色/玻璃三种主题下都保持白底深字） ----
                         Item {
                             id: startButton
+                            objectName: "SpaceStartButton"
                             anchors.right: parent.right
                             anchors.rightMargin: 18
                             anchors.verticalCenter: parent.verticalCenter
@@ -1199,7 +1306,7 @@ Item {
                                 cursorShape: page.busy ? Qt.ArrowCursor : Qt.PointingHandCursor
                                 onClicked: {
                                     if (!page.busy)
-                                        page.startSpace(spaceCard.spaceId, spaceCard.spaceMode)
+                                        page.requestStart(spaceCard.spaceId, spaceCard.spaceMode)
                                 }
                             }
                         }
@@ -1451,6 +1558,25 @@ Item {
                 }
             }
         }
+    }
+
+    // ================= v0.21 开始专注二次确认卡（后端没有挂起接口时走前端本地确认） =================
+    StartConfirmSheet {
+        id: startConfirmSheet
+        objectName: "SpacesStartConfirmSheet"
+        anchors.fill: parent
+        animationsEnabled: page.animationsEnabled
+        glassSource: page.glassSource
+        opened: page.confirming
+        spaceName: page.confirmInfo.spaceName !== undefined ? String(page.confirmInfo.spaceName) : ""
+        mode: page.confirmInfo.mode !== undefined ? String(page.confirmInfo.mode) : "medium"
+        modeLabel: page.confirmInfo.modeLabel !== undefined ? String(page.confirmInfo.modeLabel) : ""
+        minutes: page.confirmInfo.minutes !== undefined ? Number(page.confirmInfo.minutes) : 0
+        whitelistCount: page.confirmInfo.allowedCount !== undefined ? Number(page.confirmInfo.allowedCount) : -1
+        whitelistSummary: page.confirmInfo.whitelistSummary !== undefined
+                          ? String(page.confirmInfo.whitelistSummary) : ""
+        onConfirmed: page.confirmStart()
+        onCancelled: page.cancelStart()
     }
 
     // ---------- 睡眠模式面板（v0.13，与设置页共用组件） ----------

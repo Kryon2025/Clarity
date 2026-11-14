@@ -1,129 +1,219 @@
 import QtQuick
 import "../theme"
 import "../components"
-import "../components/Constants.js" as C
 
-// 主题页（v0.18）：商店入口 + 两列主题网格
-// 左列：清空间浅色 / 深色（纯色）/ 液态玻璃
-// 右列：当前样式（动态跟随 App.themeMode）/ 海洋
-// 「当前样式」不是第 5 个独立主题，只是当前生效主题的预览卡（点击提示当前已用）。
+// 主题页（v0.21）：样式（style）× 配色（scheme）两列样式卡片 + 配色 chips + 商店入口
+// 样式：纯色 / 液态玻璃 / 海洋（3 张内置样式卡）+「当前样式」预览卡（第 4 张，组合文案）
+// 配色：「跟随系统（系统深色）/ 浅色 / 深色」chips，点击调用 App.setThemeScheme(...)
+// 样式卡点击调用 App.setThemeStyle(...)；custom:<id> 由商店安装后出现在「已安装的自定义主题」。
 // 窄窗口自动变单列。
 Item {
     id: page
+    objectName: "ThemesPage"
 
     property Item glassSource: null
-    // 从搜索点进来时可指定要闪亮提示的主题值
+    // 从搜索点进来时可指定要闪亮提示的样式值 / 配色行
     property string highlightValue: ""
 
     signal storeRequested(string kind)
 
-    // 内置主题：solid / light / glass / ocean（海洋为 v0.17 新增的第 4 个内置主题）
-    readonly property var themes: {
-        var list = (typeof App !== "undefined" && App.themes && App.themes.length > 0)
-                   ? App.themes
-                   : [
-                         { value: "solid", label: qsTr("深色"), desc: qsTr("纯色深色背景，无需 GPU 特效"), experimental: false },
-                         { value: "light", label: qsTr("清空间浅色"), desc: qsTr("浅色底的清空间主题"), experimental: false },
-                         { value: "glass", label: qsTr("液态玻璃"), desc: qsTr("折射玻璃与拖拽高光（实验性）"), experimental: true },
-                         { value: "ocean", label: qsTr("海洋"), desc: qsTr("深海渐变与静态浪花"), experimental: false }
-                     ]
+    // ---------- 样式列表（App.themeStyles，缺失时用内置兜底并保证顺序） ----------
+    readonly property var styleList: {
+        var raw = (typeof App !== "undefined" && App.themeStyles !== undefined && App.themeStyles !== null
+                   && App.themeStyles.length > 0) ? App.themeStyles : []
+        var fallback = [
+            { value: "solid", name: qsTr("纯色"), desc: qsTr("平面纯色，无需 GPU 特效"), experimental: false },
+            { value: "glass", name: qsTr("液态玻璃"), desc: qsTr("折射玻璃与拖拽高光（实验性）"), experimental: true },
+            { value: "ocean", name: qsTr("海洋"), desc: qsTr("深海渐变与静态浪花"), experimental: false }
+        ]
         var out = []
-        var haveLight = false
-        var haveSolid = false
-        var haveGlass = false
-        var haveOcean = false
-        for (var i = 0; i < list.length; i++) {
-            var value = String(list[i].value)
-            if (value === "light") haveLight = true
-            else if (value === "solid") haveSolid = true
-            else if (value === "glass") haveGlass = true
-            else if (value === "ocean") haveOcean = true
-            out.push(list[i])
+        var order = ["solid", "glass", "ocean"]
+        for (var k = 0; k < order.length; k++) {
+            var found = null
+            for (var i = 0; i < raw.length; i++) {
+                var item = raw[i]
+                if (String(item.value) !== order[k]) continue
+                found = {
+                    value: String(item.value),
+                    name: String(item.name !== undefined && item.name !== null ? item.name : item.value),
+                    desc: String(item.desc !== undefined && item.desc !== null ? item.desc : ""),
+                    experimental: item.experimental === true
+                }
+                break
+            }
+            out.push(found !== null ? found : fallback[k])
         }
-        // 兼容旧后端：缺哪个就本地补一张，选中仍走 App.setThemeMode(...)
-        if (!haveLight) out.push({ value: "light", label: qsTr("清空间浅色"), desc: qsTr("浅色底的清空间主题"), experimental: false })
-        if (!haveSolid) out.push({ value: "solid", label: qsTr("深色"), desc: qsTr("纯色深色背景，无需 GPU 特效"), experimental: false })
-        if (!haveGlass) out.push({ value: "glass", label: qsTr("液态玻璃"), desc: qsTr("折射玻璃与拖拽高光（实验性）"), experimental: true })
-        if (!haveOcean) out.push({ value: "ocean", label: qsTr("海洋"), desc: qsTr("深海渐变与静态浪花"), experimental: false })
         return out
     }
 
-    readonly property string currentTheme: (typeof App !== "undefined" && App.themeMode)
-                                           ? String(App.themeMode) : "solid"
+    // ---------- 配色列表（App.themeSchemes：auto / light / dark） ----------
+    readonly property var schemeList: {
+        var raw = (typeof App !== "undefined" && App.themeSchemes !== undefined && App.themeSchemes !== null
+                   && App.themeSchemes.length > 0) ? App.themeSchemes : []
+        var fallback = [
+            { value: "auto", name: qsTr("跟随系统") },
+            { value: "light", name: qsTr("浅色") },
+            { value: "dark", name: qsTr("深色") }
+        ]
+        if (raw.length < 3) return fallback
+        var out = []
+        for (var i = 0; i < raw.length; i++) {
+            var item = raw[i]
+            out.push({
+                value: String(item.value),
+                name: String(item.name !== undefined && item.name !== null ? item.name : item.value)
+            })
+        }
+        return out
+    }
 
-    // 当前主题名称：内置主题取 App.themes；custom:<id> 取已安装主题包的名字
-    readonly property string currentThemeLabel: {
-        var mode = page.currentTheme
-        if (mode.indexOf("custom:") === 0) {
-            var themeId = mode.substring(7)
-            var customList = (typeof App !== "undefined" && App.customThemes) ? App.customThemes : []
-            for (var c = 0; c < customList.length; c++) {
-                if (String(customList[c].id) === themeId) return String(customList[c].name)
+    // ---------- 当前状态（样式 / 配置配色 / 实际配色 / 系统配色） ----------
+    readonly property string currentStyle: (typeof App !== "undefined" && App.themeStyle)
+                                           ? String(App.themeStyle) : "solid"
+    readonly property string currentScheme: (typeof App !== "undefined" && App.themeScheme)
+                                            ? String(App.themeScheme) : "auto"
+    readonly property string effectiveScheme: (typeof App !== "undefined" && App.effectiveScheme)
+                                              ? String(App.effectiveScheme) : "dark"
+    readonly property string systemScheme: (typeof App !== "undefined" && App.systemScheme)
+                                           ? String(App.systemScheme) : page.effectiveScheme
+
+    readonly property var customThemes: (typeof App !== "undefined" && App.customThemes !== undefined
+                                         && App.customThemes !== null) ? App.customThemes : []
+
+    // ---------- 文案 ----------
+    function styleLabel(value) {
+        var v = String(value === undefined || value === null ? "" : value)
+        if (v.indexOf("custom:") === 0) {
+            var themeId = v.substring(7)
+            var list = page.customThemes
+            for (var c = 0; c < list.length; c++) {
+                if (String(list[c].id) === themeId) return String(list[c].name)
             }
             return qsTr("自定义主题")
         }
-        // 网格里 solid 显示为「深色」，当前样式名保持一致
-        if (mode === "solid") return qsTr("深色")
-        var list = page.themes
-        for (var i = 0; i < list.length; i++) {
-            if (String(list[i].value) === mode) return String(list[i].label)
+        var styles = page.styleList
+        for (var i = 0; i < styles.length; i++) {
+            if (String(styles[i].value) === v) return String(styles[i].name)
         }
-        return mode
+        return v
     }
 
-    function themeEntry(value) {
-        var list = page.themes
-        for (var i = 0; i < list.length; i++) {
-            if (String(list[i].value) === value) return list[i]
+    function schemeLabel(value) {
+        var v = String(value === undefined || value === null ? "" : value)
+        var schemes = page.schemeList
+        for (var i = 0; i < schemes.length; i++) {
+            if (String(schemes[i].value) === v) return String(schemes[i].name)
         }
-        return ({ value: value, label: value, desc: "", experimental: false })
+        if (v === "light") return qsTr("浅色")
+        if (v === "dark") return qsTr("深色")
+        return qsTr("跟随系统")
     }
 
-    function cardFor(value, labelOverride, descOverride) {
-        var item = page.themeEntry(value)
-        return ({
-            value: value,
-            label: (labelOverride !== undefined) ? labelOverride : String(item.label),
-            desc: (descOverride !== undefined) ? descOverride : String(item.desc !== undefined ? item.desc : ""),
+    // 配色 chips 文案：「跟随系统（系统深色）」把当前系统深浅提示出来
+    function schemeChipLabel(value) {
+        var v = String(value)
+        var name = page.schemeLabel(v)
+        if (v === "auto") return qsTr("%1（系统%2）").arg(name).arg(page.schemeLabel(page.systemScheme))
+        return name
+    }
+
+    readonly property string currentStyleLabel: page.styleLabel(page.currentStyle)
+    // 组合文案：「纯色 · 跟随系统(深色)」/「液态玻璃 · 浅色」
+    readonly property string combinedLabel: {
+        var base = page.currentStyleLabel
+        if (page.currentScheme === "auto")
+            return qsTr("%1 · 跟随系统(%2)").arg(base).arg(page.schemeLabel(page.effectiveScheme))
+        return qsTr("%1 · %2").arg(base).arg(page.schemeLabel(page.currentScheme))
+    }
+
+    // ---------- 卡片数据（两列：纯色 / 液态玻璃 / 海洋 + 当前样式） ----------
+    function styleCard(value) {
+        var styles = page.styleList
+        var item = null
+        for (var i = 0; i < styles.length; i++) {
+            if (String(styles[i].value) === String(value)) item = styles[i]
+        }
+        if (item === null) item = { value: value, name: value, desc: "", experimental: false }
+        return {
+            kind: "style",
+            value: String(item.value),
+            label: String(item.name),
+            desc: String(item.desc),
             experimental: item.experimental === true,
-            isCurrent: page.currentTheme === value,
-            live: false
-        })
+            isCurrent: page.currentStyle === String(item.value)
+        }
     }
 
     function currentCard() {
-        return ({
-            value: page.currentTheme,
+        return {
+            kind: "current",
+            value: page.currentStyle,
             label: qsTr("当前样式"),
-            desc: qsTr("正在使用：%1").arg(page.currentThemeLabel),
+            desc: page.combinedLabel,
             experimental: false,
-            isCurrent: true,
-            live: true
-        })
+            isCurrent: true
+        }
     }
 
-    // 列优先：左列 3 张，右列 2 张（当前样式 / 海洋）
     readonly property var gridCards: [
-        page.cardFor("light"),
-        page.cardFor("solid", qsTr("深色"), qsTr("纯色深色背景，无需 GPU 特效")),
-        page.cardFor("glass"),
-        page.currentCard(),
-        page.cardFor("ocean")
+        page.styleCard("solid"),
+        page.styleCard("glass"),
+        page.styleCard("ocean"),
+        page.currentCard()
     ]
 
-    function selectTheme(value) {
-        page.highlightValue = String(value)
-        if (typeof App !== "undefined" && typeof App.setThemeMode === "function")
-            App.setThemeMode(String(value))
+    // ---------- 选择动作 ----------
+    function selectStyle(value) {
+        var v = String(value)
+        if (v === page.currentStyle) {
+            page.showToast(qsTr("当前已是 %1").arg(page.combinedLabel))
+            return
+        }
+        if (typeof App !== "undefined" && typeof App.setThemeStyle === "function")
+            App.setThemeStyle(v)
+        else if (typeof App !== "undefined" && typeof App.setThemeMode === "function")
+            App.setThemeMode(v)
+        page.highlightValue = v
+        page.showToast(qsTr("已切换到 %1").arg(page.styleLabel(v)))
+    }
+
+    function selectScheme(value) {
+        var v = String(value)
+        if (v === page.currentScheme) {
+            page.showToast(qsTr("当前配色已是 %1").arg(page.schemeLabel(v)))
+            return
+        }
+        if (typeof App !== "undefined" && typeof App.setThemeScheme === "function")
+            App.setThemeScheme(v)
+        else if (typeof App !== "undefined" && typeof App.setThemeMode === "function")
+            App.setThemeMode(v)
+        page.flashSchemeRow()
+        if (v === "auto")
+            page.showToast(qsTr("配色：跟随系统（%1）").arg(page.schemeLabel(page.systemScheme)))
+        else
+            page.showToast(qsTr("配色已切换为 %1").arg(page.schemeLabel(v)))
     }
 
     function selectCard(card) {
         if (!card) return
-        if (card.isCurrent === true) {
-            page.showToast(qsTr("当前已在使用这个样式"))
+        if (card.kind === "current") {
+            page.showToast(qsTr("当前已是 %1").arg(page.combinedLabel))
             return
         }
-        page.selectTheme(String(card.value))
+        page.selectStyle(String(card.value))
+    }
+
+    function selectCustomTheme(themeId) {
+        var v = "custom:" + String(themeId)
+        if (v === page.currentStyle) {
+            page.showToast(qsTr("当前已是 %1").arg(page.combinedLabel))
+            return
+        }
+        if (typeof App !== "undefined" && typeof App.setThemeStyle === "function")
+            App.setThemeStyle(v)
+        else if (typeof App !== "undefined" && typeof App.setThemeMode === "function")
+            App.setThemeMode(v)
+        page.showToast(qsTr("已切换到 %1").arg(page.styleLabel(v)))
     }
 
     // ================= 两列 / 单列网格尺寸 =================
@@ -134,29 +224,29 @@ Item {
                                            ? pageColumn.width
                                            : (pageColumn.width - page.gridGap) / 2
     readonly property real gridHeight: page.gridColumns === 1
-                                       ? 5 * page.gridCardHeight + 4 * page.gridGap
-                                       : 3 * page.gridCardHeight + 2 * page.gridGap
+                                        ? 4 * page.gridCardHeight + 3 * page.gridGap
+                                        : 2 * page.gridCardHeight + page.gridGap
 
     function gridCardX(index) {
         if (page.gridColumns === 1) return 0
-        return index < 3 ? 0 : page.gridCardWidth + page.gridGap
+        return (index % 2) * (page.gridCardWidth + page.gridGap)
     }
 
     function gridCardY(index) {
         if (page.gridColumns === 1) return index * (page.gridCardHeight + page.gridGap)
-        return (index < 3 ? index : index - 3) * (page.gridCardHeight + page.gridGap)
+        return Math.floor(index / 2) * (page.gridCardHeight + page.gridGap)
     }
 
     function gridIndexFor(value) {
         var cards = page.gridCards
         for (var i = 0; i < cards.length; i++) {
-            if (cards[i].live === true) continue
+            if (cards[i].kind === "current") continue
             if (String(cards[i].value) === String(value)) return i
         }
         return -1
     }
 
-    // ================= 轻提示（当前样式卡点击） =================
+    // ================= 轻提示（当前样式卡 / chips 点击） =================
     property string toastText: ""
     property bool toastVisible: false
 
@@ -174,8 +264,14 @@ Item {
         onTriggered: page.toastVisible = false
     }
 
+    // 搜索结果里的「主题配色」：闪一下配色 chips 行
+    function flashSchemeRow() {
+        schemeFlashAnim.restart()
+    }
+
     Flickable {
         id: flick
+        objectName: "ThemesFlick"
         anchors.fill: parent
         contentWidth: width
         contentHeight: pageColumn.height + 64
@@ -194,7 +290,7 @@ Item {
                 width: parent.width
                 height: 76
 
-                // v0.17 海洋波浪页头底纹（静态，避免多页同时动画）
+                // 海洋样式的波浪页头底纹（静态；其它样式自动隐藏）
                 WaveBackdrop {
                     x: -(page.width - parent.width) / 2
                     width: page.width
@@ -220,7 +316,7 @@ Item {
                         font.letterSpacing: 1
                     }
                     Text {
-                        text: qsTr("外观风格会立即生效；顶栏、导航与卡片都会跟着切换")
+                        text: qsTr("样式决定质感与强调色，配色决定明暗；两者独立生效")
                         color: AppTheme.textSecondary
                         font.pixelSize: AppTheme.fs(13)
                         font.family: AppTheme.fontFamily
@@ -241,10 +337,142 @@ Item {
                         color: AppTheme.accent
                     }
                     Text {
-                        text: qsTr("当前：%1").arg(page.currentThemeLabel)
+                        text: qsTr("当前：%1").arg(page.combinedLabel)
                         color: AppTheme.textSecondary
                         font.pixelSize: AppTheme.fs(12)
                         font.family: AppTheme.fontFamily
+                    }
+                }
+            }
+
+            // ---------- 配色 chips ----------
+            GlassCard {
+                width: parent.width
+                implicitHeight: schemeColumn.implicitHeight + 32
+                height: implicitHeight
+                radius: 20
+                interactive: false
+                glassSource: page.glassSource
+
+                Column {
+                    id: schemeColumn
+                    x: 18
+                    y: 16
+                    width: parent.width - 36
+                    spacing: 10
+
+                    Item {
+                        width: parent.width
+                        height: 22
+
+                        Text {
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: qsTr("配色")
+                            color: AppTheme.textPrimary
+                            font.pixelSize: AppTheme.fs(14)
+                            font.weight: Font.DemiBold
+                            font.family: AppTheme.fontFamily
+                        }
+                        Text {
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: qsTr("当前生效：%1").arg(page.schemeLabel(page.effectiveScheme))
+                            color: AppTheme.textTertiary
+                            font.pixelSize: AppTheme.fs(11)
+                            font.family: AppTheme.fontFamily
+                        }
+                    }
+
+                    // chips 行 +「配色行高亮」放在同一个 Item 里：
+                    // Column 内的子项不能再用 fill/verticalCenter 锚点，所以高亮框改相对 Row 定位。
+                    Item {
+                        id: schemeRowHost
+                        width: parent.width
+                        height: schemeChips.height
+
+                        Row {
+                            id: schemeChips
+                            spacing: 8
+
+                            Repeater {
+                                model: page.schemeList
+
+                                delegate: Rectangle {
+                                    id: schemeChip
+                                    objectName: "SchemeChip_" + String(modelData.value)
+                                    readonly property bool selectedChip: page.currentScheme === String(modelData.value)
+                                    width: schemeChipLabelText.implicitWidth + 30
+                                    height: 34
+                                    radius: 17
+                                    color: schemeChip.selectedChip
+                                           ? Qt.rgba(AppTheme.accent.r, AppTheme.accent.g, AppTheme.accent.b, 0.16)
+                                           : (schemeChipArea.containsMouse ? AppTheme.cardBgAlt : AppTheme.chipBg)
+                                    border.width: 1
+                                    border.color: schemeChip.selectedChip ? AppTheme.accent : AppTheme.cardBorder
+                                    Behavior on color { ColorAnimation { duration: 140 } }
+
+                                    Row {
+                                        anchors.centerIn: parent
+                                        spacing: 6
+
+                                        Rectangle {
+                                            visible: schemeChip.selectedChip
+                                            width: 6
+                                            height: 6
+                                            radius: 3
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            color: AppTheme.accent
+                                        }
+                                        Text {
+                                            id: schemeChipLabelText
+                                            text: page.schemeChipLabel(String(modelData.value))
+                                            color: schemeChip.selectedChip ? AppTheme.accent : AppTheme.textSecondary
+                                            font.pixelSize: AppTheme.fs(12)
+                                            font.family: AppTheme.fontFamily
+                                        }
+                                    }
+
+                                    MouseArea {
+                                        id: schemeChipArea
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: page.selectScheme(String(modelData.value))
+                                    }
+                                }
+                            }
+                        }
+
+                        // 配色行高亮（搜索结果「主题配色」进来时闪一下）
+                        Rectangle {
+                            id: schemeFlash
+                            x: -5
+                            y: -5
+                            width: schemeChips.width + 10
+                            height: schemeChips.height + 10
+                            radius: 22
+                            color: "transparent"
+                            border.width: 2
+                            border.color: AppTheme.accent
+                            opacity: 0
+                            visible: opacity > 0.01
+
+                            SequentialAnimation {
+                                id: schemeFlashAnim
+                                NumberAnimation { target: schemeFlash; property: "opacity"; to: 0.85; duration: 140 }
+                                NumberAnimation { target: schemeFlash; property: "opacity"; to: 0; duration: 420 }
+                            }
+                        }
+                    }
+
+                    Text {
+                        width: parent.width
+                        text: qsTr("「跟随系统」会随 Windows 的浅色/深色自动切换；换样式不会改变明暗。")
+                        color: AppTheme.textTertiary
+                        font.pixelSize: AppTheme.fs(10)
+                        font.family: AppTheme.fontFamily
+                        wrapMode: Text.WordWrap
                     }
                 }
             }
@@ -259,7 +487,7 @@ Item {
                 onClicked: page.storeRequested("theme")
             }
 
-            // ---------- 主题网格（两列 / 窄窗口单列） ----------
+            // ---------- 样式网格（两列 / 窄窗口单列） ----------
             Item {
                 id: gridHost
                 width: parent.width
@@ -270,6 +498,8 @@ Item {
 
                     delegate: GlassCard {
                         id: themeCard
+                        objectName: "StyleCard_" + String(modelData.kind === "current"
+                                                          ? "current" : modelData.value)
                         x: page.gridCardX(index)
                         y: page.gridCardY(index)
                         width: page.gridCardWidth
@@ -291,10 +521,11 @@ Item {
                                 width: 58
                                 height: 58
                                 anchors.verticalCenter: parent.verticalCenter
-                                style: modelData.live === true ? "custom" : String(modelData.value)
-                                live: modelData.live === true
+                                style: modelData.kind === "current" ? String(AppTheme.style) : String(modelData.value)
+                                live: modelData.kind === "current"
+                                scheme: page.effectiveScheme
                                 corner: 12
-                                borderColor: AppTheme.glass ? "#33FFFFFF" : AppTheme.cardBorder
+                                borderColor: AppTheme.glass ? AppTheme.hairlineStrong : AppTheme.cardBorder
                             }
 
                             // 文字
@@ -394,7 +625,7 @@ Item {
                                     visible: modelData.isCurrent !== true
                                     color: "transparent"
                                     border.width: 1
-                                    border.color: AppTheme.glass ? "#2EFFFFFF" : AppTheme.cardBorderStrong
+                                    border.color: AppTheme.glass ? AppTheme.hairlineStrong : AppTheme.cardBorderStrong
                                 }
 
                                 Glyph {
@@ -409,11 +640,101 @@ Item {
                 }
             }
 
+            // ---------- 已安装的自定义主题（来自商店） ----------
+            Item {
+                width: parent.width
+                height: page.customThemes.length > 0 ? customTitle.height + 10 + customGrid.height : 0
+                visible: page.customThemes.length > 0
+
+                Text {
+                    id: customTitle
+                    text: qsTr("已安装的自定义主题")
+                    color: AppTheme.textPrimary
+                    font.pixelSize: AppTheme.fs(14)
+                    font.weight: Font.DemiBold
+                    font.family: AppTheme.fontFamily
+                }
+
+                Flow {
+                    id: customGrid
+                    anchors.top: customTitle.bottom
+                    anchors.topMargin: 10
+                    width: parent.width
+                    spacing: 12
+
+                    Repeater {
+                        model: page.customThemes
+
+                        delegate: GlassCard {
+                            readonly property string themeId: String(modelData.id)
+                            width: page.gridCardWidth
+                            height: 76
+                            radius: 18
+                            interactive: true
+                            selected: page.currentStyle === "custom:" + themeId
+                            accentTint: AppTheme.accent
+                            glassSource: page.glassSource
+                            onClicked: page.selectCustomTheme(themeId)
+
+                            Row {
+                                anchors.fill: parent
+                                anchors.margins: 12
+                                spacing: 12
+
+                                ThemePalettePreview {
+                                    width: 44
+                                    height: 44
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    style: "custom"
+                                    themePalette: modelData.palette !== undefined ? modelData.palette : ({})
+                                    corner: 10
+                                    borderColor: AppTheme.glass ? AppTheme.hairlineStrong : AppTheme.cardBorder
+                                }
+
+                                Column {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: parent.width - 44 - 12
+                                    spacing: 4
+
+                                    Text {
+                                        width: parent.width
+                                        text: String(modelData.name)
+                                        color: AppTheme.textPrimary
+                                        font.pixelSize: AppTheme.fs(13)
+                                        font.weight: Font.DemiBold
+                                        font.family: AppTheme.fontFamily
+                                        elide: Text.ElideRight
+                                    }
+                                    Text {
+                                        width: parent.width
+                                        text: String(modelData.description !== undefined ? modelData.description : "")
+                                        color: AppTheme.textTertiary
+                                        font.pixelSize: AppTheme.fs(10)
+                                        font.family: AppTheme.fontFamily
+                                        elide: Text.ElideRight
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ---------- 页脚提示 ----------
+            Text {
+                width: parent.width
+                text: qsTr("样式与配色互相独立：纯色看平面、液态玻璃看折射、海洋看浪花；深浅交给配色。")
+                color: AppTheme.textTertiary
+                font.pixelSize: AppTheme.fs(10)
+                font.family: AppTheme.fontFamily
+                wrapMode: Text.WordWrap
+            }
+
             Item { width: parent.width; height: 2 }
         }
     }
 
-    // 从搜索点进来时，闪一下被点名的主题（纯视觉提示，不改设置）
+    // 从搜索点进来时，闪一下被点名的样式（纯视觉提示，不改设置）
     Rectangle {
         id: flashRing
         visible: page.highlightValue !== "" && page.gridIndexFor(page.highlightValue) >= 0
@@ -445,7 +766,7 @@ Item {
         width: themeToastLabel.implicitWidth + 34
         height: 38
         radius: 19
-        color: AppTheme.glass ? "#D90A1B26"
+        color: AppTheme.glass ? AppTheme.cardOverlayHover
                              : Qt.rgba(AppTheme.cardBg.r, AppTheme.cardBg.g, AppTheme.cardBg.b, 0.96)
         border.width: 1
         border.color: AppTheme.cardBorderStrong

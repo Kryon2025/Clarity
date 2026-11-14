@@ -43,8 +43,19 @@ Window {
                                         ? Math.max(1, Math.round(Number(App.pomodoroBreakMinutes))) * 60 : 5 * 60
     readonly property int longBreakSeconds: (typeof App !== "undefined" && App.pomodoroLongBreakMinutes !== undefined)
                                             ? Math.max(1, Math.round(Number(App.pomodoroLongBreakMinutes))) * 60 : 15 * 60
-    readonly property int roundsPerCycle: (typeof App !== "undefined" && App.pomodoroRoundsBeforeLong !== undefined)
-                                          ? Math.max(1, Math.round(Number(App.pomodoroRoundsBeforeLong))) : 4
+    // v0.22：一轮清番的番茄个数可自定义（1~20），优先读 pomodoroTotalRounds
+    readonly property int roundsPerCycle: {
+        if (typeof App !== "undefined" && App.pomodoroTotalRounds !== undefined)
+            return Math.max(1, Math.min(20, Math.round(Number(App.pomodoroTotalRounds))))
+        if (typeof App !== "undefined" && App.pomodoroRoundsBeforeLong !== undefined)
+            return Math.max(1, Math.round(Number(App.pomodoroRoundsBeforeLong)))
+        return 4
+    }
+    function setRounds(value) {
+        var next = Math.max(1, Math.min(20, Math.round(Number(value))))
+        if (typeof App !== "undefined" && typeof App.setPomodoroTotalRounds === "function")
+            App.setPomodoroTotalRounds(next)
+    }
 
     readonly property string stateValue: !panel.backendReady ? panel.localStateValue
                                          : (panel.backendPhase === "idle" ? "idle"
@@ -231,9 +242,22 @@ Window {
         onFinished: panel.visible = false
     }
 
-    onVisibleChanged: if (panel.visible) {
-        AppTheme.mode = (typeof App !== "undefined" && App.themeMode) ? String(App.themeMode) : "solid"
+    // v0.21：面板显示时把样式 + 配色同步给 QML 单例（可能由主窗口之外的入口打开）
+    function syncTheme() {
+        AppTheme.style = (typeof App !== "undefined" && App.themeStyle) ? String(App.themeStyle) : "solid"
+        AppTheme.scheme = (typeof App !== "undefined" && App.themeScheme) ? String(App.themeScheme) : "auto"
+        AppTheme.effectiveScheme = (typeof App !== "undefined" && App.effectiveScheme)
+                                   ? String(App.effectiveScheme) : "dark"
+        AppTheme.systemScheme = (typeof App !== "undefined" && App.systemScheme)
+                                ? String(App.systemScheme) : AppTheme.effectiveScheme
+        var palette = ({})
+        if (typeof App !== "undefined" && App.customThemePalette !== undefined
+                && App.customThemePalette !== null && typeof App.customThemePalette === "object")
+            palette = App.customThemePalette
+        AppTheme.customPalette = palette
     }
+
+    onVisibleChanged: if (panel.visible) panel.syncTheme()
 
     Shortcut {
         sequence: "Escape"
@@ -430,12 +454,63 @@ Window {
                     font.family: AppTheme.fontFamily
                     font.letterSpacing: 1
                 }
-                Text {
+                Row {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: qsTr("第 %1 / %2 轮").arg(panel.idle ? 1 : panel.currentRound).arg(panel.roundsPerCycle)
-                    color: AppTheme.textTertiary
-                    font.pixelSize: AppTheme.fs(10)
-                    font.family: AppTheme.fontFamily
+                    spacing: 10
+
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: qsTr("第 %1 / %2 个番茄").arg(panel.idle ? 1 : panel.currentRound).arg(panel.roundsPerCycle)
+                        color: AppTheme.textTertiary
+                        font.pixelSize: AppTheme.fs(10)
+                        font.family: AppTheme.fontFamily
+                    }
+                    // 自定义番茄个数：− / +
+                    Row {
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: 4
+                        Rectangle {
+                            width: 18; height: 18; radius: 9
+                            color: minusArea.containsMouse ? AppTheme.accentSoft : AppTheme.chipBg
+                            Text {
+                                anchors.centerIn: parent
+                                text: "−"
+                                color: AppTheme.textSecondary
+                                font.pixelSize: AppTheme.fs(12)
+                            }
+                            MouseArea {
+                                id: minusArea
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: panel.setRounds(panel.roundsPerCycle - 1)
+                            }
+                        }
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: String(panel.roundsPerCycle)
+                            color: AppTheme.textSecondary
+                            font.pixelSize: AppTheme.fs(10)
+                            font.family: C.monoFont
+                        }
+                        Rectangle {
+                            width: 18; height: 18; radius: 9
+                            color: plusArea.containsMouse ? AppTheme.accentSoft : AppTheme.chipBg
+                            Text {
+                                anchors.centerIn: parent
+                                text: "+"
+                                color: AppTheme.textSecondary
+                                font.pixelSize: AppTheme.fs(11)
+                            }
+                            MouseArea {
+                                id: plusArea
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: panel.setRounds(panel.roundsPerCycle + 1)
+                            }
+                        }
+                    }
                 }
             }
         }

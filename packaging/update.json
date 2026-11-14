@@ -1,14 +1,14 @@
 {
-  "version": "0.20.1",
+  "version": "0.21.0",
   "notes": "",
   "assets": [
     {
-      "name": "ShenQing-Setup-0.20.1.exe",
-      "url": "https://github.com/Kryon2025/Clarity/releases/download/v0.20.1/ShenQing-Setup-0.20.1.exe"
+      "name": "ShenQing-Setup-0.21.0.exe",
+      "url": "https://github.com/Kryon2025/Clarity/releases/download/v0.21.0/ShenQing-Setup-0.21.0.exe"
     },
     {
-      "name": "ShenQing-Portable-v0.20.1.zip",
-      "url": "https://github.com/Kryon2025/Clarity/releases/download/v0.20.1/ShenQing-Portable-v0.20.1.zip"
+      "name": "ShenQing-Portable-v0.21.0.zip",
+      "url": "https://github.com/Kryon2025/Clarity/releases/download/v0.21.0/ShenQing-Portable-v0.21.0.zip"
     }
   ]
 }

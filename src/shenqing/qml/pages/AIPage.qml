@@ -8,7 +8,18 @@ Item {
     id: page
     property Item glassSource: null
     property bool animationsEnabled: true
-    property bool configOpen: true
+    // v0.21：AI 设置默认收起，把横向空间让给「聊天记录」左栏
+    property bool configOpen: false
+    // v0.21：左侧「聊天记录」分栏；窄窗口自动收起，可用顶部「聊天记录」按钮切换
+    property bool sidebarOpen: true
+    // 打开 AI 设置时让出横向空间（设置是临时面板，关掉后恢复左栏）
+    property bool sidebarBeforeConfig: true
+    readonly property bool sidebarVisible: page.sidebarOpen && !page.configOpen
+    readonly property bool narrowLayout: page.width < 900
+    onNarrowLayoutChanged: page.sidebarOpen = !page.narrowLayout
+    // v0.21：AI 动作结果系统小字（[{ conversationId, text, kind }]；演示数据见 demoActionNotes）
+    property var actionNotes: []
+    property var demoActionNotes: null
     property int providerIndex: 0
     property string modelDraft: ""
     property string baseDraft: ""
@@ -262,6 +273,169 @@ Item {
     function resetUsage() {
         if (typeof App !== "undefined" && typeof App.resetAIUsage === "function") App.resetAIUsage()
     }
+    // 左栏开关：从收起状态点开时顺带收起设置面板，保证聊天区宽度
+    function toggleSidebar() {
+        if (!page.sidebarOpen) {
+            page.sidebarOpen = true
+            page.configOpen = false
+        } else {
+            page.sidebarOpen = false
+        }
+    }
+    // 设置面板开关：打开设置时暂时收起左栏，关闭后恢复
+    function toggleConfig() {
+        if (!page.configOpen) {
+            page.sidebarBeforeConfig = page.sidebarOpen
+            page.configOpen = true
+            page.sidebarOpen = false
+        } else {
+            page.configOpen = false
+            page.sidebarOpen = page.sidebarBeforeConfig
+        }
+    }
+
+    // ---------- v0.21 AI 动作：结果系统提示 + 待确认卡 ----------
+    // 后端契约：App.aiActionPending 为 dict（空闲时 {}），App.aiActionPendingActive 为 bool；
+    // App.aiActionResult / App.aiActionLog 提供执行结果（text 由后端生成，QML 直接展示）。
+    // 确认 / 取消分别调 App.aiConfirmAction / App.aiCancelAction。
+    readonly property var aiActionPending: {
+        if (typeof App === "undefined") return null
+        var pending = App.aiActionPending
+        if (pending === undefined || pending === null || pending === false) return null
+        if (typeof pending === "object") {
+            if (App.aiActionPendingActive !== undefined && App.aiActionPendingActive !== true)
+                return null
+            for (var key in pending) return pending   // 非空 dict 才算有 pending
+            return null                                 // {} = 空闲
+        }
+        return pending
+    }
+    // 后端动作结果日志（最新在末尾；text 已是中文文案）
+    readonly property var aiActionLog: (typeof App !== "undefined" && App.aiActionLog !== undefined
+                                        && App.aiActionLog !== null && App.aiActionLog.length !== undefined)
+                                       ? App.aiActionLog : []
+
+    // 聊天里要显示的动系统小字：没有 conversationId 的条目跟随所有会话
+    readonly property var visibleActionNotes: {
+        var out = []
+        // 1) 后端执行过的动作结果（App.aiActionLog，text 由后端生成）
+        var log = page.aiActionLog
+        if (log !== undefined && log !== null && log.length !== undefined) {
+            for (var i = 0; i < log.length; i++) {
+                var entry = log[i]
+                if (entry === null || entry === undefined) continue
+                var text = (entry.text !== undefined) ? String(entry.text) : ""
+                if (text !== "") out.push({ text: text, kind: String(entry.type !== undefined ? entry.type : ""),
+                                             ok: entry.ok !== false })
+            }
+        }
+        // 2) 本地记录 / 演示数据（没有后端日志时也能展示）
+        var source = page.demoActionNotes !== null ? page.demoActionNotes : page.actionNotes
+        if (source !== undefined && source !== null && source.length !== undefined) {
+            for (var j = 0; j < source.length; j++) {
+                var item = source[j]
+                if (item === null || item === undefined) continue
+                var key = (item.conversationId !== undefined) ? String(item.conversationId) : ""
+                if (key !== "" && key !== page.currentConversationId) continue
+                out.push(item)
+            }
+        }
+        return out
+    }
+
+    function actionNoteText(item) {
+        if (item === null || item === undefined) return ""
+        if (item.text !== undefined && String(item.text) !== "") return String(item.text)
+        var kind = (item.kind !== undefined) ? String(item.kind) : ""
+        if (kind === "space" || kind === "openSpace")
+            return qsTr("已为你打开 %1").arg(String(item.target !== undefined ? item.target : item.name))
+        if (kind === "setting" || kind === "changeSetting") {
+            if (item.value !== undefined)
+                return qsTr("已修改设置：%1 %2").arg(String(item.name)).arg(String(item.value))
+            return qsTr("已修改设置：%1").arg(String(item.name))
+        }
+        return qsTr("已完成 AI 动作")
+    }
+
+    function postActionNote(item) {
+        var entry = (typeof item === "string") ? ({ text: String(item) })
+                                               : ({ text: page.actionNoteText(item),
+                                                    kind: (item.kind !== undefined ? String(item.kind) : "") })
+        entry.conversationId = page.currentConversationId
+        var next = page.actionNotes.slice()
+        next.push(entry)
+        page.actionNotes = next
+    }
+
+    // 待确认动作的标题 / 说明（后端字段名不完全统一时逐级兜底）
+    function pendingActionText() {
+        var pending = page.aiActionPending
+        if (pending === null) return ""
+        // 后端字段优先级：summary（完整中文文案）→ text → 本地兜底拼接
+        if (pending.summary !== undefined && String(pending.summary) !== "") return String(pending.summary)
+        if (pending.text !== undefined && String(pending.text) !== "") return String(pending.text)
+        var kind = (pending.type !== undefined) ? String(pending.type)
+                   : ((pending.kind !== undefined) ? String(pending.kind) : "")
+        var target = (pending.target !== undefined) ? String(pending.target)
+                     : (pending.spaceName !== undefined ? String(pending.spaceName)
+                        : (pending.name !== undefined ? String(pending.name) : ""))
+        if (kind === "space" || kind === "openSpace")
+            return qsTr("打开空间「%1」").arg(target)
+        if (kind === "setting" || kind === "changeSetting") {
+            if (pending.value !== undefined)
+                return qsTr("修改设置：%1 %2").arg(target).arg(String(pending.value))
+            return qsTr("修改设置：%1").arg(target)
+        }
+        return (pending.title !== undefined && String(pending.title) !== "") ? String(pending.title)
+                                                                             : qsTr("执行一个动作")
+    }
+
+    // 待确认动作的确认按钮文案（后端按动作类型给："确认开始" / "确认执行"）
+    function pendingActionConfirmLabel() {
+        var pending = page.aiActionPending
+        if (pending !== null && pending.confirmLabel !== undefined
+                && String(pending.confirmLabel) !== "")
+            return String(pending.confirmLabel)
+        return qsTr("确认执行")
+    }
+
+    function pendingActionDetail() {
+        var pending = page.aiActionPending
+        if (pending === null) return ""
+        var title = (pending.title !== undefined) ? String(pending.title) : ""
+        var text = page.pendingActionText()
+        if (title !== "" && title !== text) return title
+        if (pending.detail !== undefined && String(pending.detail) !== "") return String(pending.detail)
+        return ""
+    }
+
+    function confirmAIAction() {
+        var pending = page.aiActionPending
+        if (pending === null) return
+        var note = page.pendingActionText()
+        if (typeof App !== "undefined" && typeof App.aiConfirmAction === "function") {
+            try {
+                App.aiConfirmAction()
+            } catch (err) {
+                // 接口异常时仍记一条本地结果，保证用户知道动作已发出
+            }
+        }
+        // 后端有 aiActionLog 时结果文案由后端回传，避免重复记录
+        if (typeof App === "undefined" || App.aiActionLog === undefined)
+            page.postActionNote(note)
+    }
+
+    function cancelAIAction() {
+        var pending = page.aiActionPending
+        if (pending === null) return
+        if (typeof App !== "undefined" && typeof App.aiCancelAction === "function") {
+            try {
+                App.aiCancelAction()
+            } catch (err) {
+                // 取消不改变任何状态
+            }
+        }
+    }
 
     Component.onCompleted: init()
     onMessageCountChanged: scrollTimer.restart()
@@ -305,7 +479,60 @@ Item {
                     Text { text: qsTr("AI"); color: AppTheme.textPrimary; font.pixelSize: AppTheme.fs(28); font.weight: Font.Bold; font.family: AppTheme.fontFamily }
                     Text { text: qsTr("对话、历史与用量都在这里"); color: AppTheme.textSecondary; font.pixelSize: AppTheme.fs(12); font.family: AppTheme.fontFamily }
                 }
+                // v0.21：「聊天记录」分栏开关（窄窗口下用来收起 / 展开左栏）
+                Item {
+                    id: historyToggle
+                    objectName: "AIHistoryToggle"
+                    anchors.right: usageBadge.left
+                    anchors.rightMargin: 10
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: 4
+                    width: historyToggleLabel.implicitWidth + historyToggleGlyph.width + 26
+                    height: 30
+
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: 15
+                        color: historyToggleArea.containsMouse
+                               ? (AppTheme.glass ? AppTheme.glassSurfaceStrong : AppTheme.cardBgAlt)
+                               : (AppTheme.glass ? "#1AFFFFFF" : AppTheme.cardBgAlt)
+                        border.width: 1
+                        border.color: page.sidebarOpen ? AppTheme.accent : AppTheme.cardBorder
+                    }
+
+                    Row {
+                        anchors.centerIn: parent
+                        spacing: 5
+
+                        Glyph {
+                            id: historyToggleGlyph
+                            anchors.verticalCenter: parent.verticalCenter
+                            kind: page.sidebarOpen ? "chevronLeft" : "chevron"
+                            size: 9
+                            color: page.sidebarOpen ? AppTheme.accent : AppTheme.textSecondary
+                        }
+
+                        Text {
+                            id: historyToggleLabel
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: qsTr("聊天记录")
+                            color: page.sidebarOpen ? AppTheme.accent : AppTheme.textSecondary
+                            font.pixelSize: AppTheme.fs(11)
+                            font.family: AppTheme.fontFamily
+                        }
+                    }
+
+                    MouseArea {
+                        id: historyToggleArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: page.toggleSidebar()
+                    }
+                }
+
                 Rectangle {
+                    id: usageBadge
                     anchors.right: parent.right
                     anchors.bottom: parent.bottom
                     anchors.bottomMargin: 4
@@ -326,91 +553,50 @@ Item {
                 }
             }
 
-            // 会话列表
-            Item {
-                width: parent.width
-                height: 38
-                Flickable {
-                    anchors.left: parent.left
-                    anchors.right: newConversationButton.left
-                    anchors.rightMargin: 10
-                    height: parent.height
-                    contentWidth: conversationRow.width
-                    contentHeight: height
-                    clip: true
-                    flickableDirection: Flickable.HorizontalFlick
-                    boundsBehavior: Flickable.StopAtBounds
-                    Row {
-                        id: conversationRow
-                        spacing: 8
-                        Repeater {
-                            model: page.conversations
-                            delegate: Item {
-                                width: Math.min(170, conversationTitle.implicitWidth + 52)
-                                height: 34
-                                readonly property bool selected: String(modelData.id) === page.currentConversationId
-                                Rectangle {
-                                    anchors.fill: parent
-                                    radius: 17
-                                    color: selected ? AppTheme.accentSoft : (conversationArea.containsMouse ? AppTheme.cardBgAlt : AppTheme.cardBg)
-                                    border.width: 1
-                                    border.color: selected ? AppTheme.accent : AppTheme.cardBorder
-                                }
-                                Text {
-                                    id: conversationTitle
-                                    anchors.left: parent.left
-                                    anchors.leftMargin: 12
-                                    anchors.right: deleteIcon.left
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    text: (modelData.title !== undefined) ? String(modelData.title) : qsTr("新会话")
-                                    color: selected ? AppTheme.accent : AppTheme.textSecondary
-                                    font.pixelSize: AppTheme.fs(12)
-                                    font.family: AppTheme.fontFamily
-                                    elide: Text.ElideRight
-                                }
-                                Item {
-                                    id: deleteIcon
-                                    visible: conversationArea.containsMouse || selected
-                                    anchors.right: parent.right
-                                    anchors.rightMargin: 8
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    width: 18
-                                    height: 18
-                                    Glyph { anchors.centerIn: parent; kind: "close"; size: 9; color: deleteArea.containsMouse ? AppTheme.danger : AppTheme.textTertiary }
-                                    MouseArea { id: deleteArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: page.deleteConversation(modelData.id) }
-                                }
-                                MouseArea { id: conversationArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: page.selectConversation(modelData.id) }
-                            }
-                        }
-                        Text {
-                            visible: page.conversations.length === 0
-                            text: qsTr("还没有会话，点右侧「新对话」开始")
-                            color: AppTheme.textTertiary
-                            font.pixelSize: AppTheme.fs(11)
-                            font.family: AppTheme.fontFamily
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
-                    }
-                }
-                Item {
-                    id: newConversationButton
-                    anchors.right: parent.right
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: 96
-                    height: 34
-                    Rectangle { anchors.fill: parent; radius: 17; color: newConversationArea.containsMouse ? AppTheme.accentSoft : AppTheme.accent }
-                    Text { anchors.centerIn: parent; text: qsTr("＋ 新对话"); color: "#FFFFFF"; font.pixelSize: AppTheme.fs(12); font.weight: Font.DemiBold; font.family: AppTheme.fontFamily }
-                    MouseArea { id: newConversationArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: page.newConversation() }
-                }
-            }
-
+            // 主区：左侧「聊天记录」分栏 + 中间聊天 + 右侧 AI 设置
             Row {
+                id: mainRow
                 width: parent.width
                 height: 470
                 spacing: 14
 
+                // ---------- 左栏：聊天记录（v0.21 分栏；窄窗口可收起） ----------
                 GlassCard {
-                    width: pageColumn.width - (page.configOpen ? 314 : 0)
+                    id: historyCard
+                    objectName: "AIHistoryCard"
+                    visible: page.sidebarVisible
+                    width: 208
+                    height: 470
+                    radius: 22
+                    interactive: false
+                    glassSource: page.glassSource
+
+                    Item {
+                        anchors.fill: parent
+                        anchors.margins: 14
+
+                        AIHistoryList {
+                            id: historyList
+                            objectName: "AIHistoryList"
+                            anchors.fill: parent
+                            animationsEnabled: page.animationsEnabled
+                            conversations: page.conversations
+                            currentConversationId: page.currentConversationId
+                            title: qsTr("聊天记录")
+                            newText: qsTr("新建")
+                            onNewRequested: page.newConversation()
+                            onSelected: (conversationId) => page.selectConversation(conversationId)
+                            onDeleteRequested: (conversationId) => page.deleteConversation(conversationId)
+                        }
+                    }
+                }
+
+                // ---------- 中间：聊天 ----------
+                GlassCard {
+                    id: chatCard
+                    objectName: "AIChatCard"
+                    width: Math.max(320, pageColumn.width - (page.sidebarVisible ? 222 : 0)
+                                    - (page.configOpen ? 314 : 0))
                     height: 470
                     radius: 22
                     interactive: false
@@ -488,7 +674,7 @@ Item {
                                         border.color: page.configOpen ? AppTheme.accent : AppTheme.cardBorder
                                     }
                                     Glyph { anchors.centerIn: parent; kind: "gear"; size: 13; color: page.configOpen ? AppTheme.accent : AppTheme.textSecondary }
-                                    MouseArea { id: configArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: page.configOpen = !page.configOpen }
+                                    MouseArea { id: configArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: page.toggleConfig() }
                                 }
                             }
 
@@ -587,6 +773,49 @@ Item {
                                                 }
                                             }
                                         }
+                                        // v0.21：AI 动作执行后的系统小字（「已为你打开 xx / 已修改设置：字号 120%」）
+                                        Repeater {
+                                            model: page.visibleActionNotes
+
+                                            delegate: Item {
+                                                objectName: "AIActionNote"
+                                                width: messageColumn.width
+                                                height: actionNoteChip.height + 2
+
+                                                Rectangle {
+                                                    id: actionNoteChip
+                                                    anchors.horizontalCenter: parent.horizontalCenter
+                                                    width: Math.min(parent.width, actionNoteRow.implicitWidth + 26)
+                                                    height: 24
+                                                    radius: 12
+                                                    color: AppTheme.glass ? "#14FFFFFF" : AppTheme.cardBgAlt
+                                                    border.width: 1
+                                                    border.color: AppTheme.glass ? "#26FFFFFF" : AppTheme.cardBorder
+
+                                                    Row {
+                                                        id: actionNoteRow
+                                                        anchors.centerIn: parent
+                                                        spacing: 6
+
+                                                        Glyph {
+                                                            anchors.verticalCenter: parent.verticalCenter
+                                                            kind: "check"
+                                                            size: 9
+                                                            color: AppTheme.success
+                                                        }
+
+                                                        Text {
+                                                            anchors.verticalCenter: parent.verticalCenter
+                                                            text: page.actionNoteText(modelData)
+                                                            color: AppTheme.textTertiary
+                                                            font.pixelSize: AppTheme.fs(10)
+                                                            font.family: AppTheme.fontFamily
+                                                            elide: Text.ElideRight
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
                                         Text { visible: page.messageCount === 0 && page.configured && page.chatState === "loading"; text: qsTr("思考中…"); color: AppTheme.textSecondary; font.pixelSize: AppTheme.fs(12); font.family: AppTheme.fontFamily }
                                         TextEdit {
                                             visible: page.messageCount === 0 && page.configured && page.chatState === "ok"
@@ -678,6 +907,8 @@ Item {
                 }
 
                 GlassCard {
+                    id: configCard
+                    objectName: "AIConfigCard"
                     visible: page.configOpen
                     width: 300
                     height: 470
@@ -916,5 +1147,19 @@ Item {
         mono: true
         emptyText: page.modelsState === "loading" ? qsTr("正在获取模型列表…") : qsTr("暂无可用模型")
         onSelected: (value) => page.selectModel(value)
+    }
+
+    // ---------- v0.21 AI 动作确认卡（后端提供 App.aiActionPending 时弹出） ----------
+    AIActionConfirmCard {
+        id: aiActionCard
+        objectName: "AIPageActionConfirm"
+        anchors.fill: parent
+        animationsEnabled: page.animationsEnabled
+        opened: page.aiActionPending !== null
+        actionText: page.pendingActionText()
+        detail: page.pendingActionDetail()
+        confirmText: page.pendingActionConfirmLabel()
+        onConfirmed: page.confirmAIAction()
+        onCancelled: page.cancelAIAction()
     }
 }

@@ -1,14 +1,16 @@
 import QtQuick
 import "../theme"
 
-// ================= 海洋波浪背景（v0.17，静态） =================
+// ================= 海洋波浪背景（v0.17，静态；v0.21 跟随配色） =================
 // 全幅分层波浪：4 层半透明浪花，底部密 / 顶部疏；每层用 Canvas 一次性绘制成纹理。
 // v0.17：海洋改为内置静态主题 —— 删除漂移/呼吸动画，只在尺寸或主题变化时重绘一次，
 //        页面过渡动画仍由 Main.pageTransitions 控制，与本组件无关。
+// v0.21：样式 style == ocean 才显示；深浅由配色 scheme 决定 —— 浅色配色用浅色浪花，
+//        深色配色用深海（浪花偏浪花白）。
 //
 // 参数：
 //   intensity 0~1   波浪强度（0 直接隐藏；页面头部装饰建议 0.4~0.6）
-//   tone  deep/light 深海模式（浅蓝浪花） / 浅色模式（白色浪花）；默认跟随 AppTheme
+//   tone  deep/light 深海模式（浅蓝浪花） / 浅色模式（白色浪花）；默认跟随 AppTheme 配色
 //
 // 复用：海洋主题根背景、页面头部、Onboarding、LockOverlay、EnterCountdown、
 //       QuickPanel、FocusSummary、主题页海洋预览；禁止每个页面各自复制波浪绘制代码。
@@ -30,7 +32,7 @@ Item {
         { base: 0.96, amp: 0.048, periodRatio: 0.46, phase: 5.5, alpha: 0.78 }
     ]
 
-    // v0.17：波浪只属于第 4 个内置主题「海洋」；其余主题完全静态背景。
+    // v0.21：波浪只属于样式「海洋」；纯色 / 液态玻璃 / 自定义主题都是静态背景。
     visible: root.strength > 0.01 && AppTheme.ocean
     opacity: root.strength
 

@@ -266,8 +266,11 @@ Item {
     }
 
     function isThemeCurrent(itemId) {
-        if (typeof App === "undefined" || App.themeMode === undefined) return false
-        return String(App.themeMode) === ("custom:" + String(itemId))
+        if (typeof App === "undefined") return false
+        var want = "custom:" + String(itemId)
+        if (App.themeStyle !== undefined) return String(App.themeStyle) === want
+        if (App.themeMode !== undefined) return String(App.themeMode) === want
+        return false
     }
 
     function installedPluginVersion(itemId) {
@@ -343,13 +346,20 @@ Item {
     }
 
     function applyTheme(item) {
-        if (typeof App === "undefined" || typeof App.setThemeMode !== "function") {
-            page.showToast(qsTr("缺少主题切换接口（App.setThemeMode）"))
+        var want = "custom:" + String(item.id)
+        var applied = false
+        // v0.21：优先只换样式（保持用户当前配色），旧后端回退 setThemeMode
+        if (typeof App !== "undefined" && typeof App.setThemeStyle === "function") {
+            try { App.setThemeStyle(want); applied = true } catch (e) { applied = false }
+        } else if (typeof App !== "undefined" && typeof App.setThemeMode === "function") {
+            try { App.setThemeMode(want); applied = true } catch (e) { applied = false }
+        } else {
+            page.showToast(qsTr("缺少主题切换接口（App.setThemeStyle）"))
             return
         }
-        var ok = false
-        try { ok = App.setThemeMode("custom:" + String(item.id)) === true } catch (e) { ok = false }
-        if (ok) page.showToast(qsTr("已应用主题：%1").arg(String(item.name)))
+        var current = (typeof App !== "undefined" && App.themeStyle !== undefined)
+                      ? String(App.themeStyle) : want
+        if (applied && current === want) page.showToast(qsTr("已应用主题：%1").arg(String(item.name)))
         else page.showToast(qsTr("应用主题失败"))
     }
 

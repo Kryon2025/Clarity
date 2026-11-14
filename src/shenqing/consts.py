@@ -8,9 +8,9 @@ APP_NAME = "深清"
 #: 英文名（v0.4 起对外统一用 Clarity；「身轻」不再展示）
 APP_ALIAS = "Clarity"
 APP_ID = "ShenQing"
-APP_VERSION = "0.20.1"
+APP_VERSION = "0.21.0"
 
-#: v0.18 自定义主题 id 前缀：theme_mode = "custom:<id>"
+#: v0.18 自定义主题 id 前缀：theme_style = "custom:<id>"（旧版 theme_mode 同值）
 CUSTOM_THEME_PREFIX = "custom:"
 
 #: GitHub 仓库（自动更新与反馈入口用）
@@ -22,15 +22,10 @@ SPACE_NAME = "清空间"
 #: 三档强度（界面文案；枚举值仍是 light/medium/heavy）
 MODE_LABELS = {"light": "浅清", "medium": "覆清", "heavy": "深清"}
 
-#: 主题：纯色（默认）/ 清空间浅色 / 液态玻璃（实验性）/ 海洋（静态波浪）
-THEMES = [
+#: 主题样式（v0.21 与配色正交）：纯色（默认）/ 液态玻璃（实验性）/ 海洋（静态波浪）
+#: 自定义主题包通过 custom:<id> 追加，不属于内置样式。
+THEME_STYLES = [
     {"value": "solid", "label": "纯色", "desc": "平面纯色，无需 GPU 特效", "experimental": False},
-    {
-        "value": "light",
-        "label": "清空间浅色",
-        "desc": "浅色底的清空间主题",
-        "experimental": False,
-    },
     {
         "value": "glass",
         "label": "液态玻璃",
@@ -44,7 +39,23 @@ THEMES = [
         "experimental": False,
     },
 ]
-DEFAULT_THEME = "solid"
+#: 兼容旧接口：themes 仍返回内置样式列表（浅色/深色已拆到配色方案）
+THEMES = THEME_STYLES
+#: 默认样式（QML 与旧设置都回落到它）
+DEFAULT_THEME_STYLE = "solid"
+#: 向后兼容：DEFAULT_THEME 等同于默认样式
+DEFAULT_THEME = DEFAULT_THEME_STYLE
+
+#: 配色方案（v0.21）：auto = 跟随系统；只影响深浅，不改变样式
+THEME_SCHEMES = [
+    {"value": "auto", "label": "跟随系统"},
+    {"value": "light", "label": "浅色"},
+    {"value": "dark", "label": "深色"},
+]
+#: 合法配色值（顺序与 THEME_SCHEMES 一致）
+THEME_SCHEME_VALUES = tuple(item["value"] for item in THEME_SCHEMES)
+#: 默认配色：跟随系统
+DEFAULT_THEME_SCHEME = "auto"
 
 #: v0.17：CW2 风格字体下拉 —— 精选中文字体优先。
 #: 只有系统里真正安装了的字体才会出现在列表顶部（按下面的固定顺序）；
@@ -74,6 +85,31 @@ MAX_FONT_FAMILIES = 200
 
 #: 更新日志（最新在前；en 为空时用中文兜底）
 CHANGELOG = [
+    {
+        "version": "0.21.0",
+        "date": "2025-11-15",
+        "tag": "",
+        "items": [
+            "新增右侧组件系统：6 种内置玻璃小组件（时钟/倒计时/今日专注/连续打卡/每日一言/天气），组件与布局页可拖拽、缩放、预览，锁屏右半屏按布局渲染",
+            "外观拆分为「样式 × 配色」：纯色/液态玻璃/海洋 × 跟随系统/浅色/深色，系统深浅实时跟随；旧设置自动迁移",
+            "商店：开发者提交必须填 GitHub 仓库/发布页；后台自动同步 GitHub 版本；新增 CW2 式发布 Token（一次性明文、可撤销）",
+            "商店适配端：提交时选择电脑端/手机端，商店与桌面端目录按平台筛选",
+            "更新支持正式版/预览版双渠道；Gitee 源支持 update.json 兜底，GitLink 明确提示不可用",
+            "清番支持自定义番茄个数（1–20）；浅清/覆清专注期间隐藏桌面图标",
+            "AI 可直接打开空间/修改设置（敏感动作先确认），开始专注前新增二次确认卡，AI 页与浮窗增加聊天记录栏",
+            "安装向导自动跟随系统语言、显示许可证页",
+        ],
+        "items_en": [
+            "Built-in right-side widgets: six glass widgets (clock, countdown, today focus, streak, daily quote, weather) with drag/resize preview layout and lock-screen rendering",
+            "Appearance split into style x scheme (solid/glass/ocean x auto/light/dark) with live system scheme following and automatic migration",
+            "Store: GitHub repo/release URL is required, versions auto-sync from GitHub, CW2-style publish tokens (one-time secret, revocable)",
+            "Store platform targets (desktop/mobile) with filtering in the web store and desktop catalog",
+            "Stable/preview update channels; Gitee update.json fallback; GitLink reported unavailable",
+            "Custom pomodoro count (1-20); desktop icons hide during Light/Veil focus",
+            "AI can open spaces and change settings (with confirmation); start confirmation card; chat history sidebar in AI page and panel",
+            "Installer follows the system language and shows the license page",
+        ],
+    },
     {
         "version": "0.20.1",
         "date": "2025-11-14",
@@ -706,3 +742,39 @@ def quote_for(day) -> str:  # noqa: ANN001
     except (TypeError, ValueError):
         index = 0
     return QUOTES[index]
+
+
+#: 右侧组件默认布局（v0.21）：clock / today / quote。
+#: 坐标是「右半屏自身」0~1（x 向右、y 向下）；props 留空，读取时按 propsSchema 补默认值。
+OVERLAY_WIDGET_DEFAULT_LAYOUT = [
+    {
+        "id": "clock-1",
+        "type": "clock",
+        "x": 0.06,
+        "y": 0.04,
+        "w": 0.88,
+        "h": 0.20,
+        "visible": True,
+        "props": {},
+    },
+    {
+        "id": "today-1",
+        "type": "today",
+        "x": 0.06,
+        "y": 0.28,
+        "w": 0.88,
+        "h": 0.22,
+        "visible": True,
+        "props": {},
+    },
+    {
+        "id": "quote-1",
+        "type": "quote",
+        "x": 0.06,
+        "y": 0.54,
+        "w": 0.88,
+        "h": 0.16,
+        "visible": True,
+        "props": {},
+    },
+]

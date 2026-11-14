@@ -126,13 +126,30 @@ Window {
     }
 
     // ---------- 外观页：可选项数据（都从后端读，缺失时用内置） ----------
-    readonly property var themeOptions: (typeof App !== "undefined" && App.themes && App.themes.length > 0)
-                                        ? App.themes
-                                        : [
-                                              { value: "solid", label: qsTr("纯色") },
-                                              { value: "light", label: qsTr("清空间浅色") },
-                                              { value: "glass", label: qsTr("液态玻璃") }
-                                          ]
+    // v0.21：只列样式（纯色 / 液态玻璃 / 海洋）；浅色/深色已拆到「配色」，在主题页或设置里调整。
+    readonly property var themeOptions: {
+        var raw = (typeof App !== "undefined" && App.themeStyles !== undefined && App.themeStyles !== null
+                   && App.themeStyles.length > 0) ? App.themeStyles
+                 : ((typeof App !== "undefined" && App.themes && App.themes.length > 0) ? App.themes : [])
+        var fallback = [
+            { value: "solid", label: qsTr("纯色") },
+            { value: "glass", label: qsTr("液态玻璃") },
+            { value: "ocean", label: qsTr("海洋") }
+        ]
+        if (raw.length === 0) return fallback
+        var out = []
+        for (var i = 0; i < raw.length; i++) {
+            var item = raw[i]
+            var value = String(item.value)
+            if (value.indexOf("custom:") === 0) continue
+            out.push({
+                value: value,
+                label: String(item.name !== undefined && item.name !== null ? item.name
+                              : (item.label !== undefined && item.label !== null ? item.label : value))
+            })
+        }
+        return out.length > 0 ? out : fallback
+    }
     readonly property var fontScaleOptions: (typeof App !== "undefined" && App.uiFontScaleOptions !== undefined
                                              && App.uiFontScaleOptions !== null && App.uiFontScaleOptions.length > 0)
                                             ? App.uiFontScaleOptions : [0.85, 1.0, 1.15, 1.3]
@@ -149,8 +166,8 @@ Window {
                                                  { code: "zh_CN", label: qsTr("简体中文") },
                                                  { code: "en_US", label: "English" }
                                              ]
-    readonly property string currentTheme: (typeof App !== "undefined" && App.themeMode)
-                                           ? String(App.themeMode) : "solid"
+    readonly property string currentTheme: (typeof App !== "undefined" && App.themeStyle)
+                                           ? String(App.themeStyle) : "solid"
     readonly property real currentFontScale: (typeof App !== "undefined" && App.uiFontScale !== undefined)
                                              ? Number(App.uiFontScale) : (AppTheme.fontScale || 1)
     readonly property string currentNavMode: (typeof App !== "undefined" && App.navMode !== undefined)
@@ -159,9 +176,13 @@ Window {
                                               ? String(App.language) : "auto"
 
     function chooseTheme(value) {
-        if (typeof App !== "undefined" && typeof App.setThemeMode === "function")
-            App.setThemeMode(String(value))
-        AppTheme.mode = String(value)
+        var v = String(value)
+        // 只换样式，不动配色（浅色/深色由「配色」决定，避免引导页把用户的深色偏好重置）
+        if (typeof App !== "undefined" && typeof App.setThemeStyle === "function")
+            App.setThemeStyle(v)
+        else if (typeof App !== "undefined" && typeof App.setThemeMode === "function")
+            App.setThemeMode(v)
+        AppTheme.style = v
     }
     function chooseFontScale(value) {
         if (typeof App !== "undefined" && typeof App.setUIFontScale === "function")

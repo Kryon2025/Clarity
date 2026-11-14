@@ -452,7 +452,8 @@ class PomodoroServiceTest(unittest.TestCase):
         self.assertEqual(timer.remaining, 25 * 60 - 40)
 
     def test_skip_short_and_long_break(self) -> None:
-        timer = pomodoro.PomodoroTimer(self.SETTINGS, now=_Clock())
+        # 自定义番茄个数设为 8，避免第 4 轮就触发“本轮清番完成”
+        timer = pomodoro.PomodoroTimer(dict(self.SETTINGS, pomodoro_rounds=8), now=_Clock())
         timer.start()
         timer.skip()  # 第 1 轮工作结束 → 短休息
         self.assertEqual(timer.phase, "break")
@@ -467,6 +468,19 @@ class PomodoroServiceTest(unittest.TestCase):
         self.assertEqual(timer.phase, "break")
         self.assertEqual(timer.preset_total, 15 * 60)
         self.assertTrue(timer.is_long_break)
+        timer.stop()
+
+    def test_finish_after_total_rounds(self) -> None:
+        settings = dict(self.SETTINGS, pomodoro_rounds=2)
+        timer = pomodoro.PomodoroTimer(settings, now=_Clock())
+        timer.start()
+        timer.skip()  # 第 1 个番茄完成 -> 休息
+        self.assertEqual(timer.phase, "break")
+        timer.skip()  # 休息结束 -> 第 2 个番茄
+        self.assertEqual(timer.round, 2)
+        timer.skip()  # 第 2 个番茄完成 -> 本轮清番结束（不再进入休息）
+        self.assertFalse(timer.running)
+        self.assertEqual(timer.round, 0)
         timer.stop()
 
     def test_natural_finish_notifies_and_switches(self) -> None:

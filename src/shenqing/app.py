@@ -28,9 +28,9 @@ from RinUI.core.config import Theme
 
 from .bridge.app_bridge import AppBridge
 from .i18n import Translator
-from .consts import APP_ALIAS, APP_ID, APP_NAME, APP_VERSION, CUSTOM_THEME_PREFIX
+from .consts import APP_ALIAS, APP_ID, APP_NAME, APP_VERSION
 from .paths import app_data_dir, qml_dir, qml_file
-from .services import elevation, keeper, power, store, timesync
+from .services import elevation, keeper, power, timesync
 from .services.dock_reveal import DockRevealController
 from .services.lock_hardening import restore_taskbars
 from .services.logging_setup import setup_logging
@@ -506,17 +506,11 @@ def main(argv: list[str] | None = None) -> int:
     window = RinUIWindow()  # 先建引擎，绑定上下文对象后再加载 QML
     window.engine.rootContext().setContextProperty("App", bridge)
 
-    theme_mode = str(settings.get("theme_mode", "solid"))
+    # v0.21：窗口 chrome 只跟随配色（effectiveScheme），与样式（纯色/液态玻璃/海洋/自定义）无关
     if args.theme:
         theme_name = args.theme
-    elif theme_mode.startswith(CUSTOM_THEME_PREFIX):
-        # v0.18：自定义主题按 palette 亮度决定窗口 chrome，浅色主题也能配对
-        custom = store.normalize_custom_themes(settings.get("custom_themes", {}))
-        custom_item = custom.get(theme_mode[len(CUSTOM_THEME_PREFIX) :])
-        is_light = bool(custom_item and store.palette_is_light(custom_item["palette"]))
-        theme_name = "Light" if is_light else "Dark"
     else:
-        theme_name = "Light" if theme_mode == "light" else "Dark"
+        theme_name = "Light" if bridge.effectiveScheme == "light" else "Dark"
     try:
         window.setTheme(Theme(theme_name))
     except (ValueError, KeyError):
@@ -602,6 +596,13 @@ def main(argv: list[str] | None = None) -> int:
 
     if not args.smoke:
         # v0.15：先清理上次崩溃残留的 hosts 屏蔽段，再恢复专注
+        try:
+            # v0.22：上次异常退出可能留下隐藏的桌面图标，启动时先恢复
+            from .services import desktop_icons as _desktop_icons
+
+            _desktop_icons.show_desktop_icons()
+        except Exception as exc:  # noqa: BLE001
+            logging.warning("恢复桌面图标失败：%s", exc)
         try:
             bridge.cleanup_stale_site_block()
         except Exception as exc:  # noqa: BLE001

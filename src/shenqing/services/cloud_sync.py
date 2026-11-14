@@ -31,6 +31,7 @@ from typing import Any
 
 from ..consts import APP_VERSION
 from ..paths import app_data_dir
+from ..settings import LEGACY_THEME_KEY, migrate_theme_mode
 
 logger = logging.getLogger("shenqing.cloud_sync")
 
@@ -58,7 +59,8 @@ SPACES_SCHEMA_VERSION = 6
 #: 同步白名单：只同步这些设置键（刻意排除密码 / token / API Key / 本机路径 / 端口等）
 SYNC_SETTINGS_KEYS: tuple[str, ...] = (
     "theme",
-    "theme_mode",
+    "theme_style",
+    "theme_scheme",
     "custom_themes",
     "default_mode",
     "language",
@@ -485,6 +487,21 @@ def apply_payload(payload: object, data_dir: object = None) -> dict:
                 current[key] = incoming_settings[key]
                 counts["settings"] += 1
                 changed = True
+        # v0.21：兼容旧客户端上传的 theme_mode（云端还没升级时）
+        legacy_theme = incoming_settings.get(LEGACY_THEME_KEY)
+        has_new_theme = (
+            "theme_style" in incoming_settings or "theme_scheme" in incoming_settings
+        )
+        if isinstance(legacy_theme, str) and not has_new_theme:
+            style, scheme = migrate_theme_mode(legacy_theme)
+            current["theme_style"] = style
+            current["theme_scheme"] = scheme
+            counts["settings"] += 2
+            changed = True
+        # 本机旧文件里的 theme_mode 顺手清掉（下次 Settings.load 也会清）
+        if LEGACY_THEME_KEY in current:
+            current.pop(LEGACY_THEME_KEY, None)
+            changed = True
         if changed:
             try:
                 _write_json_file(root / "settings.json", current)

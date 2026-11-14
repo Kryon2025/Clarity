@@ -116,5 +116,7 @@ jobs:
             dist/ShenQing-Portable-*.zip
             dist/installer/ShenQing-Setup-*.exe
           body_path: release_notes.md
-          make_latest: true
+          # 含 "-" 的标签（如 v0.21.0-beta.1）发布为预发布，不占用 latest；正式版才设 latest
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          make_latest: ${{ !contains(github.ref_name, '-') }}
           fail_on_unmatched_files: true

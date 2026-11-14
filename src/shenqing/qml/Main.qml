@@ -92,9 +92,18 @@ FluentWindow {
     property bool navDragSuppressClick: false
     property real navPressY: 0
 
-    // ================= 主题 =================
-    readonly property string resolvedThemeMode: (typeof App !== "undefined" && App.themeMode)
-                                                ? String(App.themeMode) : "solid"
+    // ================= 主题（v0.21：样式 style + 配色 scheme） =================
+    // 样式：solid / glass / ocean / custom:<id>；配色：auto / light / dark（auto 跟随系统）
+    // 窗口 chrome（Light/Dark）由 Python 侧按 App.effectiveScheme 设置，这里负责把同一份
+    // 状态推给 QML 单例 AppTheme，样式与配色任一变化都会触发 themeChanged。
+    readonly property string resolvedThemeStyle: (typeof App !== "undefined" && App.themeStyle)
+                                                 ? String(App.themeStyle) : "solid"
+    readonly property string resolvedThemeScheme: (typeof App !== "undefined" && App.themeScheme)
+                                                  ? String(App.themeScheme) : "auto"
+    readonly property string resolvedEffectiveScheme: (typeof App !== "undefined" && App.effectiveScheme)
+                                                      ? String(App.effectiveScheme) : "dark"
+    readonly property string resolvedSystemScheme: (typeof App !== "undefined" && App.systemScheme)
+                                                   ? String(App.systemScheme) : win.resolvedEffectiveScheme
 
     // 主题切换：整窗 180ms 透明度脉冲（1 → 0.82 → 1），掩盖配色瞬变
     property real themePulse: 1
@@ -123,13 +132,24 @@ FluentWindow {
             easing.type: Easing.OutCubic
         }
     }
-    onResolvedThemeModeChanged: {
-        var next = win.resolvedThemeMode
-        var changed = AppTheme.mode !== next
-        AppTheme.mode = next
+
+    // 样式 / 配色 / 实际配色 / 系统配色 任一变化 → 同步 AppTheme（样式和配色都走 themeChanged）
+    readonly property string themeSignature: win.resolvedThemeStyle + "|" + win.resolvedThemeScheme
+                                            + "|" + win.resolvedEffectiveScheme
+    property string appliedThemeSignature: ""
+    onThemeSignatureChanged: win.applyThemeChange()
+
+    function applyThemeChange() {
+        AppTheme.style = win.resolvedThemeStyle
+        AppTheme.scheme = win.resolvedThemeScheme
+        AppTheme.effectiveScheme = win.resolvedEffectiveScheme
+        AppTheme.systemScheme = win.resolvedSystemScheme
         win.syncThemePalette()
-        if (changed && win.themePulseReady && win.pageTransitions)
+        var next = win.themeSignature
+        if (win.appliedThemeSignature !== "" && next !== win.appliedThemeSignature
+                && win.themePulseReady && win.pageTransitions)
             themePulseAnim.restart()
+        win.appliedThemeSignature = next
     }
 
     // v0.18：把 App.customThemePalette 推给 AppTheme（QML 单例里不直接读上下文对象 App）
@@ -200,18 +220,19 @@ FluentWindow {
         navigationView.visible = false
         navigationView.navigationBar.visible = false
         navigationView.navigationBar.titleBarEnabled = false
-        AppTheme.mode = (typeof App !== "undefined" && App.themeMode) ? App.themeMode : "solid"
-        win.syncThemePalette()
+        win.applyThemeChange()
         win.applyAppearance()
     }
 
     Connections {
         target: (typeof App !== "undefined") ? App : null
+        // 字号 / 字体 / 导航方式 / 样式 / 配色都走 settingsChanged；themeChanged 携带
+        // 窗口 chrome 名称（Light/Dark），QML 侧据此重算 AppTheme。
         function onSettingsChanged() {
             win.applyAppearance()
-            win.syncThemePalette()
+            win.applyThemeChange()
         }
-        function onThemeChanged(name) { win.syncThemePalette() }
+        function onThemeChanged(name) { win.applyThemeChange() }
     }
 
     // 根背景 = 主题渐变（默认恢复 v0.16.3 之前的深海渐变；海洋主题叠加静态浪花）
@@ -328,6 +349,65 @@ FluentWindow {
         win.showStorePage = false
     }
 
+    // ---------- v0.21 AI 动作跳页 ----------
+    // 后端执行 open_page 动作后会更新 App.lastRequestedPage（spaces|stats|ai|plugins|themes|
+    // settings|update|about|store），这里用属性绑定兜底跳转（不依赖新信号，后端未落地时也安全）。
+    readonly property string aiRequestedPage: (typeof App !== "undefined"
+                                               && App.lastRequestedPage !== undefined
+                                               && App.lastRequestedPage !== null)
+                                              ? String(App.lastRequestedPage) : ""
+    readonly property var aiActionLogAll: (typeof App !== "undefined" && App.aiActionLog !== undefined
+                                           && App.aiActionLog !== null) ? App.aiActionLog : []
+    property string aiHandledPage: ""
+    property int aiHandledLogCount: -1
+    // AI 跳页时间戳：showMainRequested 紧跟 pageRequested 之后到达，别把页面抢回空间页
+    property double aiNavRequestAt: 0
+    onAiRequestedPageChanged: win.checkAIRequestedPage()
+    onAiActionLogAllChanged: win.checkAIRequestedPage()
+
+    // 同一页重复请求也能跳：页面变化直接跳；动作日志新增且最后一条是 open_page 时再跳一次
+    function checkAIRequestedPage() {
+        var log = win.aiActionLogAll
+        var count = (log.length !== undefined) ? Number(log.length) : -1
+        if (count !== win.aiHandledLogCount) {
+            win.aiHandledLogCount = count
+            var last = (count > 0) ? log[count - 1] : null
+            var isPageAction = (last !== null && last !== undefined
+                                && String(last.type !== undefined ? last.type : "") === "open_page")
+            if (isPageAction && win.aiRequestedPage !== "") {
+                win.aiHandledPage = win.aiRequestedPage
+                win.openPageByKey(win.aiRequestedPage)
+                return
+            }
+        }
+        if (win.aiRequestedPage !== "" && win.aiRequestedPage !== win.aiHandledPage) {
+            win.aiHandledPage = win.aiRequestedPage
+            win.openPageByKey(win.aiRequestedPage)
+        }
+    }
+
+    function openPageByKey(key) {
+        var value = String(key)
+        win.aiNavRequestAt = Date.now()
+        if (value === "spaces") win.goToPage(0)
+        else if (value === "stats") win.goToPage(1)
+        else if (value === "plugins") win.goToPage(2)
+        else if (value === "settings") win.goToPage(3)
+        else if (value === "ai") win.openAIPage()
+        else if (value === "themes") win.openThemePage("")
+        else if (value === "about") win.openAboutPage()
+        else if (value === "update") win.openUpdatePage()
+        else if (value === "store") win.openStorePage("theme")
+    }
+
+    // AI 动作 open_space：跳到空间页并切到对应档位
+    function openSpacesForMode(mode) {
+        win.aiNavRequestAt = Date.now()
+        win.goToPage(0)
+        if (spacesPage && typeof spacesPage.selectMode === "function")
+            spacesPage.selectMode(String(mode))
+    }
+
     // 导航项点击（0..7，含 AI / 主题 / 更新 / 设置 / 关于）
     function selectNavEntry(entry) {
         var value = Number(entry)
@@ -358,6 +438,11 @@ FluentWindow {
         } else if (kind === "theme") {
             var value = (item.payload !== undefined && item.payload !== null) ? String(item.payload) : ""
             win.openThemePage(value)
+        } else if (kind === "scheme") {
+            // 主题页的「配色」行（跟随系统 / 浅色 / 深色）
+            win.openThemePage("")
+            if (themePage)
+                themePage.flashSchemeRow()
         } else if (kind === "mode") {
             // 跳到空间页并切到对应标签
             win.goToPage(0)
@@ -414,6 +499,7 @@ FluentWindow {
     function searchKindGlyph(kind) {
         if (kind === "page") return "space"
         if (kind === "theme") return "sparkle"
+        if (kind === "scheme") return "sparkle"
         if (kind === "mode") return "moon"
         if (kind === "space") return "ripple"
         if (kind === "plugin") return "grid"
@@ -600,7 +686,7 @@ FluentWindow {
                 radius: 26
                 color: AppTheme.glass ? "transparent" : AppTheme.cardBg
                 border.width: 1
-                border.color: AppTheme.glass ? "#2BFFFFFF" : AppTheme.cardBorder
+                border.color: AppTheme.glass ? AppTheme.glassHairline : AppTheme.cardBorder
                 Behavior on width { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
             }
 
@@ -653,14 +739,14 @@ FluentWindow {
                         radius: 12
                         color: "transparent"
                         border.width: 1
-                        border.color: "#3DFFFFFF"
+                        border.color: AppTheme.glassHairlineStrong
                     }
 
                     Glyph {
                         anchors.centerIn: parent
                         kind: win.navExpanded ? "chevronLeft" : "chevron"
                         size: 14
-                        color: AppTheme.glass ? "#CFE6EC" : AppTheme.textSecondary
+                        color: AppTheme.glass ? AppTheme.glassTextSecondary : AppTheme.textSecondary
                     }
 
                     MouseArea {
@@ -741,9 +827,13 @@ FluentWindow {
                         readonly property bool secondary: modelData.secondary === true
                         readonly property bool active: win.currentNavEntry === navItem.entryIndex
                         readonly property bool dragPassed: win.navDragActive && win.navDragIndex === navItem.entryIndex
+                        // 玻璃高亮块是「采样背景」的透镜：浅色配色下块面很亮，用深色字；
+                        // 深色配色下块面偏暗，沿用白字。
                         readonly property color itemColor: (active || dragPassed)
-                                                          ? "#FFFFFF"
-                                                          : (AppTheme.glass ? "#9AA8C4" : AppTheme.textSecondary)
+                                                          ? (AppTheme.glass
+                                                             ? (AppTheme.light ? AppTheme.accentDeep : "#FFFFFF")
+                                                             : "#FFFFFF")
+                                                          : (AppTheme.glass ? AppTheme.glassTextMuted : AppTheme.textSecondary)
                         readonly property int iconSize: navItem.secondary ? 18 : 20
                         // 字号跟全局字号缩放（v0.17.4：左侧导航列也参与字体调整）
                         readonly property int labelSize: AppTheme.fs(win.navExpanded
@@ -882,7 +972,7 @@ FluentWindow {
                                             anchors.fill: parent
                                             radius: 10
                                             color: pluginChildArea.containsMouse
-                                                   ? (AppTheme.glass ? "#14FFFFFF" : AppTheme.cardBgAlt)
+                                                   ? (AppTheme.glass ? AppTheme.glassSurfaceSoft : AppTheme.cardBgAlt)
                                                    : "transparent"
                                         }
 
@@ -954,7 +1044,7 @@ FluentWindow {
                         width: Math.round(win.navItemWidth * 0.62)
                         height: 1
                         x: Math.round((win.navItemWidth - width) / 2)
-                        color: AppTheme.glass ? "#2BFFFFFF" : AppTheme.divider
+                        color: AppTheme.glass ? AppTheme.glassHairline : AppTheme.divider
                     }
 
                     Repeater {
@@ -1052,6 +1142,7 @@ FluentWindow {
                         glassSource: win.glassSource
                         onOnboardingRequested: onboarding.showPages()
                         onAiPageRequested: win.openAIPage()
+                        onThemePageRequested: win.openThemePage("")
                     }
                 }
 
@@ -1164,10 +1255,10 @@ FluentWindow {
                     Rectangle {
                         anchors.fill: parent
                         radius: 19
-                        color: aiEntryArea.containsMouse ? (AppTheme.glass ? "#33FFFFFF" : AppTheme.cardBgAlt)
+                        color: aiEntryArea.containsMouse ? (AppTheme.glass ? AppTheme.glassSurfaceStrong : AppTheme.cardBgAlt)
                                                          : (AppTheme.glass ? "transparent" : AppTheme.cardBg)
                         border.width: 1
-                        border.color: AppTheme.glass ? "#33FFFFFF" : AppTheme.cardBorder
+                        border.color: AppTheme.glass ? AppTheme.glassHairlineStrong : AppTheme.cardBorder
                     }
                     Glyph {
                         anchors.centerIn: parent
@@ -1226,7 +1317,7 @@ FluentWindow {
                         radius: 19
                         color: "transparent"
                         border.width: 1
-                        border.color: globalSearchInput.activeFocus ? AppTheme.accent : "#33FFFFFF"
+                        border.color: globalSearchInput.activeFocus ? AppTheme.accent : AppTheme.glassHairlineStrong
                     }
 
                     Glyph {
@@ -1384,7 +1475,7 @@ FluentWindow {
                                 anchors.fill: parent
                                 radius: 9
                                 color: globalResultArea.containsMouse
-                                       ? (AppTheme.glass ? "#1FFFFFFF" : AppTheme.cardBgAlt)
+                                       ? (AppTheme.glass ? AppTheme.glassSurfaceSolid : AppTheme.cardBgAlt)
                                        : "transparent"
                                 // 结果行 hover 只做底色 90ms 淡变，不位移
                                 Behavior on color {
@@ -1578,12 +1669,18 @@ FluentWindow {
     Connections {
         target: (typeof App !== "undefined") ? App : null
         function onShowMainRequested() {
-            win.goToPage(0)
+            // AI 动作的到达顺序是 pageRequested / spacesPageRequested → showMainRequested，
+            // 刚请求过跳页时就不再强行回到空间页，否则设置页之类的跳转会立刻被覆盖。
+            var fromAiNav = (Date.now() - win.aiNavRequestAt) < 1200
+            if (!fromAiNav) win.goToPage(0)
             win.closeOverlay()
             // 引导 / 锁定中不主动抢焦点，交给后端与遮罩自己处理
             var locked = (typeof App !== "undefined" && App.locked === true)
             if (!locked && !onboarding.showing && win.visible)
                 win.requestActivate()
         }
+        // v0.21：AI 动作跳页（open_page / open_space）
+        function onPageRequested(key) { win.openPageByKey(String(key)) }
+        function onSpacesPageRequested(mode) { win.openSpacesForMode(String(mode)) }
     }
 }

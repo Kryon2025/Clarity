@@ -185,6 +185,9 @@ class StateTest(_ServiceCase):
         for key in (
             "version",
             "themeMode",
+            "themeStyle",
+            "themeScheme",
+            "themeSchemes",
             "themes",
             "spaces",
             "stats",
@@ -204,6 +207,13 @@ class StateTest(_ServiceCase):
         self.assertEqual(state["stats"]["todayMinutes"], 25.0)
         self.assertEqual(state["stats"]["todaySessions"], 1)
         self.assertTrue(any(item["value"] == "ocean" for item in state["themes"]))
+        self.assertEqual(
+            [item["value"] for item in state["themes"]], ["solid", "glass", "ocean"]
+        )
+        self.assertEqual(state["themeMode"], state["themeStyle"])
+        self.assertEqual(
+            [item["value"] for item in state["themeSchemes"]], ["auto", "light", "dark"]
+        )
         self.assertTrue(state["webAdmin"]["running"])
 
     def test_store_status_builtin_without_store(self) -> None:
@@ -212,18 +222,33 @@ class StateTest(_ServiceCase):
 
 
 class SettingsWhitelistTest(_ServiceCase):
-    def test_theme_mode_allowed(self) -> None:
-        status, payload = self.post("/api/settings", {"key": "theme_mode", "value": "ocean"})
+    def test_theme_style_allowed(self) -> None:
+        status, payload = self.post("/api/settings", {"key": "theme_style", "value": "ocean"})
         self.assertEqual(status, 200)
         self.assertTrue(payload["ok"])
-        self.assertEqual(self.settings.get("theme_mode"), "ocean")
+        self.assertEqual(self.settings.get("theme_style"), "ocean")
         _status, state = self.get_state()
+        self.assertEqual(state["themeStyle"], "ocean")
         self.assertEqual(state["themeMode"], "ocean")
 
+    def test_theme_scheme_allowed(self) -> None:
+        status, payload = self.post(
+            "/api/settings", {"key": "theme_scheme", "value": "light"}
+        )
+        self.assertEqual(status, 200)
+        self.assertTrue(payload["ok"])
+        self.assertEqual(self.settings.get("theme_scheme"), "light")
+        _status, state = self.get_state()
+        self.assertEqual(state["themeScheme"], "light")
+
     def test_unknown_theme_rejected(self) -> None:
-        status, payload = self.post("/api/settings", {"key": "theme_mode", "value": "neon"})
-        self.assertEqual(status, 400)
-        self.assertFalse(payload["ok"])
+        for body in (
+            {"key": "theme_style", "value": "neon"},
+            {"key": "theme_scheme", "value": "sepia"},
+        ):
+            status, payload = self.post("/api/settings", body)
+            self.assertEqual(status, 400, body)
+            self.assertFalse(payload["ok"])
 
     def test_token_and_port_not_editable(self) -> None:
         for key in ("web_admin_token", "web_admin_port", "ai_api_key"):
@@ -360,14 +385,32 @@ class SpacesApiTest(_ServiceCase):
 
 
 class ThemeApiTest(_ServiceCase):
-    def test_switch_builtin_theme(self) -> None:
+    def test_switch_style_and_scheme(self) -> None:
+        status, payload = self.post(
+            "/api/theme", {"style": "ocean", "scheme": "light"}
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["themeStyle"], "ocean")
+        self.assertEqual(payload["themeScheme"], "light")
+        self.assertEqual(payload["themeMode"], "ocean")
+        self.assertEqual(self.settings.get("theme_style"), "ocean")
+        self.assertEqual(self.settings.get("theme_scheme"), "light")
+
+    def test_switch_legacy_mode(self) -> None:
+        """旧参数 mode=light 按兼容映射拆成 solid + light。"""
         status, payload = self.post("/api/theme", {"mode": "light"})
         self.assertEqual(status, 200)
-        self.assertEqual(payload["themeMode"], "light")
-        self.assertEqual(self.settings.get("theme_mode"), "light")
+        self.assertEqual(payload["themeStyle"], "solid")
+        self.assertEqual(payload["themeScheme"], "light")
+        self.assertEqual(self.settings.get("theme_style"), "solid")
+        self.assertEqual(self.settings.get("theme_scheme"), "light")
 
     def test_unknown_theme(self) -> None:
         status, _payload = self.post("/api/theme", {"mode": "neon"})
+        self.assertEqual(status, 400)
+        status, _payload = self.post("/api/theme", {"style": "neon"})
+        self.assertEqual(status, 400)
+        status, _payload = self.post("/api/theme", {"scheme": "sepia"})
         self.assertEqual(status, 400)
 
     def test_custom_theme(self) -> None:
@@ -390,7 +433,9 @@ class ThemeApiTest(_ServiceCase):
         )
         status, payload = self.post("/api/theme", {"mode": CUSTOM_THEME_PREFIX + "demo"})
         self.assertEqual(status, 200)
-        self.assertEqual(self.settings.get("theme_mode"), CUSTOM_THEME_PREFIX + "demo")
+        self.assertEqual(self.settings.get("theme_style"), CUSTOM_THEME_PREFIX + "demo")
+        self.assertEqual(self.settings.get("theme_scheme"), "auto")
+        self.assertEqual(payload["themeStyle"], CUSTOM_THEME_PREFIX + "demo")
         _status, state = self.get_state()
         self.assertTrue(any(item.get("custom") for item in state["themes"]))
 
@@ -705,11 +750,11 @@ class BridgeWebAdminTest(unittest.TestCase):
         status, _text = http(
             url.replace("/?token=", "/api/settings?token="),
             method="POST",
-            body={"key": "theme_mode", "value": "ocean"},
+            body={"key": "theme_style", "value": "ocean"},
         )
         self.assertEqual(status, 200)
-        self.assertEqual(self.bridge.themeMode, "ocean")
-        self.assertEqual(str(self.settings.get("theme_mode")), "ocean")
+        self.assertEqual(self.bridge.themeStyle, "ocean")
+        self.assertEqual(str(self.settings.get("theme_style")), "ocean")
 
 
 if __name__ == "__main__":

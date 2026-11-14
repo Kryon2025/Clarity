@@ -41,8 +41,12 @@ from shenqing.bridge.app_bridge import AppBridge  # noqa: E402
 from shenqing.consts import (  # noqa: E402
     APP_VERSION,
     DEFAULT_THEME,
+    DEFAULT_THEME_SCHEME,
+    DEFAULT_THEME_STYLE,
     MAX_FONT_FAMILIES,
     PREFERRED_CJK_FONTS,
+    THEME_SCHEMES,
+    THEME_STYLES,
     THEMES,
 )
 from shenqing.services import system_control  # noqa: E402
@@ -96,27 +100,40 @@ class _BridgeCase(unittest.TestCase):
 
 # ================= 1. 海洋主题 =================
 class ThemesConstTest(unittest.TestCase):
-    def test_four_themes_in_order(self) -> None:
+    def test_three_styles_in_order(self) -> None:
+        """v0.21：浅色/深色拆到配色方案，样式只剩 solid/glass/ocean。"""
         self.assertEqual(
-            [item["value"] for item in THEMES], ["solid", "light", "glass", "ocean"]
+            [item["value"] for item in THEME_STYLES], ["solid", "glass", "ocean"]
         )
-        self.assertEqual(len(THEMES), 4)
-        ocean = THEMES[-1]
+        self.assertEqual(THEMES, THEME_STYLES)
+        ocean = THEME_STYLES[-1]
         self.assertEqual(ocean["label"], "海洋")
         self.assertEqual(ocean["desc"], "深海渐变与静态浪花")
         self.assertFalse(ocean["experimental"])
-        self.assertEqual(DEFAULT_THEME, "solid")
-        # 前三项保持原样
-        self.assertEqual([item["value"] for item in THEMES[:3]], ["solid", "light", "glass"])
+        self.assertEqual(DEFAULT_THEME_STYLE, "solid")
+        self.assertEqual(DEFAULT_THEME, DEFAULT_THEME_STYLE)
+        self.assertEqual(
+            [item["value"] for item in THEME_SCHEMES], ["auto", "light", "dark"]
+        )
+        self.assertEqual(DEFAULT_THEME_SCHEME, "auto")
 
 
 class ThemeModeBridgeTest(_BridgeCase):
     def test_themes_property_exposes_ocean(self) -> None:
         themes = self.bridge.themes
-        self.assertEqual(len(themes), 4)
-        self.assertEqual([item["value"] for item in themes], ["solid", "light", "glass", "ocean"])
+        self.assertEqual(len(themes), 3)
+        self.assertEqual([item["value"] for item in themes], ["solid", "glass", "ocean"])
         self.assertEqual(themes[-1]["label"], "海洋")
+        self.assertEqual(themes[-1]["name"], "海洋")
         self.assertFalse(themes[-1]["experimental"])
+        self.assertEqual(
+            [item["value"] for item in self.bridge.themeStyles],
+            ["solid", "glass", "ocean"],
+        )
+        self.assertEqual(
+            [item["value"] for item in self.bridge.themeSchemes],
+            ["auto", "light", "dark"],
+        )
 
     def test_set_theme_ocean_takes_effect(self) -> None:
         changes: list[str] = []
@@ -124,11 +141,15 @@ class ThemeModeBridgeTest(_BridgeCase):
         self.assertEqual(self.bridge.themeMode, "solid")
         self.bridge.setThemeMode("ocean")
         self.assertEqual(self.bridge.themeMode, "ocean")
+        self.assertEqual(self.bridge.themeStyle, "ocean")
+        # 旧接口的 ocean 映射成 ocean + dark
+        self.assertEqual(self.bridge.themeScheme, "dark")
         self.assertEqual(changes, ["Dark"])
-        # 持久化：重开桥后仍是海洋
+        # 持久化：重开桥后仍是海洋 + 深色
         reloaded = self._reload()
         self.assertEqual(reloaded.themeMode, "ocean")
-        self.assertEqual(reloaded._settings.get("theme_mode"), "ocean")
+        self.assertEqual(reloaded._settings.get("theme_style"), "ocean")
+        self.assertEqual(reloaded._settings.get("theme_scheme"), "dark")
 
     def test_invalid_theme_rejected(self) -> None:
         self.bridge.setThemeMode("ocean")
@@ -136,11 +157,10 @@ class ThemeModeBridgeTest(_BridgeCase):
             self.bridge.setThemeMode(bad)
             self.assertEqual(self.bridge.themeMode, "ocean")
 
-    def test_legacy_bad_theme_mode_falls_back_to_solid(self) -> None:
-        self.bridge._settings.set("theme_mode", "legacy-dark")
+    def test_unknown_style_falls_back_to_solid(self) -> None:
+        self.bridge._settings.set("theme_style", "legacy-dark")
         self.assertEqual(self.bridge.themeMode, DEFAULT_THEME)
-        # 旧设置里没有 theme_mode → 默认 solid
-        self.bridge._settings.set("theme_mode", "")
+        self.bridge._settings.set("theme_style", "")
         self.assertEqual(self.bridge.themeMode, DEFAULT_THEME)
 
 

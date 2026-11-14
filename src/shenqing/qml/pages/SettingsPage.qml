@@ -13,6 +13,21 @@ Item {
 
     signal onboardingRequested()
     signal aiPageRequested()
+    // v0.21：外观卡 → 打开主题页（样式 / 配色在主题页切换）
+    signal themePageRequested()
+
+    // ---------- v0.24 组件与布局（内置锁屏组件） ----------
+    property bool widgetsPageOpen: false
+    readonly property int overlayWidgetCountValue: (typeof App !== "undefined"
+                                                    && App.overlayWidgets !== undefined
+                                                    && App.overlayWidgets !== null)
+                                                   ? App.overlayWidgets.length : 0
+    readonly property bool overlayWidgetsEnabledValue: (typeof App !== "undefined"
+                                                        && App.overlayWidgetsEnabled !== undefined)
+                                                       ? App.overlayWidgetsEnabled === true : true
+    readonly property string overlayWidgetsSummary: page.overlayWidgetsEnabledValue
+                                                    ? qsTr("已开启 · %1 个组件").arg(page.overlayWidgetCountValue)
+                                                    : qsTr("已关闭")
 
     // ---------- 还清（睡眠模式）本地状态 ----------
     property bool localSleepReminders: true
@@ -276,6 +291,38 @@ Item {
             page.backupStatus = qsTr("缺少备份恢复接口（App.restoreBackupFile）")
         }
     }
+
+    // ---------- v0.21 外观组合文案：样式（质感）+ 配色（明暗） ----------
+    readonly property string appearanceStyleValue: (typeof App !== "undefined" && App.themeStyle)
+                                                   ? String(App.themeStyle) : "solid"
+    readonly property string appearanceSchemeValue: (typeof App !== "undefined" && App.themeScheme)
+                                                    ? String(App.themeScheme) : "auto"
+    readonly property string appearanceEffectiveScheme: (typeof App !== "undefined" && App.effectiveScheme)
+                                                        ? String(App.effectiveScheme) : "dark"
+    readonly property string appearanceStyleLabel: {
+        var value = page.appearanceStyleValue
+        if (value.indexOf("custom:") === 0) {
+            var themeId = value.substring(7)
+            var list = (typeof App !== "undefined" && App.customThemes !== undefined && App.customThemes !== null)
+                       ? App.customThemes : []
+            for (var i = 0; i < list.length; i++) {
+                if (String(list[i].id) === themeId) return String(list[i].name)
+            }
+            return qsTr("自定义主题")
+        }
+        if (value === "solid") return qsTr("纯色")
+        if (value === "glass") return qsTr("液态玻璃")
+        if (value === "ocean") return qsTr("海洋")
+        return value
+    }
+    readonly property string appearanceSchemeLabel: {
+        var value = page.appearanceSchemeValue
+        if (value === "light") return qsTr("浅色")
+        if (value === "dark") return qsTr("深色")
+        return qsTr("跟随系统(%1)").arg(page.appearanceEffectiveScheme === "light" ? qsTr("浅色") : qsTr("深色"))
+    }
+    readonly property string appearanceSummary: qsTr("%1 · %2").arg(page.appearanceStyleLabel)
+                                                                 .arg(page.appearanceSchemeLabel)
 
     // ---------- v0.12 外观：字号 / 字体 / 导航展开方式 ----------
     readonly property var fontFamilyList: {
@@ -640,6 +687,56 @@ Item {
                         color: AppTheme.divider
                     }
 
+                    // 专注期间隐藏桌面图标（v0.22）
+                    Item {
+                        width: parent.width
+                        height: 88
+
+                        Column {
+                            anchors.left: parent.left
+                            anchors.leftMargin: 16
+                            anchors.right: hideIconsSwitch.left
+                            anchors.rightMargin: 14
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 3
+
+                            Text {
+                                text: qsTr("隐藏桌面图标")
+                                color: AppTheme.textPrimary
+                                font.pixelSize: AppTheme.fs(14)
+                                font.weight: Font.DemiBold
+                                font.family: AppTheme.fontFamily
+                            }
+                            Text {
+                                width: parent.width
+                                text: qsTr("浅清 / 覆清专注期间隐藏桌面图标，结束后自动恢复")
+                                color: AppTheme.textTertiary
+                                font.pixelSize: AppTheme.fs(11)
+                                font.family: AppTheme.fontFamily
+                                wrapMode: Text.WordWrap
+                            }
+                        }
+
+                        GlassSwitch {
+                            id: hideIconsSwitch
+                            anchors.right: parent.right
+                            anchors.rightMargin: 16
+                            anchors.verticalCenter: parent.verticalCenter
+                            checked: App.hideDesktopIcons !== false
+                            onClicked: {
+                                if (typeof App.setHideDesktopIcons === "function")
+                                    App.setHideDesktopIcons(!(App.hideDesktopIcons !== false))
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        width: parent.width - 28
+                        x: 14
+                        height: 1
+                        color: AppTheme.divider
+                    }
+
                     // 以管理员身份运行
                     Item {
                         width: parent.width
@@ -816,6 +913,7 @@ Item {
 
             // ---------- v0.12 外观 ----------
             GlassCard {
+                objectName: "AppearanceCard"
                 width: parent.width
                 implicitHeight: appearanceColumn.implicitHeight + 36
                 height: implicitHeight
@@ -836,6 +934,41 @@ Item {
                         font.pixelSize: AppTheme.fs(15)
                         font.weight: Font.DemiBold
                         font.family: AppTheme.fontFamily
+                    }
+
+                    // v0.21：样式（质感）+ 配色（明暗）组合文案；切换入口在主题页
+                    Row {
+                        width: parent.width
+                        spacing: 10
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 88
+                            text: qsTr("样式与配色")
+                            color: AppTheme.textSecondary
+                            font.pixelSize: AppTheme.fs(12)
+                            font.family: AppTheme.fontFamily
+                        }
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: page.appearanceSummary
+                            color: AppTheme.textPrimary
+                            font.pixelSize: AppTheme.fs(12)
+                            font.family: AppTheme.fontFamily
+                        }
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: qsTr("在「主题」页调整")
+                            color: AppTheme.accent
+                            font.pixelSize: AppTheme.fs(11)
+                            font.family: AppTheme.fontFamily
+                            MouseArea {
+                                anchors.fill: parent
+                                anchors.margins: -5
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: page.themePageRequested()
+                            }
+                        }
                     }
 
                     Row {
@@ -1067,6 +1200,104 @@ Item {
                             page.draftDefaultMinutes = value
                             App.setDefaultMinutes(value)
                         }
+                    }
+                }
+            }
+
+            // ---------- v0.24 组件与布局（锁屏右半屏自定义组件） ----------
+            GlassCard {
+                id: widgetsCard
+                objectName: "WidgetsCard"
+                width: parent.width
+                height: 96
+                radius: 20
+                interactive: true
+                glassSource: page.glassSource
+                onClicked: page.widgetsPageOpen = true
+
+                Row {
+                    anchors.fill: parent
+                    anchors.leftMargin: 20
+                    anchors.rightMargin: 18
+                    spacing: 13
+
+                    Item {
+                        width: 40
+                        height: 40
+                        anchors.verticalCenter: parent.verticalCenter
+
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: 13
+                            gradient: Gradient {
+                                GradientStop { position: 0.0; color: AppTheme.gradA }
+                                GradientStop { position: 1.0; color: AppTheme.gradDeep }
+                            }
+                        }
+                        Glyph {
+                            anchors.centerIn: parent
+                            kind: "grid"
+                            size: 19
+                            color: AppTheme.onAccent
+                        }
+                    }
+
+                    Column {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: Math.max(0, parent.width - 40 - 13 - 96)
+                        spacing: 3
+
+                        Row {
+                            spacing: 8
+                            Text {
+                                text: qsTr("组件与布局")
+                                color: AppTheme.textPrimary
+                                font.pixelSize: AppTheme.fs(15)
+                                font.weight: Font.DemiBold
+                                font.family: AppTheme.fontFamily
+                            }
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: page.overlayWidgetsSummary
+                                color: page.overlayWidgetsEnabledValue ? AppTheme.accent
+                                                                       : AppTheme.textTertiary
+                                font.pixelSize: AppTheme.fs(11)
+                                font.family: AppTheme.fontFamily
+                            }
+                        }
+
+                        Text {
+                            width: parent.width
+                            text: qsTr("在专注锁屏的右半屏摆放玻璃小组件：时钟、倒计时、今日专注、连续打卡、每日一言、天气；位置与大小可拖动自定义")
+                            color: AppTheme.textTertiary
+                            font.pixelSize: AppTheme.fs(11)
+                            font.family: AppTheme.fontFamily
+                            wrapMode: Text.WordWrap
+                            lineHeight: 1.3
+                        }
+                    }
+
+                }
+
+                Row {
+                    anchors.right: parent.right
+                    anchors.rightMargin: 4
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 6
+
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: qsTr("去布局")
+                        color: AppTheme.accent
+                        font.pixelSize: AppTheme.fs(12)
+                        font.family: AppTheme.fontFamily
+                    }
+
+                    Glyph {
+                        anchors.verticalCenter: parent.verticalCenter
+                        kind: "chevron"
+                        size: 15
+                        color: AppTheme.textTertiary
                     }
                 }
             }
@@ -2241,6 +2472,22 @@ Item {
         minPopupHeight: 120
         previewFontFamily: true
         onSelected: (value) => page.setFontFamily(String(value))
+    }
+
+    // ---------- v0.24 组件与布局整页浮层 ----------
+    Loader {
+        id: widgetsPageLoader
+        objectName: "WidgetsPageLoader"
+        anchors.fill: parent
+        z: 80
+        active: page.widgetsPageOpen
+        visible: page.widgetsPageOpen
+        source: "WidgetsPage.qml"
+
+        onLoaded: {
+            item.glassSource = page.glassSource
+            item.backRequested.connect(function () { page.widgetsPageOpen = false })
+        }
     }
 
     // v0.20 网页管理地址复制用的隐藏剪贴板助手

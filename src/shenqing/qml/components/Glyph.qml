@@ -425,6 +425,69 @@ Canvas {
             ctx.moveTo(12, 4.2)
             ctx.lineTo(12, 11.2)
             ctx.stroke()
+        } else if (kind === "flame") {
+            // v24 连续打卡：上尖下圆的水滴形火焰 + 内焰
+            ctx.beginPath()
+            ctx.moveTo(12, 3.4)
+            ctx.bezierCurveTo(15.6, 7.4, 18.6, 9.8, 18.6, 14.0)
+            ctx.bezierCurveTo(18.6, 17.6, 15.6, 20.4, 12, 20.4)
+            ctx.bezierCurveTo(8.4, 20.4, 5.4, 17.6, 5.4, 14.0)
+            ctx.bezierCurveTo(5.4, 9.8, 8.4, 7.4, 12, 3.4)
+            ctx.closePath()
+            ctx.stroke()
+            ctx.beginPath()
+            ctx.moveTo(12, 12.2)
+            ctx.bezierCurveTo(13.6, 14.0, 14.4, 15.0, 14.4, 16.2)
+            ctx.bezierCurveTo(14.4, 17.6, 13.4, 18.6, 12, 18.6)
+            ctx.bezierCurveTo(10.6, 18.6, 9.6, 17.6, 9.6, 16.2)
+            ctx.bezierCurveTo(9.6, 15.0, 10.4, 14.0, 12, 12.2)
+            ctx.closePath()
+            ctx.stroke()
+        } else if (kind === "timer") {
+            // v24 专注倒计时：圆盘 + 顶部按钮 + 指针
+            ctx.beginPath()
+            ctx.arc(12, 13.6, 7.0, 0, Math.PI * 2)
+            ctx.stroke()
+            ctx.beginPath()
+            ctx.moveTo(12, 13.6)
+            ctx.lineTo(12, 9.4)
+            ctx.moveTo(12, 13.6)
+            ctx.lineTo(15.2, 15.4)
+            ctx.stroke()
+            ctx.beginPath()
+            ctx.moveTo(9.8, 3.4)
+            ctx.lineTo(14.2, 3.4)
+            ctx.moveTo(12, 3.4)
+            ctx.lineTo(12, 6.4)
+            ctx.stroke()
+        } else if (kind === "quote") {
+            // v24 每日一言：双引号（两个带尾巴的实心块）
+            for (var q = 0; q < 2; q++) {
+                var ox = q === 0 ? 3.8 : 12.4
+                ctx.beginPath()
+                ctx.moveTo(ox + 1.2, 7.2)
+                ctx.lineTo(ox + 5.4, 7.2)
+                ctx.lineTo(ox + 5.4, 12.4)
+                ctx.bezierCurveTo(ox + 5.4, 15.6, ox + 3.4, 17.6, ox + 0.8, 18.4)
+                ctx.lineTo(ox + 0.8, 16.0)
+                ctx.bezierCurveTo(ox + 2.2, 15.2, ox + 2.8, 14.2, ox + 2.8, 12.8)
+                ctx.lineTo(ox + 1.2, 12.8)
+                ctx.closePath()
+                ctx.stroke()
+            }
+        } else if (kind === "cloud") {
+            // v24 天气：云朵轮廓
+            ctx.beginPath()
+            ctx.moveTo(7.4, 17.4)
+            ctx.lineTo(16.8, 17.4)
+            ctx.bezierCurveTo(19.6, 17.4, 20.6, 15.4, 19.6, 13.6)
+            ctx.bezierCurveTo(18.8, 12.2, 17.2, 11.9, 16.2, 12.4)
+            ctx.bezierCurveTo(15.8, 9.2, 12.4, 7.6, 9.8, 9.0)
+            ctx.bezierCurveTo(7.6, 10.2, 6.8, 12.6, 7.6, 14.3)
+            ctx.bezierCurveTo(6.3, 14.7, 5.9, 16.2, 6.7, 17.0)
+            ctx.bezierCurveTo(6.9, 17.2, 7.1, 17.4, 7.4, 17.4)
+            ctx.closePath()
+            ctx.stroke()
         }
     }
 }

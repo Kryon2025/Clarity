@@ -34,9 +34,9 @@ Item {
         id: panelBase
         anchors.fill: parent
         radius: C.radiusPanel
-        color: AppTheme.glass ? "#E8070B13" : AppTheme.cardBg
+        color: AppTheme.glass ? AppTheme.glassSheetBg : AppTheme.cardBg
         border.width: 1
-        border.color: AppTheme.glass ? "#3AFFFFFF" : AppTheme.cardBorder
+        border.color: AppTheme.glass ? AppTheme.glassHairlineStrong : AppTheme.cardBorder
         Behavior on color { ColorAnimation { duration: 160 } }
     }
 
@@ -47,9 +47,9 @@ Item {
         visible: AppTheme.glass
         radius: C.radiusPanel
         gradient: Gradient {
-            GradientStop { position: 0.0; color: "#14FFFFFF" }
-            GradientStop { position: 0.45; color: "#0AFFFFFF" }
-            GradientStop { position: 1.0; color: "#05FFFFFF" }
+            GradientStop { position: 0.0; color: AppTheme.glassSurfaceSoft }
+            GradientStop { position: 0.45; color: AppTheme.glassSurfaceSoft }
+            GradientStop { position: 1.0; color: "transparent" }
         }
     }
 

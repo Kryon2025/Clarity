@@ -20,6 +20,13 @@
   var ROLE_LABELS = { user: '普通用户', developer: '开发者', admin: '管理员' };
   var STATUS_LABELS = { pending: '待审核', approved: '已通过', rejected: '已拒绝' };
   var KIND_LABELS = { theme: '主题', plugin: '插件' };
+  /* 适配端：desktop=电脑端、mobile=手机端（与后端 items.platforms 一致） */
+  var PLATFORMS = ['desktop', 'mobile'];
+  var PLATFORM_LABELS = { desktop: '电脑端', mobile: '手机端' };
+  /* 发布 Token（cwpt_...）：创建时只返回一次明文，列表只给前缀 */
+  var TOKEN_STATUS_LABELS = { active: '生效中', revoked: '已撤销' };
+  /* GitHub 发布源地址：仓库或 releases 页面（后端还会做一次严格校验） */
+  var GITHUB_URL_RE = /^https?:\/\/(www\.)?github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+/i;
 
   var state = {
     token: '',
@@ -31,6 +38,7 @@
     loadingItems: false,
     q: '',
     kind: '',
+    platform: '',
     sort: 'rating',
     authMode: 'login',
     loginMode: 'password',
@@ -41,6 +49,9 @@
     users: [],
     devItems: [],
     editingId: null,
+    tokens: [],
+    tokensLoaded: false,
+    newToken: '',
     returnHash: '#/store',
     detail: { item: null, comments: [], mode: 'store', loading: false, rating: 5, commentSubmitted: false }
   };
@@ -89,6 +100,15 @@
       } catch (err) { /* 忽略：按分隔符处理 */ }
     }
     return text.split(/[,，\n]/).map(function (item) { return item.trim(); }).filter(Boolean);
+  }
+
+  function toPlatforms(value) {
+    var list = toArray(value).map(function (item) { return String(item).toLowerCase(); });
+    var out = [];
+    PLATFORMS.forEach(function (key) {
+      if (list.indexOf(key) >= 0) out.push(key);
+    });
+    return out.length ? out : ['desktop'];
   }
 
   function toPalette(value) {
@@ -151,6 +171,16 @@
     return '<span class="pill pill-' + safe + '">' + esc(kindLabel(safe)) + '</span>';
   }
 
+  function platformPill(platform) {
+    var safe = platform === 'mobile' ? 'mobile' : 'desktop';
+    return '<span class="pill pill-platform-' + safe + '">' + esc(PLATFORM_LABELS[safe]) + '</span>';
+  }
+
+  function platformsHTML(item) {
+    var list = item && item.platforms && item.platforms.length ? item.platforms : ['desktop'];
+    return list.map(platformPill).join('');
+  }
+
   function initials(name, email) {
     var text = String(name || email || '?').trim();
     var match = text.match(/[A-Za-z0-9\u4e00-\u9fa5]/);
@@ -177,6 +207,14 @@
       palette: toPalette(raw.palette !== undefined && raw.palette !== null ? raw.palette : raw.palette_json),
       tags: toArray(raw.tags !== undefined && raw.tags !== null ? raw.tags : raw.tags_json),
       screenshots: toArray(raw.screenshots !== undefined && raw.screenshots !== null ? raw.screenshots : raw.screenshots_json),
+      platforms: toPlatforms(raw.platforms !== undefined && raw.platforms !== null ? raw.platforms : raw.platforms_json),
+      githubUrl: String(raw.github_url || raw.githubUrl || '').trim(),
+      repoBranch: String(raw.repo_branch || raw.repoBranch || 'main').trim() || 'main',
+      apiVersion: String(raw.api_version || raw.apiVersion || '').trim(),
+      readmePath: String(raw.readme_path || raw.readmePath || 'README.md').trim() || 'README.md',
+      iconPath: String(raw.icon_path || raw.iconPath || 'icon.png').trim() || 'icon.png',
+      lastSyncAt: String(raw.last_sync_at || raw.lastSyncAt || ''),
+      lastSyncError: String(raw.last_sync_error || raw.lastSyncError || '').trim(),
       status: String(raw.status || 'approved').toLowerCase(),
       rejectReason: String(raw.reject_reason || '').trim(),
       downloads: isNaN(downloads) ? 0 : downloads,
@@ -205,6 +243,33 @@
       status: String(raw.status || 'pending').toLowerCase(),
       createdAt: String(raw.created_at || '')
     };
+  }
+
+  function normalizeToken(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    return {
+      id: raw.id === undefined || raw.id === null ? '' : String(raw.id),
+      name: String(raw.name || '').trim() || '未命名 Token',
+      scope: String(raw.scope || 'all'),
+      prefix: String(raw.prefix || ''),
+      status: String(raw.status || 'active').toLowerCase(),
+      createdAt: String(raw.created_at || ''),
+      lastUsedAt: String(raw.last_used_at || ''),
+      expiresAt: String(raw.expires_at || ''),
+      revokedAt: String(raw.revoked_at || ''),
+      token: String(raw.token || '')
+    };
+  }
+
+  function isGithubUrl(value) {
+    return GITHUB_URL_RE.test(String(value || '').trim());
+  }
+
+  function githubLinkHTML(item, extraClass) {
+    if (!item || !item.githubUrl) return '';
+    return '<a class="gh-link' + (extraClass ? ' ' + extraClass : '') + '" href="' + esc(item.githubUrl) + '"' +
+      ' target="_blank" rel="noopener" title="' + esc(item.githubUrl) + '">' +
+      '<span class="gh-mark" aria-hidden="true">⌥</span>GitHub ↗</a>';
   }
 
   function findItem(itemId) {
@@ -478,6 +543,7 @@
       store: '深清商店 · 主题与插件',
       auth: '登录 · 深清商店',
       dev: '开发者中心 · 深清商店',
+      tokens: '发布 Token · 深清商店',
       admin: '管理后台 · 深清商店'
     };
     document.title = titles[name] || '深清商店';
@@ -489,6 +555,8 @@
     closeModal();
     var parsed = parseHash();
     var page = parsed.page;
+    // 明文 Token 只属于本次会话的前台页面：离开页面就清掉
+    if (page !== 'tokens') state.newToken = '';
 
     if (page === 'item') {
       showView('store');
@@ -513,6 +581,17 @@
       loadDevItems();
       return;
     }
+    if (page === 'tokens') {
+      if (!hasRole('developer')) {
+        showView('store');
+        toast('请先用开发者账号登录', 'info');
+        go('#/auth');
+        return;
+      }
+      showView('tokens');
+      loadTokens();
+      return;
+    }
     if (page === 'admin') {
       if (!hasRole('admin')) {
         showView('store');
@@ -530,8 +609,10 @@
 
   function renderNavVisibility() {
     var devLink = $('#mainNav [data-nav="dev"]');
+    var tokenLink = $('#mainNav [data-nav="tokens"]');
     var adminLink = $('#mainNav [data-nav="admin"]');
     if (devLink) devLink.hidden = !hasRole('developer');
+    if (tokenLink) tokenLink.hidden = !hasRole('developer');
     if (adminLink) adminLink.hidden = !hasRole('admin');
     var page = parseHash().page;
     setActiveNav(page === 'item' || page === 'auth' ? '' : page);
@@ -880,6 +961,9 @@
   function logout() {
     clearSession();
     state.itemsLoaded = false;
+    state.tokens = [];
+    state.tokensLoaded = false;
+    state.newToken = '';
     toast('已退出登录', 'info');
     go('#/store');
   }
@@ -892,6 +976,7 @@
     var params = new URLSearchParams();
     if (state.q) params.set('q', state.q);
     if (state.kind) params.set('kind', state.kind);
+    if (state.platform) params.set('platform', state.platform);
     params.set('sort', state.sort || 'rating');
     api('/api/store/items?' + params.toString()).then(function (data) {
       if (seq !== state.itemsSeq) return;
@@ -996,7 +1081,12 @@
         '</div>' +
         '<p class="card-author">' + esc(item.author) + '</p>' +
         '<p class="card-summary">' + (item.summary ? esc(item.summary) : '<span class="dim">作者还没有写简介</span>') + '</p>' +
+        (item.githubUrl
+          ? '<p class="card-github">' + githubLinkHTML(item) +
+            (item.lastSyncAt ? '<span class="dim">· 同步于 ' + fmtDate(item.lastSyncAt) + '</span>' : '') + '</p>'
+          : '') +
         '<div class="card-meta">' + starsHTML(item.rating) + rating +
+          '<span class="platform-badges">' + platformsHTML(item) + '</span>' +
           '<span class="dl">↓ ' + fmtNum(item.downloads) + '</span></div>' +
         '<div class="tags">' + tags + more + '</div>' +
         '<div class="card-actions">' +
@@ -1016,7 +1106,7 @@
     if (!items.length) {
       grid.innerHTML = '';
       if (!stateBox) return;
-      var searching = !!(state.q || state.kind);
+      var searching = !!(state.q || state.kind || state.platform);
       stateBox.hidden = false;
       stateBox.className = 'state-box';
       stateBox.innerHTML = '<span class="state-icon" aria-hidden="true">' + (searching ? '⌕' : '◌') + '</span>' +
@@ -1120,7 +1210,8 @@
     html += '<div class="detail-body">';
     html += '<div class="detail-top">' +
       '<div class="detail-heading">' +
-        '<div class="detail-sub" style="margin:0 0 10px">' + kindPill(item.kind) + statusPill(item.status) + '</div>' +
+        '<div class="detail-sub" style="margin:0 0 10px">' + kindPill(item.kind) + statusPill(item.status) +
+          '<span class="platform-badges">' + platformsHTML(item) + '</span></div>' +
         '<h2>' + esc(item.name) + '</h2>' +
         '<div class="detail-sub">' + metaHTML + '</div>' +
         '<div class="detail-sub" style="margin-top:8px">' + starsHTML(item.rating, true) +
@@ -1154,6 +1245,15 @@
 
     if (item.kind === 'plugin') {
       html += '<div class="download-url">' + (item.downloadUrl ? esc(item.downloadUrl) : '作者暂未提供下载地址') + '</div>';
+    }
+
+    if (item.githubUrl) {
+      html += '<div class="detail-github">' +
+        githubLinkHTML(item, 'lg') +
+        '<span class="mono dim detail-github-url">' + esc(item.githubUrl) + '</span>' +
+        (item.lastSyncAt ? '<span class="dim">· 版本同步于 ' + fmtDate(item.lastSyncAt, true) + '</span>' : '') +
+        (item.lastSyncError ? '<span class="sync-inline-error">· 同步失败：' + esc(item.lastSyncError) + '</span>' : '') +
+        '</div>';
     }
 
     html += '<section class="detail-section"><h3>介绍</h3>' +
@@ -1320,6 +1420,8 @@
       });
       renderDevItems();
     }).catch(function (err) {
+      var banner = $('#devSyncStatus');
+      if (banner) { banner.hidden = true; banner.innerHTML = ''; }
       if (!list) return;
       list.innerHTML = '<div class="state-box state-danger"><span class="state-icon" aria-hidden="true">⚠</span>' +
         '<h3>加载失败</h3><p>' + esc(errorMessage(err)) + '</p>' +
@@ -1343,18 +1445,49 @@
       : '更新于 ' + fmtDate(item.updatedAt || item.createdAt, true);
     return '<article class="sub-row status-' + esc(item.status) + '">' +
       '<div class="sub-main">' +
-        '<div class="sub-title-row">' + kindPill(item.kind) + '<h3>' + esc(item.name) + '</h3>' + statusPill(item.status) + '</div>' +
+        '<div class="sub-title-row">' + kindPill(item.kind) + '<h3>' + esc(item.name) + '</h3>' + statusPill(item.status) +
+          '<span class="platform-badges">' + platformsHTML(item) + '</span></div>' +
         '<p class="sub-summary">' + (item.summary ? esc(item.summary) : '<span class="dim">暂无简介</span>') + '</p>' +
         '<div class="sub-meta">' +
           '<span>v' + esc(item.version) + '</span>' +
           '<span>' + when + '</span>' +
           '<span>↓ ' + fmtNum(item.downloads) + ' 次下载</span>' +
           '<span>' + starsHTML(item.rating) + ' ' + (item.rating > 0 ? item.rating.toFixed(1) : '暂无评分') + '</span>' +
+          (item.githubUrl ? '<span>' + githubLinkHTML(item) + '</span>' : '') +
+          (item.lastSyncAt ? '<span class="dim">GitHub 同步于 ' + fmtDate(item.lastSyncAt, true) + '</span>' : '') +
         '</div>' +
+        (item.lastSyncError ? '<div class="sync-error">GitHub 同步失败：' + esc(item.lastSyncError) + '</div>' : '') +
         reason +
       '</div>' +
       '<div class="sub-actions">' + actions.join('') + '</div>' +
     '</article>';
+  }
+
+  function renderDevSyncStatus() {
+    var box = $('#devSyncStatus');
+    if (!box) return;
+    var items = state.devItems || [];
+    if (!items.length) { box.hidden = true; box.innerHTML = ''; return; }
+    var synced = items.filter(function (item) { return !!item.lastSyncAt; });
+    var failed = items.filter(function (item) { return !!item.lastSyncError; });
+    var lastStamp = synced.map(function (item) { return item.lastSyncAt; }).sort().pop() || '';
+    var summary;
+    if (lastStamp) {
+      summary = '上次 GitHub 同步：<b>' + fmtDate(lastStamp, true) + '</b> · 成功 ' + synced.length +
+        ' 条 · 失败 ' + failed.length + ' 条';
+    } else {
+      summary = '还没有同步过：管理员可在后台立即同步；后台线程每 6 小时自动同步一次。';
+    }
+    var html = '<span class="sync-icon" aria-hidden="true">⟳</span><span>' + summary + '</span>';
+    if (failed.length) {
+      html += '<div class="sync-banner-errors">' + failed.slice(0, 3).map(function (item) {
+        return '<div class="sync-error-item"><b>' + esc(item.name) + '</b>：' + esc(item.lastSyncError) + '</div>';
+      }).join('') +
+        (failed.length > 3 ? '<div class="dim">还有 ' + (failed.length - 3) + ' 条同步失败…</div>' : '') + '</div>';
+    }
+    box.hidden = false;
+    box.className = 'sync-banner' + (failed.length ? ' has-error' : '');
+    box.innerHTML = html;
   }
 
   function renderDevItems() {
@@ -1368,6 +1501,7 @@
       return;
     }
     list.innerHTML = state.devItems.map(devRowHTML).join('');
+    renderDevSyncStatus();
   }
 
   function openDevForm(item, prefill) {
@@ -1385,11 +1519,20 @@
     $('#devDescription').value = source ? source.description || '' : '';
     $('#devVersion').value = source ? source.version || '1.0.0' : '1.0.0';
     $('#devDownload').value = source ? source.downloadUrl || '' : '';
+    $('#devGithub').value = source ? source.githubUrl || '' : '';
+    $('#devBranch').value = source ? source.repoBranch || 'main' : 'main';
+    $('#devApiVersion').value = source ? source.apiVersion || '' : '';
+    $('#devReadme').value = source ? source.readmePath || 'README.md' : 'README.md';
+    $('#devIcon').value = source ? source.iconPath || 'icon.png' : 'icon.png';
     $('#devTags').value = source ? (source.tags || []).join(', ') : '';
     $('#devPalette').value = source && source.kind === 'theme' && Object.keys(source.palette || {}).length
       ? JSON.stringify(paletteWithDefaults(source.palette), null, 2)
       : '';
     $('#devShots').value = source ? (source.screenshots || []).join('\n') : '';
+    var platformList = source && source.platforms && source.platforms.length ? source.platforms : ['desktop'];
+    $$('#devPlatforms input[name="platforms"]').forEach(function (box) {
+      box.checked = platformList.indexOf(box.value) >= 0;
+    });
     clearDevFormError();
     syncDevKind();
     wrap.hidden = false;
@@ -1471,15 +1614,28 @@
     var description = ($('#devDescription').value || '').trim();
     var version = ($('#devVersion').value || '').trim() || '1.0.0';
     var downloadUrl = ($('#devDownload').value || '').trim();
+    var githubUrl = ($('#devGithub').value || '').trim();
+    var repoBranch = ($('#devBranch').value || '').trim() || 'main';
+    var apiVersion = ($('#devApiVersion').value || '').trim();
+    var readmePath = ($('#devReadme').value || '').trim() || 'README.md';
+    var iconPath = ($('#devIcon').value || '').trim() || 'icon.png';
     var tags = splitTags($('#devTags').value);
     var screenshots = ($('#devShots').value || '').split('\n').map(function (line) { return line.trim(); }).filter(Boolean);
     var itemId = ($('#devItemId').value || '').trim();
     var editingId = state.editingId;
     var palette = {};
+    var platforms = $$('#devPlatforms input[name="platforms"]')
+      .filter(function (box) { return box.checked; })
+      .map(function (box) { return box.value; });
 
     clearDevFormError();
     if (!name) { devFormError('请填写名称'); return; }
     if (!summary) { devFormError('请填写一句话简介'); return; }
+    if (!isGithubUrl(githubUrl)) {
+      devFormError('请填写 GitHub 仓库或发布页地址（例如 https://github.com/owner/repo）');
+      return;
+    }
+    if (!platforms.length) { devFormError('请至少选择一个适配端（电脑端或手机端）'); return; }
     if (kind === 'plugin' && !downloadUrl) { devFormError('插件必须填写下载地址'); return; }
     if (itemId && !/^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/.test(itemId)) {
       devFormError('条目 ID 只能包含字母、数字、点、下划线与短横线，且不能以符号开头');
@@ -1498,9 +1654,15 @@
       description: description,
       version: version,
       download_url: downloadUrl,
+      github_url: githubUrl,
+      repo_branch: repoBranch,
+      api_version: apiVersion,
+      readme_path: readmePath,
+      icon_path: iconPath,
       tags: tags,
       screenshots: screenshots,
-      palette: palette
+      palette: palette,
+      platforms: platforms
     };
     if (itemId && !editingId) payload.id = itemId;
 
@@ -1518,6 +1680,153 @@
       devFormError(errorMessage(err));
     }).then(function () {
       if (btn) { btn.disabled = false; btn.textContent = editingId ? '保存修改' : '提交审核'; }
+    });
+  }
+
+  // ---------- 发布 Token ----------
+  function copyText(text, okMessage) {
+    var done = function () { toast(okMessage, "success"); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(function () {
+        fallbackCopy(text);
+        done();
+      });
+    } else {
+      fallbackCopy(text);
+      done();
+    }
+  }
+
+  function renderTokenSecret() {
+    var box = $("#tokenSecret");
+    var value = $("#tokenSecretValue");
+    if (!box || !value) return;
+    if (!state.newToken) {
+      box.hidden = true;
+      value.textContent = "";
+      return;
+    }
+    box.hidden = false;
+    value.textContent = state.newToken;
+  }
+
+  function tokenStatusPill(status) {
+    var safe = status === "revoked" ? "revoked" : "active";
+    return '<span class="pill pill-token-' + safe + '">' + esc(TOKEN_STATUS_LABELS[safe]) + "</span>";
+  }
+
+  function renderTokens() {
+    var table = $("#tokenTable");
+    var count = $("#tokenCount");
+    if (count) count.textContent = state.tokens.length ? "共 " + state.tokens.length + " 个" : "";
+    renderTokenSecret();
+    if (!table) return;
+    if (!state.tokens.length) {
+      table.innerHTML = '<div class="state-box" style="border:0;background:transparent">' +
+        '<span class="state-icon" aria-hidden="true">⚿</span>' +
+        "<h3>还没有发布 Token</h3><p>创建一个，就能在 CI 里直接提交与更新条目。</p></div>";
+      return;
+    }
+    var head = '<div class="token-row head"><span>名称 / 前缀</span><span>状态</span>' +
+      '<span>创建</span><span>最后使用</span><span>过期</span><span style="text-align:right">操作</span></div>';
+    var rows = state.tokens.map(function (token) {
+      var actions = token.status === "active"
+        ? '<button type="button" class="btn danger-ghost sm" data-action="revoke-token" data-id="' + esc(token.id) + '">撤销</button>'
+        : '<span class="dim token-revoked-note">已撤销</span>';
+      return '<div class="token-row">' +
+        '<div class="token-name"><b>' + esc(token.name) + '</b><span class="mono dim token-prefix">' + esc(token.prefix) + "…</span></div>" +
+        "<div>" + tokenStatusPill(token.status) + "</div>" +
+        '<div class="token-date">' + fmtDate(token.createdAt, true) + "</div>" +
+        '<div class="token-date">' + (token.lastUsedAt ? fmtDate(token.lastUsedAt, true) : '<span class="dim">未使用</span>') + "</div>" +
+        '<div class="token-date">' + (token.expiresAt ? fmtDate(token.expiresAt, true) : '<span class="dim">永久</span>') + "</div>" +
+        '<div class="token-actions">' + actions + "</div>" +
+        "</div>";
+    }).join("");
+    table.innerHTML = head + rows;
+  }
+
+  function loadTokens() {
+    var table = $("#tokenTable");
+    if (table) {
+      table.innerHTML = '<div style="text-align:center;padding:28px">' +
+        '<span class="spinner"></span> <span class="muted">正在加载 Token…</span></div>';
+    }
+    api("/api/dev/tokens").then(function (data) {
+      var list = Array.isArray(data) ? data : (data && Array.isArray(data.tokens) ? data.tokens : []);
+      state.tokens = list.map(normalizeToken).filter(Boolean);
+      state.tokensLoaded = true;
+      renderTokens();
+    }).catch(function (err) {
+      if (!table) return;
+      table.innerHTML = '<div class="state-box state-danger" style="border:0;background:transparent">' +
+        '<span class="state-icon" aria-hidden="true">⚠</span><h3>加载失败</h3><p>' + esc(errorMessage(err)) + "</p>" +
+        '<button type="button" class="btn ghost" data-action="reload-tokens">重试</button></div>';
+    });
+  }
+
+  function createToken(form) {
+    var name = ($("#tokenName").value || "").trim();
+    var expiresDays = Number($("#tokenExpires").value);
+    var errorEl = $("#tokenFormError");
+    function fail(message) {
+      if (errorEl) {
+        errorEl.hidden = false;
+        errorEl.textContent = message;
+      } else {
+        toast(message, "error");
+      }
+    }
+    if (errorEl) { errorEl.hidden = true; errorEl.textContent = ""; }
+    if (!name) { fail("请填写 Token 名称"); return; }
+    if (!isFinite(expiresDays) || expiresDays < 0) expiresDays = 0;
+    var btn = $("#tokenSubmitBtn");
+    if (btn) { btn.disabled = true; btn.textContent = "生成中…"; }
+    api("/api/dev/tokens", { method: "POST", body: { name: name, expires_days: expiresDays } }).then(function (data) {
+      var created = normalizeToken(data);
+      if (!created) throw new ApiError("Token 创建响应格式不正确", 0, null);
+      state.tokens = [created].concat(state.tokens.filter(function (item) { return String(item.id) !== String(created.id); }));
+      state.newToken = created.token || "";
+      if (form) form.reset();
+      renderTokens();
+      toast("Token 已创建：明文只显示一次，请立刻复制", "success");
+    }).catch(function (err) {
+      fail(errorMessage(err));
+    }).then(function () {
+      if (btn) { btn.disabled = false; btn.textContent = "生成 Token"; }
+    });
+  }
+
+  function copyNewToken() {
+    if (!state.newToken) {
+      toast("没有可复制的 Token，请重新创建", "info");
+      return;
+    }
+    copyText(state.newToken, "Token 已复制，请妥善保存（只显示一次）");
+  }
+
+  function revokeToken(tokenId) {
+    var target = state.tokens.filter(function (item) { return String(item.id) === String(tokenId); })[0];
+    confirmDialog({
+      title: "撤销这个 Token？",
+      message: "「" + (target ? target.name : "该 Token") + "」撤销后立刻失效，正在使用它的 CI 发布会收到 401。",
+      okText: "撤销 Token",
+      danger: true
+    }).then(function (ok) {
+      if (!ok) return null;
+      return api("/api/dev/tokens/" + encodeURIComponent(tokenId) + "/revoke", { method: "POST" }).then(function (data) {
+        var updated = normalizeToken(data);
+        if (updated) {
+          state.tokens = state.tokens.map(function (item) {
+            return String(item.id) === String(updated.id) ? updated : item;
+          });
+          renderTokens();
+        } else {
+          loadTokens();
+        }
+        toast("Token 已撤销", "success");
+      }).catch(function (err) {
+        toast(errorMessage(err), "error");
+      });
     });
   }
 
@@ -1812,14 +2121,22 @@
     }
     if (action === 'reload-store') { loadItems(); return; }
     if (action === 'reload-dev') { loadDevItems(); return; }
+    if (action === 'reload-tokens') { loadTokens(); return; }
+    if (action === 'revoke-token') { revokeToken(id); return; }
     if (action === 'reload-admin') { loadAdmin(); return; }
     if (action === 'reset-filters') {
       state.q = '';
       state.kind = '';
+      state.platform = '';
       var search = $('#searchInput');
       if (search) search.value = '';
       $$('#kindChips .chip').forEach(function (chip) {
         var active = (chip.getAttribute('data-kind') || '') === '';
+        chip.classList.toggle('is-active', active);
+        chip.setAttribute('aria-pressed', active ? 'true' : 'false');
+      });
+      $$('#platformChips .chip').forEach(function (chip) {
+        var active = (chip.getAttribute('data-platform') || '') === '';
         chip.classList.toggle('is-active', active);
         chip.setAttribute('aria-pressed', active ? 'true' : 'false');
       });
@@ -1910,6 +2227,21 @@
       });
     }
 
+    var platformChips = $('#platformChips');
+    if (platformChips) {
+      platformChips.addEventListener('click', function (event) {
+        var chip = event.target.closest('.chip[data-platform]');
+        if (!chip) return;
+        state.platform = chip.getAttribute('data-platform') || '';
+        $$('.chip', platformChips).forEach(function (item) {
+          var active = (item.getAttribute('data-platform') || '') === state.platform;
+          item.classList.toggle('is-active', active);
+          item.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+        loadItems();
+      });
+    }
+
     $$('.auth-tab').forEach(function (tab) {
       tab.addEventListener('click', function () { setAuthMode(tab.getAttribute('data-auth-mode')); });
     });
@@ -1966,6 +2298,15 @@
         submitDevForm(devForm);
       });
     }
+    var tokenForm = $('#tokenForm');
+    if (tokenForm) {
+      tokenForm.addEventListener('submit', function (event) {
+        event.preventDefault();
+        createToken(tokenForm);
+      });
+    }
+    var tokenCopyBtn = $('#tokenCopyBtn');
+    if (tokenCopyBtn) tokenCopyBtn.addEventListener('click', copyNewToken);
 
     window.addEventListener('hashchange', route);
     window.addEventListener('popstate', function () { route(); });

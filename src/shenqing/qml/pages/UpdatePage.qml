@@ -132,6 +132,14 @@ Item {
         return page.localSourceError
     }
 
+    // v0.22 更新渠道：正式版 / 预览版
+    readonly property string currentChannel: (typeof App !== "undefined" && App.updateChannel !== undefined)
+                                             ? String(App.updateChannel) : "stable"
+    function chooseChannel(channel) {
+        if (typeof App !== "undefined" && typeof App.setUpdateChannel === "function")
+            App.setUpdateChannel(String(channel))
+    }
+
     function chooseSource(id) {
         page.localSourceError = ""
         if (page.hasBackendSources && typeof App.setUpdateSource === "function")
@@ -236,6 +244,52 @@ Item {
                     anchors.bottom: parent.bottom
                     anchors.bottomMargin: 2
                     spacing: 8
+
+                    // 渠道切换：正式版 / 预览版
+                    Row {
+                        spacing: 4
+                        anchors.verticalCenter: parent.verticalCenter
+                        Rectangle {
+                            width: 58
+                            height: 26
+                            radius: 13
+                            color: page.currentChannel === "stable" ? AppTheme.accent : "transparent"
+                            border.width: 1
+                            border.color: page.currentChannel === "stable" ? AppTheme.accent : AppTheme.cardBorder
+                            Text {
+                                anchors.centerIn: parent
+                                text: qsTr("正式版")
+                                color: page.currentChannel === "stable" ? "#04222B" : AppTheme.textSecondary
+                                font.pixelSize: AppTheme.fs(10)
+                                font.family: AppTheme.fontFamily
+                            }
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: page.chooseChannel("stable")
+                            }
+                        }
+                        Rectangle {
+                            width: 58
+                            height: 26
+                            radius: 13
+                            color: page.currentChannel === "preview" ? AppTheme.accent : "transparent"
+                            border.width: 1
+                            border.color: page.currentChannel === "preview" ? AppTheme.accent : AppTheme.cardBorder
+                            Text {
+                                anchors.centerIn: parent
+                                text: qsTr("预览版")
+                                color: page.currentChannel === "preview" ? "#04222B" : AppTheme.textSecondary
+                                font.pixelSize: AppTheme.fs(10)
+                                font.family: AppTheme.fontFamily
+                            }
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: page.chooseChannel("preview")
+                            }
+                        }
+                    }
 
                     Text {
                         anchors.verticalCenter: parent.verticalCenter

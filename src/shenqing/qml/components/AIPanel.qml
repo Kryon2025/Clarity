@@ -75,6 +75,105 @@ Window {
         copyTimer.restart()
     }
 
+    // ---------- v0.21 聊天记录抽屉 ----------
+    property bool drawerOpen: false
+    property string currentConversationId: ""
+    // 截图 / 演示用：非 null 时替代 App.aiConversations
+    property var demoConversations: null
+    readonly property var conversations: panel.demoConversations !== null ? panel.demoConversations
+                                          : ((typeof App !== "undefined" && App.aiConversations !== undefined)
+                                             ? App.aiConversations : [])
+
+    function toggleDrawer() {
+        panel.drawerOpen = !panel.drawerOpen
+    }
+    function newConversation() {
+        panel.currentConversationId = ""
+        if (typeof App !== "undefined" && typeof App.newAIConversation === "function")
+            App.newAIConversation()
+    }
+    function selectConversation(id) {
+        panel.currentConversationId = String(id)
+        if (typeof App !== "undefined" && typeof App.selectAIConversation === "function")
+            App.selectAIConversation(String(id))
+    }
+    function deleteConversation(id) {
+        if (panel.currentConversationId === String(id)) panel.currentConversationId = ""
+        if (typeof App !== "undefined" && typeof App.deleteAIConversation === "function")
+            App.deleteAIConversation(String(id))
+    }
+
+    // ---------- v0.21 AI 动作确认 ----------
+    // 后端契约：aiActionPending 为 dict（空闲 {}），aiActionPendingActive 为 bool
+    readonly property var aiActionPending: {
+        if (typeof App === "undefined") return null
+        var pending = App.aiActionPending
+        if (pending === undefined || pending === null || pending === false) return null
+        if (typeof pending === "object") {
+            if (App.aiActionPendingActive !== undefined && App.aiActionPendingActive !== true)
+                return null
+            for (var key in pending) return pending
+            return null
+        }
+        return pending
+    }
+    function pendingActionText() {
+        var pending = panel.aiActionPending
+        if (pending === null) return ""
+        if (pending.summary !== undefined && String(pending.summary) !== "") return String(pending.summary)
+        if (pending.text !== undefined && String(pending.text) !== "") return String(pending.text)
+        var kind = (pending.type !== undefined) ? String(pending.type)
+                   : ((pending.kind !== undefined) ? String(pending.kind) : "")
+        var target = (pending.target !== undefined) ? String(pending.target)
+                     : (pending.spaceName !== undefined ? String(pending.spaceName)
+                        : (pending.name !== undefined ? String(pending.name) : ""))
+        if (kind === "space" || kind === "openSpace") return qsTr("打开空间「%1」").arg(target)
+        if (kind === "setting" || kind === "changeSetting") {
+            if (pending.value !== undefined) return qsTr("修改设置：%1 %2").arg(target).arg(String(pending.value))
+            return qsTr("修改设置：%1").arg(target)
+        }
+        return (pending.title !== undefined && String(pending.title) !== "") ? String(pending.title)
+                                                                             : qsTr("执行一个动作")
+    }
+    function pendingActionConfirmLabel() {
+        var pending = panel.aiActionPending
+        if (pending !== null && pending.confirmLabel !== undefined
+                && String(pending.confirmLabel) !== "")
+            return String(pending.confirmLabel)
+        return qsTr("确认执行")
+    }
+    function pendingActionDetail() {
+        var pending = panel.aiActionPending
+        if (pending === null) return ""
+        var title = (pending.title !== undefined) ? String(pending.title) : ""
+        var text = panel.pendingActionText()
+        if (title !== "" && title !== text) return title
+        if (pending.detail !== undefined && String(pending.detail) !== "") return String(pending.detail)
+        return ""
+    }
+    function confirmAIAction() {
+        var pending = panel.aiActionPending
+        if (pending === null) return
+        if (typeof App !== "undefined" && typeof App.aiConfirmAction === "function") {
+            try {
+                App.aiConfirmAction()
+            } catch (err) {
+                // 接口异常时静默：后端会以自己的方式回报
+            }
+        }
+    }
+    function cancelAIAction() {
+        var pending = panel.aiActionPending
+        if (pending === null) return
+        if (typeof App !== "undefined" && typeof App.aiCancelAction === "function") {
+            try {
+                App.aiCancelAction()
+            } catch (err) {
+                // 取消不改变任何状态
+            }
+        }
+    }
+
     Shortcut { sequence: "Escape"; onActivated: panel.hide() }
 
     Timer {
@@ -137,6 +236,57 @@ Window {
                     font.pixelSize: AppTheme.fs(17)
                     font.weight: Font.DemiBold
                     font.family: AppTheme.fontFamily
+                }
+            }
+
+            // v0.21：「聊天记录」抽屉开关
+            Item {
+                id: drawerToggle
+                objectName: "AIHistoryToggle"
+                anchors.right: closeButton.left
+                anchors.rightMargin: 8
+                anchors.top: parent.top
+                anchors.topMargin: 20
+                width: drawerToggleLabel.implicitWidth + 32
+                height: 26
+
+                Rectangle {
+                    anchors.fill: parent
+                    radius: 13
+                    color: drawerToggleArea.containsMouse
+                           ? (AppTheme.glass ? "#26FFFFFF" : AppTheme.cardBgAlt)
+                           : (AppTheme.glass ? "#14FFFFFF" : AppTheme.buttonBg)
+                    border.width: 1
+                    border.color: panel.drawerOpen ? AppTheme.accent : AppTheme.cardBorder
+                }
+
+                Row {
+                    anchors.centerIn: parent
+                    spacing: 4
+
+                    Glyph {
+                        anchors.verticalCenter: parent.verticalCenter
+                        kind: panel.drawerOpen ? "chevronLeft" : "chevron"
+                        size: 8
+                        color: panel.drawerOpen ? AppTheme.accent : AppTheme.textSecondary
+                    }
+
+                    Text {
+                        id: drawerToggleLabel
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: qsTr("聊天记录")
+                        color: panel.drawerOpen ? AppTheme.accent : AppTheme.textSecondary
+                        font.pixelSize: AppTheme.fs(10)
+                        font.family: AppTheme.fontFamily
+                    }
+                }
+
+                MouseArea {
+                    id: drawerToggleArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: panel.toggleDrawer()
                 }
             }
 
@@ -298,6 +448,59 @@ Window {
                 }
             }
 
+            // v0.21 聊天记录抽屉（从左侧滑出；标题「聊天记录」+ 新建 + 列表可滚动 + 当前项高亮 + 可删除）
+            Item {
+                id: historyDrawer
+                objectName: "AIHistoryDrawer"
+                width: Math.min(236, dialog.width - 120)
+                anchors.top: parent.top
+                anchors.topMargin: 66
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: 82
+                x: panel.drawerOpen ? 12 : -(width + 18)
+                visible: panel.drawerOpen || x > -(width + 2)
+                z: 20
+
+                Behavior on x {
+                    enabled: panel.animationsEnabled
+                    NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
+                }
+
+                Rectangle {
+                    anchors.fill: parent
+                    radius: 16
+                    color: AppTheme.glass ? AppTheme.dialogBg : AppTheme.cardBg
+                    border.width: 1
+                    border.color: AppTheme.glass ? "#4DFFFFFF" : AppTheme.cardBorderStrong
+                }
+
+                // 吃掉抽屉内点击，避免关掉浮窗
+                MouseArea {
+                    anchors.fill: parent
+                    acceptedButtons: Qt.AllButtons
+                    onClicked: {}
+                }
+
+                Item {
+                    anchors.fill: parent
+                    anchors.margins: 12
+
+                    AIHistoryList {
+                        id: historyList
+                        objectName: "AIHistoryList"
+                        anchors.fill: parent
+                        animationsEnabled: panel.animationsEnabled
+                        conversations: panel.conversations
+                        currentConversationId: panel.currentConversationId
+                        title: qsTr("聊天记录")
+                        newText: qsTr("新建")
+                        onNewRequested: panel.newConversation()
+                        onSelected: (conversationId) => panel.selectConversation(conversationId)
+                        onDeleteRequested: (conversationId) => panel.deleteConversation(conversationId)
+                    }
+                }
+            }
+
             // 输入区
             Item {
                 id: inputRow
@@ -399,6 +602,20 @@ Window {
                     onClicked: panel.copyAnswer()
                 }
             }
+        }
+
+        // ---------- v0.21 AI 动作确认卡（后端 App.aiActionPending 存在时弹出） ----------
+        AIActionConfirmCard {
+            id: aiActionCard
+            objectName: "AIPanelActionConfirm"
+            anchors.fill: parent
+            animationsEnabled: panel.animationsEnabled
+            opened: panel.aiActionPending !== null
+            actionText: panel.pendingActionText()
+            detail: panel.pendingActionDetail()
+            confirmText: panel.pendingActionConfirmLabel()
+            onConfirmed: panel.confirmAIAction()
+            onCancelled: panel.cancelAIAction()
         }
     }
 

@@ -226,6 +226,28 @@ def _as_downloads(value: object) -> int:
         return 0
 
 
+PLATFORMS = ("desktop", "mobile")
+
+
+def _as_platforms(value: object) -> list[str]:
+    """适配端：只接受 desktop/mobile；缺失或非法时默认桌面端。"""
+    if not isinstance(value, (list, tuple)):
+        return ["desktop"]
+    result: list[str] = []
+    for item in value:
+        text = str(item or "").strip().lower()
+        if text in PLATFORMS and text not in result:
+            result.append(text)
+    return result or ["desktop"]
+
+
+def supports_platform(item: Mapping, platform: str = "desktop") -> bool:
+    platforms = item.get("platforms")
+    if not isinstance(platforms, list) or not platforms:
+        return platform == "desktop"
+    return platform in platforms
+
+
 def _as_text_list(value: object, limit: int) -> list[str]:
     if not isinstance(value, (list, tuple)):
         return []
@@ -269,12 +291,13 @@ def normalize_item(raw: object) -> dict | None:
         "screenshots": _as_text_list(raw.get("screenshots"), 8),
         "download_url": download_url,
         "palette": palette,
+        "platforms": _as_platforms(raw.get("platforms")),
         "published_at": str(raw.get("published_at") or "").strip()[:32],
     }
 
 
-def parse_catalog(payload: object) -> list[dict]:
-    """解析目录 JSON（顶层 list 或 {items:[...]}）；没有有效条目抛 StoreError。"""
+def parse_catalog(payload: object, platform: str = "desktop") -> list[dict]:
+    """解析目录 JSON（顶层 list 或 {items:[...]}）；按平台过滤，没有有效条目抛 StoreError。"""
     if isinstance(payload, Mapping):
         raw_items = payload.get("items")
     else:
@@ -286,6 +309,8 @@ def parse_catalog(payload: object) -> list[dict]:
     for raw in raw_items:
         item = normalize_item(raw)
         if item is None or item["id"] in seen:
+            continue
+        if platform and not supports_platform(item, platform):
             continue
         seen.add(item["id"])
         items.append(item)
@@ -304,9 +329,13 @@ def _read_json(url: str) -> Any:
     return json.loads(payload)
 
 
-def load_catalog(url: str) -> list[dict]:
-    """拉取并解析远程目录；失败抛异常。"""
-    return parse_catalog(_read_json(url))
+def load_catalog(url: str, platform: str = "desktop") -> list[dict]:
+    """拉取并解析远程目录（默认只要桌面端适配条目）；失败抛异常。"""
+    target = url
+    if platform and url.lower().startswith(("http://", "https://")) and "platform=" not in url:
+        separator = "&" if "?" in url else "?"
+        target = f"{url}{separator}platform={platform}"
+    return parse_catalog(_read_json(target), platform=platform)
 
 
 def _builtin_theme(

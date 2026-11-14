@@ -78,6 +78,17 @@ def _env_int(name: str, default: int, minimum: int = 1) -> int:
     return value if value >= minimum else default
 
 
+def _env_float(name: str, default: float, minimum: float = 1.0) -> float:
+    raw = (os.environ.get(name) or "").strip()
+    if not raw:
+        return default
+    try:
+        value = float(raw)
+    except ValueError:
+        return default
+    return value if value >= minimum else default
+
+
 def _env_bool(name: str, default: bool) -> bool:
     """1/true/yes/on → True，0/false/no/off → False，其它回退默认值。"""
     raw = (os.environ.get(name) or "").strip().lower()
@@ -123,6 +134,15 @@ class Settings:
     email_code_ttl_seconds: int = 600
     #: 单个验证码最多尝试次数
     email_code_max_attempts: int = 5
+    # ---------------- GitHub 发布源同步 ----------------
+    #: GitHub API Token（可选）：配置后限额从匿名 60 次/小时 提到 5000 次/小时
+    github_token: str = ""
+    #: 单次 GitHub API 请求超时（秒）
+    github_timeout_seconds: float = 6.0
+    #: 后台同步周期（秒），默认 6 小时
+    github_sync_interval_seconds: int = 6 * 60 * 60
+    #: 是否启动后台同步线程（测试/无网环境可关掉，仍可手动 POST /api/admin/sync）
+    github_sync_enabled: bool = True
     extra: dict[str, str] = field(default_factory=dict)
 
 
@@ -154,4 +174,10 @@ def load_settings() -> Settings:
         mail_dev_mode=_env_bool("MAIL_DEV_MODE", False),
         email_code_ttl_seconds=_env_int("EMAIL_CODE_TTL_SECONDS", 600, minimum=30),
         email_code_max_attempts=_env_int("EMAIL_CODE_MAX_ATTEMPTS", 5, minimum=1),
+        github_token=(os.environ.get("GITHUB_TOKEN") or "").strip(),
+        github_timeout_seconds=_env_float("GITHUB_TIMEOUT_SECONDS", 6.0, minimum=1.0),
+        github_sync_interval_seconds=_env_int(
+            "GITHUB_SYNC_INTERVAL_SECONDS", 6 * 60 * 60, minimum=60
+        ),
+        github_sync_enabled=_env_bool("GITHUB_SYNC_ENABLED", True),
     )

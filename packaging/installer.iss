@@ -3,7 +3,7 @@
 ; 前置：先运行 PyInstaller（onedir）生成 dist\深清\深清.exe
 
 #ifndef AppVersion
-  #define AppVersion "0.20.1"
+  #define AppVersion "0.21.0"
 #endif
 #define AppName "深清"
 #define AppNameEn "Clarity"
@@ -36,13 +36,30 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 CloseApplications=yes
 RestartApplications=no
-; 全中文安装界面：Inno 自带语言包不含中文，使用仓库内附带的简体中文语言文件
+; 安装向导：自动跟随系统语言（中文/英文），显示许可证、安装目录与附加任务
+ShowLanguageDialog=no
+DisableWelcomePage=no
+LicenseFile=..\LICENSE
+WizardImageFile=installer-assets\wizard.bmp
+WizardSmallImageFile=installer-assets\wizard-small.bmp
+AppComments=专注与清心：三档专注空间、清番番茄钟、数据统计与主题插件商店。
+
 [Languages]
+; 自动按系统界面语言选择：中文系统用中文，其他用英文（ShowLanguageDialog=no 时无语言弹窗）
 Name: "chinesesimp"; MessagesFile: "ChineseSimplified.isl"
+Name: "english"; MessagesFile: "compiler:Default.isl"
+
+[CustomMessages]
+chinesesimp.CreateDesktopIcon=创建桌面快捷方式
+english.CreateDesktopIcon=Create a desktop shortcut
+chinesesimp.AutostartTask=开机自动启动（最高权限计划任务）
+english.AutostartTask=Start with Windows (highest privileges scheduled task)
+chinesesimp.AdditionalTasks=附加任务：
+english.AdditionalTasks=Additional tasks:
 
 [Tasks]
-Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: "附加任务:"; Flags: checkedonce
-Name: "autostart"; Description: "开机自动启动（最高权限计划任务）"; GroupDescription: "附加任务:"; Flags: unchecked
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalTasks}"; Flags: checkedonce
+Name: "autostart"; Description: "{cm:AutostartTask}"; GroupDescription: "{cm:AdditionalTasks}"; Flags: unchecked
 
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs

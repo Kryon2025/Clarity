@@ -49,6 +49,8 @@ def theme_payload(**overrides) -> dict:
         "palette": dict(THEME_PALETTE),
         "tags": ["深色", "青绿"],
         "screenshots": [],
+        # v0.26 起 GitHub 仓库 / 发布页地址为必填字段
+        "github_url": "https://github.com/example/aurora-theme",
     }
     payload.update(overrides)
     return payload
@@ -65,6 +67,7 @@ def plugin_payload(**overrides) -> dict:
         "palette": {},
         "tags": ["统计"],
         "screenshots": [],
+        "github_url": "https://github.com/example/focus-plugin/releases",
     }
     payload.update(overrides)
     return payload
@@ -520,10 +523,14 @@ class CatalogTests(StoreApiTestCase):
                 "tags",
                 "screenshots",
                 "download_url",
+                "github_url",
+                "last_sync_at",
                 "palette",
+                "platforms",
                 "published_at",
             },
         )
+        self.assertEqual(theme_row["platforms"], ["desktop"])
 
         relative_plugin = by_id[plugin["id"]]
         self.assertTrue(relative_plugin["download_url"].startswith("http://testserver/"))
@@ -551,6 +558,233 @@ class CatalogTests(StoreApiTestCase):
         )
         item = self.get("/api/catalog.json").json()["items"][0]
         self.assertEqual(item["download_url"], "https://store.example.com/files/demo.zip")
+
+
+
+class PlatformTests(StoreApiTestCase):
+    """适配端（desktop / mobile）：默认值、校验、筛选、目录过滤。"""
+
+    def test_default_platforms_is_desktop(self) -> None:
+        developer, _ = self.make_developer("dev@example.com")
+        # 不传 platforms -> 默认电脑端
+        item = self.make_item(developer, theme_payload())
+        self.assertEqual(item["platforms"], ["desktop"])
+
+        approved = self.make_approved(developer, theme_payload(id="theme-default", name="默认端"))
+        self.assertEqual(approved["platforms"], ["desktop"])
+        detail = self.get("/api/store/items/" + approved["id"]).json()
+        self.assertEqual(detail["platforms"], ["desktop"])
+        listed = self.get("/api/store/items").json()
+        self.assertEqual([row["platforms"] for row in listed], [["desktop"]])
+
+    def test_platforms_submit_update_and_prefill(self) -> None:
+        developer, _ = self.make_developer("dev@example.com")
+        both = self.make_item(developer, theme_payload(platforms=["desktop", "mobile"]))
+        self.assertEqual(both["platforms"], ["desktop", "mobile"])
+
+        # 顺序归一 + 去重 + 大小写归一
+        messy = self.make_item(
+            developer,
+            theme_payload(id="theme-messy", platforms=["MOBILE", "desktop", "mobile"]),
+        )
+        self.assertEqual(messy["platforms"], ["desktop", "mobile"])
+
+        mobile_only = self.put(
+            "/api/dev/items/" + both["id"], developer, json={"platforms": ["mobile"]}
+        )
+        self.assertEqual(mobile_only.status_code, 200, mobile_only.text)
+        self.assertEqual(mobile_only.json()["platforms"], ["mobile"])
+
+        # 不传 platforms 时保持原值，不会被重置成默认电脑端
+        renamed = self.put("/api/dev/items/" + both["id"], developer, json={"name": "改名"})
+        self.assertEqual(renamed.status_code, 200, renamed.text)
+        self.assertEqual(renamed.json()["name"], "改名")
+        self.assertEqual(renamed.json()["platforms"], ["mobile"])
+
+        back = self.put(
+            "/api/dev/items/" + both["id"],
+            developer,
+            json={"platforms": ["desktop", "mobile"]},
+        )
+        self.assertEqual(back.json()["platforms"], ["desktop", "mobile"])
+
+    def test_invalid_platforms_are_400(self) -> None:
+        developer, _ = self.make_developer("dev@example.com")
+
+        for bad in (["tv"], [], ["desktop", "ios"], ["desktop", ""]):
+            with self.subTest(platforms=bad):
+                response = self.submit(developer, theme_payload(platforms=bad))
+                self.assertEqual(response.status_code, 400, response.text)
+                self.assertIn("platform", response.json()["detail"])
+
+        item = self.make_item(developer, theme_payload())
+        failed = self.put(
+            "/api/dev/items/" + item["id"], developer, json={"platforms": ["tablet"]}
+        )
+        self.assertEqual(failed.status_code, 400, failed.text)
+        # 非法更新不落库：原值仍是默认电脑端
+        mine = self.get("/api/dev/items", developer).json()
+        self.assertEqual(mine[0]["platforms"], ["desktop"])
+
+    def test_store_filters_by_platform(self) -> None:
+        developer, _ = self.make_developer("dev@example.com")
+        desktop_only = self.make_approved(
+            developer, theme_payload(id="theme-desk", name="电脑端专用", platforms=["desktop"])
+        )
+        mobile_only = self.make_approved(
+            developer, theme_payload(id="theme-mob", name="手机端专用", platforms=["mobile"])
+        )
+        both = self.make_approved(
+            developer,
+            theme_payload(id="theme-both", name="双端", platforms=["desktop", "mobile"]),
+        )
+
+        all_ids = {row["id"] for row in self.get("/api/store/items").json()}
+        self.assertEqual(all_ids, {desktop_only["id"], mobile_only["id"], both["id"]})
+
+        desktop_ids = {row["id"] for row in self.get("/api/store/items?platform=desktop").json()}
+        self.assertEqual(desktop_ids, {desktop_only["id"], both["id"]})
+
+        mobile_ids = {row["id"] for row in self.get("/api/store/items?platform=mobile").json()}
+        self.assertEqual(mobile_ids, {mobile_only["id"], both["id"]})
+
+        # 与类型/搜索组合使用
+        plugin = self.make_approved(
+            developer,
+            plugin_payload(id="com.example.mobile", name="手机插件", platforms=["mobile"]),
+        )
+        combo = self.get("/api/store/items?platform=mobile&kind=plugin").json()
+        self.assertEqual([row["id"] for row in combo], [plugin["id"]])
+        searched = self.get("/api/store/items?platform=desktop&q=双端").json()
+        self.assertEqual([row["id"] for row in searched], [both["id"]])
+
+        self.assertEqual(self.get("/api/store/items?platform=tablet").status_code, 400)
+        self.assertEqual(self.get("/api/store/items?platform=").status_code, 200)
+
+    def test_catalog_platform_filter(self) -> None:
+        developer, _ = self.make_developer("dev@example.com")
+        desktop_only = self.make_approved(
+            developer, theme_payload(id="theme-desk", name="电脑端专用")
+        )
+        mobile_only = self.make_approved(
+            developer,
+            plugin_payload(id="com.example.mob", name="手机插件", platforms=["mobile"]),
+        )
+        both = self.make_approved(
+            developer,
+            theme_payload(id="theme-both", name="双端", platforms=["desktop", "mobile"]),
+        )
+
+        full = self.get("/api/catalog.json").json()["items"]
+        self.assertEqual(len(full), 3)
+        self.assertTrue(all("platforms" in row for row in full))
+
+        desktop_ids = {
+            row["id"] for row in self.get("/api/catalog.json?platform=desktop").json()["items"]
+        }
+        self.assertEqual(desktop_ids, {desktop_only["id"], both["id"]})
+        mobile_ids = {
+            row["id"] for row in self.get("/api/catalog.json?platform=mobile").json()["items"]
+        }
+        self.assertEqual(mobile_ids, {mobile_only["id"], both["id"]})
+        self.assertEqual(self.get("/api/catalog.json?platform=watch").status_code, 400)
+
+    def test_legacy_database_rows_default_to_desktop(self) -> None:
+        """老库（items 没有 platforms 列）跑 init_db 后自动补列，旧数据按电脑端。"""
+        legacy_path = os.path.join(self._tmp.name, "legacy.db")
+        conn = db.connect(legacy_path)
+        try:
+            conn.executescript(
+                """
+                CREATE TABLE users (
+                    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                    email         TEXT NOT NULL UNIQUE COLLATE NOCASE,
+                    password_hash TEXT NOT NULL,
+                    name          TEXT NOT NULL,
+                    role          TEXT NOT NULL DEFAULT 'user',
+                    created_at    TEXT NOT NULL
+                );
+                CREATE TABLE items (
+                    id               TEXT PRIMARY KEY,
+                    kind             TEXT NOT NULL,
+                    name             TEXT NOT NULL,
+                    summary          TEXT NOT NULL DEFAULT '',
+                    description      TEXT NOT NULL DEFAULT '',
+                    author_id        INTEGER NOT NULL,
+                    version          TEXT NOT NULL DEFAULT '1.0.0',
+                    download_url     TEXT NOT NULL DEFAULT '',
+                    palette_json     TEXT NOT NULL DEFAULT '{}',
+                    tags_json        TEXT NOT NULL DEFAULT '[]',
+                    screenshots_json TEXT NOT NULL DEFAULT '[]',
+                    status           TEXT NOT NULL DEFAULT 'pending',
+                    reject_reason    TEXT NOT NULL DEFAULT '',
+                    downloads        INTEGER NOT NULL DEFAULT 0,
+                    created_at       TEXT NOT NULL,
+                    updated_at       TEXT NOT NULL
+                );
+                """
+            )
+            now = db.utc_now()
+            conn.execute(
+                "INSERT INTO users (email, password_hash, name, role, created_at) "
+                "VALUES ('old@example.com', 'x', '老用户', 'developer', ?)",
+                (now,),
+            )
+            conn.execute(
+                "INSERT INTO items (id, kind, name, summary, description, author_id, version, "
+                "download_url, palette_json, tags_json, screenshots_json, status, reject_reason, "
+                "downloads, created_at, updated_at) "
+                "VALUES ('theme-legacy', 'theme', '老主题', '', '', 1, '1.0.0', '', '{}', '[]', "
+                "'[]', 'approved', '', 0, ?, ?)",
+                (now, now),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        # 迁移本身：补列 + 旧行获得默认值
+        db.init_db(legacy_path)
+        conn = db.connect(legacy_path)
+        try:
+            columns = [str(row[1]) for row in conn.execute("PRAGMA table_info(items)").fetchall()]
+            self.assertEqual(columns.count("platforms"), 1)
+            raw = conn.execute("SELECT platforms FROM items WHERE id = 'theme-legacy'").fetchone()
+            self.assertEqual(str(raw["platforms"]), '["desktop"]')
+        finally:
+            conn.close()
+
+        # 通过应用读取：商店与目录都按电脑端返回
+        self.settings = Settings(
+            secret_key="unit-test-secret-key",
+            admin_email=ADMIN_EMAIL,
+            admin_password=ADMIN_PASSWORD,
+            database_path=legacy_path,
+            static_dir=os.path.join(self._tmp.name, "static-legacy"),
+        )
+        self.app = create_app(self.settings)
+        self.client = TestClient(self.app)
+        rows = self.get("/api/store/items").json()
+        self.assertEqual([row["id"] for row in rows], ["theme-legacy"])
+        self.assertEqual(rows[0]["platforms"], ["desktop"])
+        self.assertEqual(
+            [row["id"] for row in self.get("/api/store/items?platform=desktop").json()],
+            ["theme-legacy"],
+        )
+        self.assertEqual(self.get("/api/store/items?platform=mobile").json(), [])
+        catalog = self.get("/api/catalog.json?platform=desktop").json()["items"]
+        self.assertEqual([row["id"] for row in catalog], ["theme-legacy"])
+        self.assertEqual(catalog[0]["platforms"], ["desktop"])
+
+    def test_platforms_migration_is_idempotent(self) -> None:
+        path = os.path.join(self._tmp.name, "idempotent.db")
+        db.init_db(path)
+        db.init_db(path)
+        conn = db.connect(path)
+        try:
+            columns = [str(row[1]) for row in conn.execute("PRAGMA table_info(items)").fetchall()]
+        finally:
+            conn.close()
+        self.assertEqual(columns.count("platforms"), 1)
 
 
 class AdminTests(StoreApiTestCase):

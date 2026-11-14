@@ -19,6 +19,8 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Callable
 
+from . import ai_actions as ai_actions_module
+
 logger = logging.getLogger("shenqing.ai")
 
 REQUEST_TIMEOUT = 20.0
@@ -679,12 +681,14 @@ class AIService:
             "currency": currency,
         }
 
+    def system_prompt(self) -> str:
+        """系统提示词：内置人设 + v0.21 动作格式说明（让 AI 能直接操作深清）。"""
+        base = "你是「深清」专注工具里的 AI 助手，回答简洁、实用、中文优先。"
+        return base + "\n\n" + ai_actions_module.system_prompt()
+
     def ask(self, prompt: str, *, timeout: float = REQUEST_TIMEOUT) -> dict:
         messages = [
-            {
-                "role": "system",
-                "content": "你是「深清」专注工具里的 AI 助手，回答简洁、实用、中文优先。",
-            },
+            {"role": "system", "content": self.system_prompt()},
             {"role": "user", "content": str(prompt or "")},
         ]
         return self.chat(messages, timeout=timeout)

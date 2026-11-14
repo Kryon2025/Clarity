@@ -35,7 +35,8 @@ from ..consts import (
     APP_VERSION,
     ATMOSPHERES,
     CUSTOM_THEME_PREFIX,
-    DEFAULT_THEME,
+    DEFAULT_THEME_SCHEME,
+    DEFAULT_THEME_STYLE,
     FEEDBACK_URLS,
     MAX_FONT_FAMILIES,
     MAX_MINUTES,
@@ -47,6 +48,8 @@ from ..consts import (
     SPACE_MAX_MINUTES,
     SPACE_MIN_MINUTES,
     SPACE_MINUTE_STEP,
+    THEME_SCHEMES,
+    THEME_STYLES,
     THEMES,
     TRIAL_MINUTES,
     LockLevel,
@@ -59,13 +62,16 @@ from ..core.spaces import SpaceManager
 from ..core.stats import StatsStore
 from ..services import elevation, power, store, timesync, updater, webadmin
 from ..services import ai as ai_service
+from ..services import ai_actions as ai_actions_service
 from ..services import app_usage
 from ..services import backup as backup_service
 from ..services import click_counter
 from ..services import cloud_sync as cloud_sync_service
+from ..services import overlay_widgets as overlay_widgets_service
 from ..services import pomodoro as pomodoro_service
-from ..services import site_blocker
+from ..services import desktop_icons, site_blocker
 from ..services import sleep_mode, system_control, wallpaper
+from ..services import theme as theme_service
 from ..services.autostart import AutostartManager
 from ..services.lock_hardening import LockHardening
 from ..services.media_smtc import MediaSmtcService
@@ -127,6 +133,38 @@ class _CloudTask(QRunnable):
             pass
 
 
+class _WidgetDataTask(QRunnable):
+    """v0.21 右侧组件数据：后台拉天气 + 每日一言，结果通过信号回主线程。
+
+    网络与缓存（15 分钟 / 当天）都在 services.overlay_widgets 里，这里只负责切线程，
+    避免 QML 首帧被 DNS / HTTPS 拖住。
+    """
+
+    def __init__(self, bridge: "AppBridge", city_id: str, quote_category: str) -> None:
+        super().__init__()
+        self._bridge = bridge
+        self._city_id = str(city_id or "")
+        self._quote_category = str(quote_category or "")
+
+    def run(self) -> None:  # noqa: D401 - QRunnable 接口
+        weather: dict = {}
+        quote: dict = {}
+        try:
+            weather = overlay_widgets_service.fetch_weather(self._city_id)
+        except Exception as exc:  # noqa: BLE001 - 后台任务不能把异常抛给线程池
+            logger.warning("刷新天气组件失败：%s", exc)
+            weather = {"ok": False, "error": f"天气获取失败：{exc}"}
+        try:
+            quote = overlay_widgets_service.fetch_quote(category=self._quote_category)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("刷新每日一言失败：%s", exc)
+            quote = {}
+        try:
+            self._bridge._widgetDataReady.emit({"weather": weather, "quote": quote})
+        except RuntimeError:  # 宿主已销毁
+            pass
+
+
 def _path_to_url(path: object) -> str:
     if not path:
         return ""
@@ -175,6 +213,12 @@ class AppBridge(QObject):
     _aiAsyncResult = Signal(int, object)
     #: v0.10 模型列表拉取结果：provider, models, error
     _aiModelsFetched = Signal(str, object, str)
+    #: v0.21 AI 动作（待确认动作 / 执行结果 / 日志）变化
+    aiActionChanged = Signal()
+    #: v0.21 开始专注二次确认：待确认信息变化
+    confirmationChanged = Signal()
+    #: v0.21 AI 请求跳页：spaces|stats|ai|plugins|themes|settings|update|about|store
+    pageRequested = Signal(str)
 
     #: v0.16 连点 10 次时间显示 → 请求显示退出警告（QML 弹确认框）
     exitWarningRequested = Signal()
@@ -196,6 +240,12 @@ class AppBridge(QObject):
     cloudChanged = Signal()
     #: v0.20 账户同步后台任务完成：任务名 + 结果字典（QThreadPool → 主线程）
     _cloudTaskResult = Signal(str, object)
+    #: v0.21 右侧组件：布局 / 总开关变化（overlayWidgets、overlayWidgetsEnabled 的 notify）
+    overlayWidgetsChanged = Signal()
+    #: v0.21 右侧组件数据变化（天气 / 每日一言）
+    widgetDataChanged = Signal()
+    #: v0.21 组件数据后台任务完成：{"weather": {...}, "quote": {...}}（QThreadPool → 主线程）
+    _widgetDataReady = Signal(object)
 
     def __init__(
         self,
@@ -260,6 +310,14 @@ class AppBridge(QObject):
         self._ai_pending_conv = ""
         self._load_ai_chats()
         self._load_ai_usage()
+        # v0.21 AI 动作：解析回复里的动作块后执行（start_space 先挂 pending）
+        self._ai_action_pending: dict = {}
+        self._ai_action_result: dict = {}
+        self._ai_action_log: list[dict] = []
+        # v0.21 开始专注二次确认：待确认的开局信息（空 dict = 无）
+        self._start_pending: dict = {}
+        # v0.21 AI 请求打开的页面（QML 绑定）
+        self._last_requested_page = ""
         # v0.9 应用使用时长统计（前台应用 5s 采样）
         self._app_usage = app_usage.AppUsageTracker(
             now_provider=timesync.now, parent=self
@@ -279,6 +337,8 @@ class AppBridge(QObject):
         # v0.15 网站屏蔽 / 结束卡片背景
         self._site_blocker = site_blocker.HostsSiteBlocker()
         self._site_block_applied = False
+        #: v0.22：浅清/覆清期间隐藏桌面图标
+        self._desktop_icons_hidden = False
         self._volume = -1
         # v0.17：系统音量定时刷新（用户在系统里改音量时，遮罩/面板的滑杆能跟上）
         self._volume_timer = QTimer(self)
@@ -328,6 +388,15 @@ class AppBridge(QObject):
         self._cloud_last_at = str(self._settings.get("cloud_sync_last_at", "") or "")
         self._cloud_device = ""
 
+        # v0.21：右侧组件（「组件预览」自定义右半屏）——天气 / 一言在 QThreadPool 里拉
+        self._widget_weather: dict = {}
+        self._widget_weather_error = ""
+        self._widget_quote_text = ""
+        self._widget_quote_source = ""
+        self._widget_quote_from = ""
+        self._widget_quote_error = ""
+        self._widget_refreshing = False
+
         self._media = MediaSmtcService(self)
         self._media.changed.connect(self._on_media_changed)
         # 冒烟/测试模式下不起 WinRT 轮询线程（离屏环境没有媒体会话，也没必要）
@@ -356,17 +425,24 @@ class AppBridge(QObject):
         self._aiAsyncResult.connect(self._on_ai_result)
         self._aiModelsFetched.connect(self._on_ai_models_fetched)
         self._cloudTaskResult.connect(self._on_cloud_task_result)
+        self._widgetDataReady.connect(self._on_widget_data_ready)
         self._app_usage.changed.connect(self._on_app_usage_changed)
         self._session.stateChanged.connect(self.stateChanged)
         self._session.stateChanged.connect(self.lockedChanged)
         self._session.tick.connect(self._on_tick)
         self._session.finished.connect(self._on_finished)
         self._guard.processKilled.connect(self._on_process_killed)
+        # v0.21：监听系统深浅切换（scheme=auto 时重算窗口 chrome / 界面配色）
+        self._install_theme_listener()
 
         # 没有缓存时后台补一次扫描，避免启动被 1–5 秒的扫描拖住；
         # 冒烟模式（SHENQING_NO_SCAN=1）跳过，保证离屏测试快速稳定
         if not self._catalog and os.environ.get("SHENQING_NO_SCAN") != "1":
             QTimer.singleShot(1500, self.refreshAppCatalog)
+
+        # v0.21：启动后拉一次天气 / 每日一言（冒烟与单测跳过，避免联网拖慢）
+        if os.environ.get("SHENQING_NO_SCAN") != "1":
+            QTimer.singleShot(2500, self.refreshWidgetData)
 
     # ================= 插件 =================
     def _init_plugins(self):  # noqa: ANN202
@@ -1263,7 +1339,8 @@ class AppBridge(QObject):
 
     def _ai_settings_items(self) -> list[dict]:
         return [
-            {"key": "theme_mode", "title": "主题", "hint": "纯色 / 浅色 / 液态玻璃"},
+            {"key": "theme_style", "title": "主题样式", "hint": "纯色 / 液态玻璃 / 海洋"},
+            {"key": "theme_scheme", "title": "主题配色", "hint": "跟随系统 / 浅色 / 深色"},
             {"key": "theme", "title": "窗口外观", "hint": "Auto / Light / Dark"},
             {"key": "language", "title": "语言", "hint": "跟随系统 / 中文 / English"},
             {"key": "autostart", "title": "开机自启", "hint": "登录时启动深清"},
@@ -1355,8 +1432,23 @@ class AppBridge(QObject):
         mode = self._ai_mode
         if data.get("ok"):
             self._ai_state = "ok"
-            self._ai_answer = str(data.get("text") or "")
+            answer = str(data.get("text") or "")
             self._ai_error = ""
+            if mode == "ask":
+                # v0.21：回复里带动作块时先执行（start_space 只挂 pending），
+                # 再把动作块从展示文案里去掉（动作由 aiActionLog 单独呈现）。
+                self._run_ai_actions(answer)
+                cleaned = ai_actions_service.strip_action_blocks(answer)
+                if cleaned.strip():
+                    self._ai_answer = cleaned
+                elif cleaned != answer:
+                    self._ai_answer = QCoreApplication.translate(
+                        "ShenQing", "已按你的要求执行。"
+                    )
+                else:
+                    self._ai_answer = answer
+            else:
+                self._ai_answer = answer
             if mode == "test":
                 self.toast.emit(QCoreApplication.translate("ShenQing", "AI 连接正常"))
         else:
@@ -1656,6 +1748,290 @@ class AppBridge(QObject):
         self._ai_usage_currency = ""
         self._save_ai_usage()
         self.aiUsageChanged.emit()
+
+    # ================= v0.21 AI 动作（直接打开所需空间 / 调整设置） =================
+    #: aiActionLog 最多保留的条数（QML 用来渲染系统小字）
+    AI_ACTION_LOG_LIMIT = 20
+
+    @Property(bool, notify=aiActionChanged)
+    def aiActionPendingActive(self) -> bool:
+        """是否有等待用户确认的 AI 动作（start_space）。"""
+        return bool(self._ai_action_pending)
+
+    @Property(dict, notify=aiActionChanged)
+    def aiActionPending(self) -> dict:
+        """待确认动作（空 dict = 没有）；字段见 ai_actions.pending_summary。"""
+        return dict(self._ai_action_pending)
+
+    @Property(dict, notify=aiActionChanged)
+    def aiActionResult(self) -> dict:
+        """最近一次动作结果：{ok, type, text, at}；空 dict = 还没执行过。"""
+        return dict(self._ai_action_result)
+
+    @Property(list, notify=aiActionChanged)
+    def aiActionLog(self) -> list[dict]:
+        """动作结果日志（最新在末尾，最多 AI_ACTION_LOG_LIMIT 条）。"""
+        return [dict(item) for item in self._ai_action_log]
+
+    @Property(str, notify=aiActionChanged)
+    def lastRequestedPage(self) -> str:
+        """AI 最近一次请求打开的页面（spaces|stats|ai|plugins|themes|settings|update|about|store）。"""
+        return self._last_requested_page
+
+    def _ai_action_now(self) -> str:
+        return timesync.now().isoformat(timespec="seconds")
+
+    def _new_ai_action_id(self) -> str:
+        import uuid
+
+        return "act_" + uuid.uuid4().hex[:10]
+
+    def _push_ai_action_results(self, results: list[dict]) -> None:
+        if not results:
+            return
+        for item in results:
+            self._ai_action_log.append(dict(item))
+        limit = max(1, int(self.AI_ACTION_LOG_LIMIT))
+        if len(self._ai_action_log) > limit:
+            del self._ai_action_log[: len(self._ai_action_log) - limit]
+        self._ai_action_result = dict(results[-1])
+        self.aiActionChanged.emit()
+
+    @Slot(str, result=list)
+    def aiExecuteReply(self, text: str) -> list[dict]:
+        """解析 AI 回复里的动作块并执行（安全动作直接执行 + toast；start_space 置 pending）。"""
+        return self._run_ai_actions(text)
+
+    def _run_ai_actions(self, text: str) -> list[dict]:
+        parsed = ai_actions_service.parse_reply(str(text or ""))
+        results: list[dict] = []
+        for action in parsed.get("actions") or []:
+            results.append(self._execute_ai_action(action))
+        for error in parsed.get("errors") or []:
+            message = str(error or "")
+            if not message:
+                continue
+            results.append(
+                {
+                    "ok": False,
+                    "type": "",
+                    "text": message,
+                    "at": self._ai_action_now(),
+                }
+            )
+            self.toast.emit(message)
+        self._push_ai_action_results(results)
+        return results
+
+    def _execute_ai_action(self, action: dict) -> dict:
+        if ai_actions_service.requires_confirmation(action):
+            return self._stage_ai_action(action)
+        ok, text, toast = self._apply_ai_action(action)
+        if toast and text:
+            self.toast.emit(text)
+        return ai_actions_service.result_entry(action, ok, text, self._ai_action_now())
+
+    def _resolve_action_space(self, action: dict) -> dict | None:
+        """按 spaceId / mode 找到动作对应的空间（找不到返回 None）。"""
+        space_id = str(action.get("spaceId") or "")
+        mode = str(action.get("mode") or "")
+        space = self._spaces.get(space_id) if space_id else None
+        if space is None and mode:
+            space = self._spaces.get_by_mode(mode)
+        return space
+
+    def _stage_ai_action(self, action: dict) -> dict:
+        """需要确认的动作：补全空间信息后置 pending，等 aiConfirmAction。"""
+        space = self._resolve_action_space(action)
+        if space is None:
+            text = QCoreApplication.translate("ShenQing", "空间不存在")
+            self.toast.emit(text)
+            return ai_actions_service.result_entry(action, False, text, self._ai_action_now())
+        resolved = dict(action)
+        resolved["spaceId"] = str(space.get("id") or "")
+        resolved["mode"] = str(space.get("mode") or resolved.get("mode") or "")
+        resolved["spaceName"] = str(space.get("name") or "")
+        if not int(resolved.get("minutes") or 0):
+            resolved["minutes"] = self._space_start_minutes(space)
+        pending = ai_actions_service.pending_summary(resolved, self._new_ai_action_id())
+        self._ai_action_pending = dict(pending)
+        self._ai_action_pending["action"] = resolved
+        self.aiActionChanged.emit()
+        text = QCoreApplication.translate("ShenQing", "需要你确认：{0}").format(
+            str(pending.get("summary") or pending.get("title") or "")
+        )
+        return {
+            "ok": True,
+            "pending": True,
+            "type": str(pending.get("type") or ""),
+            "text": text,
+            "at": self._ai_action_now(),
+        }
+
+    @Slot(result=bool)
+    def aiConfirmAction(self) -> bool:
+        """确认并执行待确认的 AI 动作（start_space → 真正开始专注）。"""
+        pending = dict(self._ai_action_pending)
+        action = pending.get("action") if isinstance(pending.get("action"), dict) else {}
+        if not action:
+            return False
+        self._ai_action_pending = {}
+        self.aiActionChanged.emit()
+        ok, text, toast = self._apply_ai_action(action)
+        if toast and text:
+            self.toast.emit(text)
+        self._push_ai_action_results(
+            [ai_actions_service.result_entry(action, ok, text, self._ai_action_now())]
+        )
+        return ok
+
+    @Slot(result=bool)
+    def aiCancelAction(self) -> bool:
+        """取消待确认的 AI 动作。"""
+        pending = dict(self._ai_action_pending)
+        if not pending:
+            return False
+        self._ai_action_pending = {}
+        self.aiActionChanged.emit()
+        text = QCoreApplication.translate("ShenQing", "已取消：{0}").format(
+            str(pending.get("summary") or pending.get("title") or "")
+        )
+        self.toast.emit(text)
+        self._push_ai_action_results(
+            [
+                {
+                    "ok": True,
+                    "type": str(pending.get("type") or ""),
+                    "text": text,
+                    "at": self._ai_action_now(),
+                }
+            ]
+        )
+        return True
+
+    def _apply_ai_action(self, action: dict) -> tuple[bool, str, bool]:
+        """执行一条已归一化的动作；返回 (ok, 文案, 是否由这里 toast)。"""
+        kind = str(action.get("type") or "")
+        if kind == "start_space":
+            return self._ai_start_space(action)
+        if kind == "open_space":
+            mode = str(action.get("mode") or "")
+            self._last_requested_page = "spaces"
+            self.showMainRequested.emit()
+            self.spacesPageRequested.emit(mode)
+            return True, QCoreApplication.translate(
+                "ShenQing", "已为你打开{0}空间"
+            ).format(ai_actions_service.mode_label(mode)), True
+        if kind == "set_setting":
+            return self._ai_apply_setting(action)
+        if kind == "open_page":
+            page = str(action.get("page") or "")
+            self._last_requested_page = page
+            self.pageRequested.emit(page)
+            self.showMainRequested.emit()
+            return True, QCoreApplication.translate("ShenQing", "已打开{0}页").format(
+                ai_actions_service.PAGE_LABELS.get(page, page)
+            ), True
+        if kind in ("add_blocked_site", "remove_blocked_site"):
+            return self._ai_apply_blocked_site(action)
+        return False, QCoreApplication.translate("ShenQing", "不支持的动作"), True
+
+    def _ai_start_space(self, action: dict) -> tuple[bool, str, bool]:
+        denial = self._start_denial()
+        if denial:
+            return False, denial, True
+        space = self._resolve_action_space(action)
+        if space is None:
+            return False, QCoreApplication.translate("ShenQing", "空间不存在"), True
+        minutes = self._space_start_minutes(space, int(action.get("minutes") or 0))
+        self._begin_prepare(space, minutes)
+        return True, QCoreApplication.translate(
+            "ShenQing", "已为你开始专注：{0} · {1} 分钟"
+        ).format(str(space.get("name") or ""), minutes), True
+
+    def _ai_apply_blocked_site(self, action: dict) -> tuple[bool, str, bool]:
+        kind = str(action.get("type") or "")
+        domain = str(action.get("domain") or "")
+        if kind == "add_blocked_site":
+            if domain in self.blockedSites:
+                return False, QCoreApplication.translate(
+                    "ShenQing", "该网站已在屏蔽列表：{0}"
+                ).format(domain), True
+            # addBlockedSite 自己会发 toast（域名非法 / 已存在 / 已添加）
+            ok = self.addBlockedSite(domain)
+            return bool(ok), QCoreApplication.translate(
+                "ShenQing", "已添加屏蔽网站：{0}"
+            ).format(domain), False
+        if domain not in self.blockedSites:
+            return False, QCoreApplication.translate(
+                "ShenQing", "该网站不在屏蔽列表：{0}"
+            ).format(domain), True
+        ok = self.removeBlockedSite(domain)
+        return bool(ok), QCoreApplication.translate(
+            "ShenQing", "已移除屏蔽网站：{0}"
+        ).format(domain), False
+
+    def _ai_apply_setting(self, action: dict) -> tuple[bool, str, bool]:
+        """把 set_setting 动作落到既有 setter 上（副作用 / 信号与手动设置一致）。"""
+        key = str(action.get("key") or "")
+        # 再校验一次：外部构造的 action 不能绕过白名单
+        ok, value, error = ai_actions_service.normalize_setting_value(key, action.get("value"))
+        if not ok:
+            return False, str(error or "设置值不正确"), True
+        title = ai_actions_service.setting_title(key)
+        value_text = ai_actions_service.setting_value_text(key, value)
+        if key == "theme_style":
+            style = self._normalize_style(value)
+            if not style:
+                return False, QCoreApplication.translate(
+                    "ShenQing", "主题样式不存在：{0}"
+                ).format(value_text), True
+            self.setThemeStyle(style)
+        elif key == "theme_scheme":
+            self.setThemeScheme(str(value))
+        elif key == "language":
+            self.setLanguage(str(value))
+        elif key == "ui_font_scale":
+            self.setUIFontScale(float(value))
+        elif key == "ui_font_family":
+            self.setUIFontFamily(str(value))
+        elif key == "nav_mode":
+            self.setNavMode(str(value))
+        elif key == "default_minutes":
+            self.setDefaultMinutes(int(value))
+        elif key == "auto_update":
+            self.setAutoUpdate(bool(value))
+        elif key == "site_block_enabled":
+            self.setSiteBlockEnabled(bool(value))
+        elif key == "hide_desktop_icons":
+            self.setHideDesktopIcons(bool(value))
+            self.settingsChanged.emit()
+        elif key == "update_source":
+            # setUpdateSource 自己会 toast（未知更新源 / 已切换更新源）
+            if not self.setUpdateSource(str(value)):
+                return False, QCoreApplication.translate(
+                    "ShenQing", "未知的更新源：{0}"
+                ).format(value_text), False
+            return True, QCoreApplication.translate(
+                "ShenQing", "已把 {0} 改为 {1}"
+            ).format(title, value_text), False
+        elif key == "update_channel":
+            if not self.setUpdateChannel(str(value)):
+                return False, QCoreApplication.translate(
+                    "ShenQing", "未知的更新渠道：{0}"
+                ).format(value_text), False
+            return True, QCoreApplication.translate(
+                "ShenQing", "已把 {0} 改为 {1}"
+            ).format(title, value_text), False
+        elif key == "blocked_sites":
+            sites = value if isinstance(value, list) else []
+            self._settings.set("blocked_sites", list(sites))
+            self.settingsChanged.emit()
+        else:
+            return False, QCoreApplication.translate("ShenQing", "不支持的设置项"), True
+        return True, QCoreApplication.translate("ShenQing", "已把 {0} 改为 {1}").format(
+            title, value_text
+        ), True
 
     # ================= v0.9 应用使用时长 =================
     @Property(str, notify=statsChanged)
@@ -2018,7 +2394,12 @@ class AppBridge(QObject):
 
     def _on_web_admin_setting(self, key: str, value: object) -> None:
         """网页改了设置：调用对应 Slot，让桌面端即时生效。"""
-        if key == "theme_mode":
+        if key == "theme_style":
+            self.setThemeStyle(str(value))
+        elif key == "theme_scheme":
+            self.setThemeScheme(str(value))
+        elif key == "theme_mode":
+            # 兼容旧网页管理页：旧主题值映射成 样式 + 配色
             self.setThemeMode(str(value))
         elif key == "language":
             self.setLanguage(str(value))
@@ -2242,6 +2623,8 @@ class AppBridge(QObject):
         self.settingsChanged.emit()
         self.spacesChanged.emit()
         self.statsChanged.emit()
+        # 云端的样式/配色可能变了：重新算窗口 chrome 与界面配色
+        self.themeChanged.emit(self._chrome_theme())
 
     # ---- QML 动作 ----
     @Slot(str)
@@ -2607,6 +2990,10 @@ class AppBridge(QObject):
         except Exception as exc:  # noqa: BLE001
             logger.warning("停止清番番茄钟失败：%s", exc)
         try:
+            self._restore_desktop_icons(force=True)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("恢复桌面图标失败：%s", exc)
+        try:
             self._volume_timer.stop()
         except Exception as exc:  # noqa: BLE001
             logger.warning("停止系统音量刷新失败：%s", exc)
@@ -2748,8 +3135,12 @@ class AppBridge(QObject):
         self.onboardingFinished.emit()
 
     @Property(list, notify=pluginsChanged)
-    def overlayWidgets(self) -> list[dict]:
-        """全屏遮罩自定义组件；按 overlayWidgetOrder 排序（未排的排后面）。"""
+    def pluginOverlayWidgets(self) -> list[dict]:
+        """（兼容 v0.8）插件组件；按 overlayWidgetOrder 排序（未排的排后面）。
+
+        v0.21 起 App.overlayWidgets 是「右侧组件布局」，插件组件用 App.pluginWidgets /
+        本属性访问；LockOverlay 渲染插件组件时读 pluginWidgets 即可。
+        """
         widgets = list(self.pluginWidgets)
         order = self.overlayWidgetOrder
         if not order:
@@ -2761,6 +3152,216 @@ class AppBridge(QObject):
             return rank.get(key, len(order))
 
         return sorted(widgets, key=_key)
+
+    # ================= 右侧组件（v0.21，「组件预览」自定义右半屏） =================
+    def _overlay_layout(self) -> list[dict]:
+        """当前布局：设置缺失 / 类型不对时回退内置默认布局；空列表表示用户全删了。"""
+        raw = self._settings.get("overlay_widgets", None)
+        if not isinstance(raw, list):
+            return overlay_widgets_service.default_layout()
+        return overlay_widgets_service.normalize_layout(raw)
+
+    def _save_overlay_layout(self, layout: list[dict]) -> None:
+        self._settings.set("overlay_widgets", layout)
+        self.overlayWidgetsChanged.emit()
+
+    @Property(list, notify=overlayWidgetsChanged)
+    def overlayWidgets(self) -> list[dict]:
+        """右半屏组件布局：[{id,type,x,y,w,h,visible,props}]（坐标归一化到右半屏）。"""
+        return self._overlay_layout()
+
+    @Property(bool, notify=overlayWidgetsChanged)
+    def overlayWidgetsEnabled(self) -> bool:
+        """右半屏组件总开关。"""
+        return bool(self._settings.get("overlay_widgets_enabled", True))
+
+    @Property(list, constant=True)
+    def widgetCatalog(self) -> list[dict]:
+        """内置组件目录：type / name / desc / defaultSize / propsSchema（6 种）。"""
+        return overlay_widgets_service.widget_catalog()
+
+    @Slot(bool)
+    def setOverlayWidgetsEnabled(self, enabled: bool) -> None:
+        self._settings.set("overlay_widgets_enabled", bool(enabled))
+        self.overlayWidgetsChanged.emit()
+
+    @Slot(str, result=str)
+    def addOverlayWidget(self, widget_type: str) -> str:
+        """加一个组件，返回新组件 id；未知 type 或已满 12 个返回空串。"""
+        before = self._overlay_layout()
+        after = overlay_widgets_service.add_widget(before, widget_type)
+        if len(after) <= len(before):
+            return ""
+        before_ids = {item.get("id") for item in before}
+        new_id = ""
+        for item in after:
+            if item.get("id") not in before_ids:
+                new_id = str(item.get("id") or "")
+                break
+        self._save_overlay_layout(after)
+        return new_id
+
+    @Slot(str, result=bool)
+    def removeOverlayWidget(self, widget_id: str) -> bool:
+        """删掉一个组件；id 不存在返回 False。"""
+        before = self._overlay_layout()
+        after = overlay_widgets_service.remove_widget(before, widget_id)
+        if len(after) == len(before):
+            return False
+        self._save_overlay_layout(after)
+        return True
+
+    @Slot(str, str, result=bool)
+    def updateOverlayWidgetJson(self, widget_id: str, patch_json: str) -> bool:
+        """局部更新（QML 专用）：patch 只收 JSON 字符串。
+
+        QML 无法调用参数类型为 object 的 PySide 槽（object = PyObjectWrapper，只接受
+        Python 侧对象），因此 QML 走这个方法；Python 侧 / 单测继续用 updateOverlayWidget。
+        """
+        return self._apply_overlay_patch(widget_id, patch_json)
+
+    @Slot(str, object, result=bool)
+    def updateOverlayWidget(self, widget_id: str, patch: object) -> bool:
+        """局部更新（Python API）：patch 支持 dict 或 JSON 字符串。"""
+        return self._apply_overlay_patch(widget_id, patch)
+
+    def _apply_overlay_patch(self, widget_id: str, patch: object) -> bool:
+        """x / y / w / h / visible / props 局部更新（props 浅合并），非法 patch 返回 False。"""
+        data: object = patch
+        if isinstance(data, str):
+            text = data.strip()
+            if not text:
+                return False
+            try:
+                data = json.loads(text)
+            except (TypeError, ValueError):
+                return False
+        if not isinstance(data, dict):
+            return False
+        before = self._overlay_layout()
+        after = overlay_widgets_service.update_widget(before, widget_id, data)
+        if after == before:
+            return False
+        self._save_overlay_layout(after)
+        return True
+
+    @Slot()
+    def resetOverlayWidgets(self) -> None:
+        """恢复内置默认布局（clock / today / quote）。"""
+        self._save_overlay_layout(overlay_widgets_service.reset_layout())
+
+    # ---------- 天气组件（NMC，15 分钟缓存） ----------
+    @Property(dict, notify=widgetDataChanged)
+    def weatherWidgetData(self) -> dict:
+        """天气卡片数据：{temp, tempValue, weather, city, updated}。"""
+        if self._widget_weather:
+            return dict(self._widget_weather)
+        return {"temp": "", "tempValue": None, "weather": "", "city": "", "updated": ""}
+
+    @Property(str, notify=widgetDataChanged)
+    def weatherWidgetError(self) -> str:
+        """天气失败文案（正常为空串）。"""
+        return self._widget_weather_error
+
+    @Property(str, notify=settingsChanged)
+    def weatherCityId(self) -> str:
+        """天气城市编号（设置项 weather_city_id，默认 58362 = 北京）。"""
+        raw = self._settings.get("weather_city_id", overlay_widgets_service.DEFAULT_WEATHER_CITY)
+        return str(raw or overlay_widgets_service.DEFAULT_WEATHER_CITY)
+
+    @Slot(str)
+    def setWeatherCityId(self, city_id: str) -> None:
+        text = str(city_id or "").strip()
+        self._settings.set(
+            "weather_city_id", text or overlay_widgets_service.DEFAULT_WEATHER_CITY
+        )
+        self.settingsChanged.emit()
+        self.refreshWidgetData()
+
+    # ---------- 每日一言组件（hitokoto，失败回退内置文案） ----------
+    @Property(str, notify=widgetDataChanged)
+    def quoteWidgetText(self) -> str:
+        return self._widget_quote_text
+
+    @Property(str, notify=widgetDataChanged)
+    def quoteWidgetSource(self) -> str:
+        """来源："hitokoto"（在线）/"builtin"（内置回退）；未取到为空串。"""
+        return self._widget_quote_source
+
+    @Property(str, notify=widgetDataChanged)
+    def quoteWidgetFrom(self) -> str:
+        """一言出处（作者 / 书名），内置文案为「深清」。"""
+        return self._widget_quote_from
+
+    @Property(str, notify=widgetDataChanged)
+    def quoteWidgetError(self) -> str:
+        """一言在线失败原因（回退内置文案时非空）。"""
+        return self._widget_quote_error
+
+    def _widget_city_id(self) -> str:
+        """天气城市：优先天气组件 props.cityId，其次设置 weather_city_id。"""
+        for item in self._overlay_layout():
+            if item.get("type") != "weather":
+                continue
+            props = item.get("props") if isinstance(item.get("props"), dict) else {}
+            city = str(props.get("cityId") or "").strip()
+            if city:
+                return city
+        raw = self._settings.get("weather_city_id", overlay_widgets_service.DEFAULT_WEATHER_CITY)
+        return str(raw or overlay_widgets_service.DEFAULT_WEATHER_CITY)
+
+    def _widget_quote_category(self) -> str:
+        """一言分类：取自一言组件的 props.category（为空则用接口默认分类）。"""
+        for item in self._overlay_layout():
+            if item.get("type") != "quote":
+                continue
+            props = item.get("props") if isinstance(item.get("props"), dict) else {}
+            category = str(props.get("category") or "").strip()
+            if category:
+                return category
+        return ""
+
+    @Slot()
+    def refreshWidgetData(self) -> None:
+        """后台（QThreadPool）刷新天气 + 每日一言，完成后 emit widgetDataChanged。"""
+        if os.environ.get("SHENQING_NO_SCAN") == "1":  # 冒烟 / 单测不联网
+            return
+        if self._widget_refreshing:
+            return
+        self._widget_refreshing = True
+        try:
+            QThreadPool.globalInstance().start(
+                _WidgetDataTask(self, self._widget_city_id(), self._widget_quote_category())
+            )
+        except Exception as exc:  # noqa: BLE001 - 线程池异常不能让组件永久卡在「刷新中」
+            logger.warning("启动组件数据刷新失败：%s", exc)
+            self._widget_refreshing = False
+
+    @Slot(object)
+    def _on_widget_data_ready(self, payload: object) -> None:
+        """后台任务回主线程：保存天气 / 一言结果并通知 QML。"""
+        data = payload if isinstance(payload, dict) else {}
+        weather = data.get("weather")
+        if isinstance(weather, dict):
+            if weather.get("ok"):
+                self._widget_weather = {
+                    "temp": str(weather.get("temp") or ""),
+                    "tempValue": weather.get("tempValue"),
+                    "weather": str(weather.get("weather") or ""),
+                    "city": str(weather.get("city") or ""),
+                    "updated": str(weather.get("updated") or ""),
+                }
+                self._widget_weather_error = ""
+            else:
+                self._widget_weather_error = str(weather.get("error") or "天气获取失败")
+        quote = data.get("quote")
+        if isinstance(quote, dict) and quote.get("text"):
+            self._widget_quote_text = str(quote.get("text") or "")
+            self._widget_quote_source = str(quote.get("source") or "")
+            self._widget_quote_from = str(quote.get("from") or "")
+            self._widget_quote_error = str(quote.get("error") or "")
+        self._widget_refreshing = False
+        self.widgetDataChanged.emit()
 
     @Property(list, notify=statsChanged)
     def recentSessions(self) -> list[dict]:
@@ -2900,6 +3501,7 @@ class AppBridge(QObject):
         if persist_state and not trial:
             self._write_session_state(end_at_ms=end_at_ms)
         self._apply_site_block()
+        self._apply_desktop_icons(str(level))
         if recovered:
             self.toast.emit(
                 QCoreApplication.translate("ShenQing", "检测到未完成的专注，已恢复锁定")
@@ -2912,6 +3514,28 @@ class AppBridge(QObject):
         payload["level"] = level
         payload["trial"] = bool(trial)
         self._dispatch("session_start", payload)
+
+    # ================= v0.22 桌面图标隐藏 =================
+    @Property(bool, notify=settingsChanged)
+    def hideDesktopIcons(self) -> bool:
+        return bool(self._settings.get("hide_desktop_icons", True))
+
+    @Slot(bool)
+    def setHideDesktopIcons(self, enabled: bool) -> None:
+        self._settings.set("hide_desktop_icons", bool(enabled))
+
+    def _apply_desktop_icons(self, level: str) -> None:
+        """浅清 / 覆清开始专注时隐藏桌面图标（深清由遮罩全屏覆盖，无需处理）。"""
+        if not self.hideDesktopIcons or level not in ("light", "medium"):
+            return
+        if desktop_icons.hide_desktop_icons():
+            self._desktop_icons_hidden = True
+
+    def _restore_desktop_icons(self, force: bool = False) -> None:
+        if not (force or self._desktop_icons_hidden):
+            return
+        desktop_icons.show_desktop_icons()
+        self._desktop_icons_hidden = False
 
     # ================= v0.15 网站屏蔽（hosts） =================
     @Property(list, notify=settingsChanged)
@@ -3222,6 +3846,158 @@ class AppBridge(QObject):
             self.toast.emit(QCoreApplication.translate("ShenQing", "已经有正在进行的专注"))
             return
         self._begin_prepare(space, minutes)
+
+    # ================= v0.21 开始专注二次确认 =================
+    #: 白名单摘要在确认卡里最多列几个应用
+    CONFIRM_WHITELIST_PREVIEW = 6
+
+    def _start_denial(self) -> str:
+        """当前能不能开始：返回中文拒绝原因，空串表示可以。"""
+        if self._session.state is not SessionState.IDLE:
+            return QCoreApplication.translate("ShenQing", "已经有正在进行的专注")
+        return ""
+
+    def _space_start_minutes(self, space: dict, minutes: int = 0) -> int:
+        """本次专注时长：显式指定 > 空间自己的时长 > 默认时长。"""
+        if int(minutes or 0) > 0:
+            return int(minutes)
+        try:
+            value = int((space or {}).get("minutes") or 0)
+        except (TypeError, ValueError):
+            value = 0
+        if value > 0:
+            return value
+        try:
+            return max(MIN_MINUTES, int(self._settings.get("default_minutes", MIN_MINUTES)))
+        except (TypeError, ValueError):
+            return MIN_MINUTES
+
+    def _whitelist_summary(self, space: dict) -> str:
+        """确认卡里的白名单摘要（深清不设白名单，返回空串）。"""
+        mode = str((space or {}).get("mode") or "")
+        if mode == "heavy":
+            return ""
+        apps = [str(app) for app in ((space or {}).get("allowed_apps") or []) if str(app)]
+        if not apps:
+            return QCoreApplication.translate("ShenQing", "不限制应用（白名单为空）")
+        shown = apps[: max(1, int(self.CONFIRM_WHITELIST_PREVIEW))]
+        text = "、".join(shown)
+        if len(apps) > len(shown):
+            text += QCoreApplication.translate("ShenQing", " 等 {0} 个").format(len(apps))
+        return QCoreApplication.translate("ShenQing", "允许 {0} 个应用：{1}").format(
+            len(apps), text
+        )
+
+    def _confirmation_payload(self, space: dict, minutes: int) -> dict:
+        mode = str((space or {}).get("mode") or "")
+        allowed = 0
+        if mode != "heavy":
+            allowed = len((space or {}).get("allowed_apps") or [])
+        return {
+            "spaceId": str((space or {}).get("id") or ""),
+            "spaceName": str((space or {}).get("name") or ""),
+            "mode": mode,
+            "modeLabel": MODE_LABELS.get(mode, mode),
+            "minutes": int(minutes),
+            "allowedCount": int(allowed),
+            "whitelistSummary": self._whitelist_summary(space),
+        }
+
+    @Property(bool, notify=confirmationChanged)
+    def confirmationActive(self) -> bool:
+        """是否有等待确认的开局（QML 确认卡的显隐开关）。"""
+        return bool(self._start_pending)
+
+    @Property(dict, notify=confirmationChanged)
+    def confirmationPending(self) -> dict:
+        """待确认的开局信息（空 dict = 没有）。"""
+        return dict(self._start_pending)
+
+    @Property(dict, notify=confirmationChanged)
+    def confirmationSummary(self) -> dict:
+        """confirmationPending 的别名（QML 确认卡读它）。"""
+        return dict(self._start_pending)
+
+    def _pending_start(
+        self, space_id: str = "", mode: str = "", minutes: int = 0
+    ) -> bool:
+        """登记一次待确认开局（不开始倒计时）。"""
+        denial = self._start_denial()
+        if denial:
+            self.toast.emit(denial)
+            return False
+        space = self._spaces.get(str(space_id or "")) if space_id else None
+        if space is None and mode:
+            space = self._spaces.get_by_mode(mode)
+        if space is None:
+            self.toast.emit(QCoreApplication.translate("ShenQing", "空间不存在"))
+            return False
+        resolved = self._space_start_minutes(space, minutes)
+        self._start_pending = self._confirmation_payload(space, resolved)
+        self.confirmationChanged.emit()
+        self.stateChanged.emit()
+        return True
+
+    @Slot(str, result=bool)
+    def requestStart(self, space_id: str) -> bool:
+        """QML「开始」第一步：按空间登记待确认（确认后走 confirmStart）。"""
+        return self._pending_start(space_id=str(space_id or ""))
+
+    @Slot(str, result=bool)
+    def requestStartMode(self, mode: str) -> bool:
+        """QML 速启面板：按档位登记待确认（取该档第一张空间）。"""
+        value = str(mode or "")
+        if value not in {item.value for item in LockLevel}:
+            return False
+        return self._pending_start(mode=value)
+
+    @Slot(str, result=bool)
+    def requestStartLevel(self, level: str) -> bool:
+        """按档位登记待确认，时长取 default_minutes（与 startLevel 一致）。"""
+        value = str(level or "")
+        if value not in {item.value for item in LockLevel}:
+            return False
+        try:
+            minutes = max(MIN_MINUTES, int(self._settings.get("default_minutes", MIN_MINUTES)))
+        except (TypeError, ValueError):
+            minutes = MIN_MINUTES
+        return self._pending_start(mode=value, minutes=minutes)
+
+    @Slot(result=bool)
+    def confirmStart(self) -> bool:
+        """确认开局：真正进入 10 秒倒计时并开始专注。"""
+        info = dict(self._start_pending)
+        if not info:
+            return False
+        self._clear_start_pending()
+        denial = self._start_denial()
+        if denial:
+            self.toast.emit(denial)
+            return False
+        space = self._spaces.get(str(info.get("spaceId") or ""))
+        if space is None:
+            space = self._spaces.get_by_mode(str(info.get("mode") or ""))
+        if space is None:
+            self.toast.emit(QCoreApplication.translate("ShenQing", "空间不存在"))
+            return False
+        minutes = int(info.get("minutes") or 0)
+        self._begin_prepare(space, minutes or None)
+        return True
+
+    @Slot(result=bool)
+    def cancelStart(self) -> bool:
+        """取消待确认开局（不开始专注）。"""
+        if not self._start_pending:
+            return False
+        self._clear_start_pending()
+        return True
+
+    def _clear_start_pending(self) -> None:
+        if not self._start_pending:
+            return
+        self._start_pending = {}
+        self.confirmationChanged.emit()
+        self.stateChanged.emit()
 
     @Slot()
     def pauseSession(self) -> None:
@@ -3830,32 +4606,141 @@ class AppBridge(QObject):
         self._settings.set("default_mode", mode)
         self.settingsChanged.emit()
 
-    @Property(str, notify=settingsChanged)
-    def themeMode(self) -> str:
-        """当前主题模式；旧设置里缺失/未知的值统一回落到默认 solid。
+    # ================= v0.21：外观（样式 + 配色两个正交维度） =================
+    def _theme_style(self) -> str:
+        """当前样式：内置样式或已安装的 custom:<id>；非法 / 已失效值回落到 solid。"""
+        value = str(self._settings.get("theme_style", DEFAULT_THEME_STYLE) or "").strip()
+        return self._normalize_style(value) or DEFAULT_THEME_STYLE
 
-        v0.18：额外支持 "custom:<id>"（对应 settings 里的 custom_themes）。
-        """
-        value = str(self._settings.get("theme_mode", DEFAULT_THEME) or "")
-        if value.startswith(CUSTOM_THEME_PREFIX):
-            theme_id = value[len(CUSTOM_THEME_PREFIX) :]
-            return value if theme_id in self._custom_theme_map() else DEFAULT_THEME
-        valid = {item["value"] for item in THEMES}
-        return value if value in valid else DEFAULT_THEME
+    def _normalize_style(self, value: object) -> str:
+        """校验样式值：合法返回原值，非法返回空字符串。"""
+        text = str(value or "").strip()
+        if text.startswith(CUSTOM_THEME_PREFIX):
+            theme_id = text[len(CUSTOM_THEME_PREFIX) :]
+            return text if theme_id and theme_id in self._custom_theme_map() else ""
+        return text if text in {item["value"] for item in THEME_STYLES} else ""
+
+    def _theme_scheme(self) -> str:
+        """当前配色配置：auto / light / dark；非法值回落到 auto。"""
+        value = str(self._settings.get("theme_scheme", DEFAULT_THEME_SCHEME) or "")
+        return theme_service.normalize_scheme(value) or DEFAULT_THEME_SCHEME
+
+    def _effective_scheme(self) -> str:
+        """解析后的实际深浅（auto 跟随系统）。"""
+        return theme_service.resolve_scheme(self._theme_scheme())
+
+    def _chrome_theme(self) -> str:
+        """窗口 chrome：只由实际深浅决定（与样式无关）。"""
+        return "Light" if self._effective_scheme() == theme_service.SCHEME_LIGHT else "Dark"
+
+    def _install_theme_listener(self) -> None:
+        """监听系统深浅切换：scheme=auto 时重新发 themeChanged。"""
+        theme_service.connect_color_scheme_changed(self._on_system_scheme_changed)
+
+    def _on_system_scheme_changed(self, *_args: object) -> None:
+        """系统深浅变化：auto 模式下通知界面重算配色。"""
+        if self._theme_scheme() != theme_service.SCHEME_AUTO:
+            return
+        try:
+            self.themeChanged.emit(self._chrome_theme())
+        except RuntimeError:  # 宿主已销毁
+            pass
+
+    @Property(str, notify=themeChanged)
+    def themeStyle(self) -> str:
+        """外观样式：solid / glass / ocean / custom:<id>。"""
+        return self._theme_style()
+
+    @Property(str, notify=themeChanged)
+    def themeScheme(self) -> str:
+        """配色方案：auto / light / dark（auto 跟随系统）。"""
+        return self._theme_scheme()
+
+    @Property(str, notify=themeChanged)
+    def effectiveScheme(self) -> str:
+        """解析后的实际配色：light / dark。"""
+        return self._effective_scheme()
+
+    @Property(str, notify=themeChanged)
+    def systemScheme(self) -> str:
+        """系统当前深浅：light / dark。"""
+        return theme_service.system_scheme()
+
+    @Property(list, constant=True)
+    def themeStyles(self) -> list[dict]:
+        """内置样式列表：[{value,name,desc,experimental}]（自定义主题单独在 customThemes）。"""
+        return [
+            {
+                "value": item["value"],
+                "name": QCoreApplication.translate("ShenQing", item["label"]),
+                "desc": QCoreApplication.translate("ShenQing", item["desc"]),
+                "experimental": bool(item.get("experimental")),
+            }
+            for item in THEME_STYLES
+        ]
+
+    @Property(list, constant=True)
+    def themeSchemes(self) -> list[dict]:
+        """配色方案列表：[{value,name}]（auto / light / dark）。"""
+        return [
+            {
+                "value": item["value"],
+                "name": QCoreApplication.translate("ShenQing", item["label"]),
+            }
+            for item in THEME_SCHEMES
+        ]
+
+    @Slot(str)
+    def setThemeStyle(self, style: str) -> None:
+        """切换外观样式（内置样式或已安装的 custom:<id>）；非法值忽略。"""
+        value = self._normalize_style(style)
+        if not value or value == self._theme_style():
+            return
+        self._settings.set("theme_style", value)
+        self.settingsChanged.emit()
+        self.themeChanged.emit(self._chrome_theme())
+
+    @Slot(str)
+    def setThemeScheme(self, scheme: str) -> None:
+        """切换配色方案（auto / light / dark）；非法值忽略。"""
+        value = theme_service.normalize_scheme(scheme)
+        if value is None or value == self._theme_scheme():
+            return
+        self._settings.set("theme_scheme", value)
+        self.settingsChanged.emit()
+        self.themeChanged.emit(self._chrome_theme())
+
+    # ---- 兼容旧接口：themeMode 等于样式（custom 原样） ----
+    @Property(str, notify=themeChanged)
+    def themeMode(self) -> str:
+        """兼容旧属性：返回样式（custom:<id> 原样），等价于 themeStyle。"""
+        return self._theme_style()
 
     @Slot(str)
     def setThemeMode(self, theme: str) -> None:
-        """切换应用主题：内置主题或已安装的 custom:<id>。"""
+        """兼容旧 Slot：把旧主题值映射成 样式 + 配色。
+
+        light→solid+light；solid→solid+dark；glass→glass+dark；ocean→ocean+dark；
+        custom:<id>→custom:<id>+auto。非法值忽略。
+        """
         value = str(theme or "")
-        if value.startswith(CUSTOM_THEME_PREFIX):
-            theme_id = value[len(CUSTOM_THEME_PREFIX) :]
-            if theme_id not in self._custom_theme_map():
-                return
-        elif value not in {item["value"] for item in THEMES}:
+        style = ""
+        scheme = ""
+        if value == "light":
+            style, scheme = DEFAULT_THEME_STYLE, theme_service.SCHEME_LIGHT
+        elif value == "solid":
+            style, scheme = DEFAULT_THEME_STYLE, theme_service.SCHEME_DARK
+        elif value in ("glass", "ocean"):
+            style, scheme = value, theme_service.SCHEME_DARK
+        elif value.startswith(CUSTOM_THEME_PREFIX):
+            style = self._normalize_style(value)
+            scheme = theme_service.SCHEME_AUTO
+        if not style:
             return
-        self._settings.set("theme_mode", value)
+        self._settings.set("theme_style", style)
+        self._settings.set("theme_scheme", scheme)
         self.settingsChanged.emit()
-        self.themeChanged.emit(self._chrome_theme_for(value))
+        self.themeChanged.emit(self._chrome_theme())
 
     @Property(str, constant=True)
     def licenseText(self) -> str:
@@ -3899,10 +4784,12 @@ class AppBridge(QObject):
 
     @Property(list, constant=True)
     def themes(self) -> list[dict]:
+        """兼容旧接口：样式列表（额外带 label 字段，等于 name；不含配色）。"""
         return [
             {
                 "value": item["value"],
                 "label": QCoreApplication.translate("ShenQing", item["label"]),
+                "name": QCoreApplication.translate("ShenQing", item["label"]),
                 "desc": QCoreApplication.translate("ShenQing", item["desc"]),
                 "experimental": bool(item.get("experimental")),
             }
@@ -3914,15 +4801,6 @@ class AppBridge(QObject):
         """settings 里的自定义主题（坏数据静默跳过）：{id: {id,name,description,palette}}。"""
         return store.normalize_custom_themes(self._settings.get("custom_themes", {}))
 
-    def _chrome_theme_for(self, mode_value: str) -> str:
-        """把主题模式映射成窗口 chrome 主题（Light / Dark）。"""
-        if mode_value.startswith(CUSTOM_THEME_PREFIX):
-            theme_id = mode_value[len(CUSTOM_THEME_PREFIX) :]
-            item = self._custom_theme_map().get(theme_id)
-            light = bool(item and store.palette_is_light(item["palette"]))
-            return "Light" if light else "Dark"
-        return "Light" if mode_value == "light" else "Dark"
-
     @Property(list, notify=customThemesChanged)
     def customThemes(self) -> list[dict]:
         """已安装的自定义主题包：[{id,name,description,palette}]。"""
@@ -3930,8 +4808,8 @@ class AppBridge(QObject):
 
     @Property(dict, notify=themeChanged)
     def customThemePalette(self) -> dict:
-        """当前 custom 主题的 palette；非 custom 主题返回 {}（QML 据此覆盖 AppTheme 颜色）。"""
-        value = str(self._settings.get("theme_mode", "") or "")
+        """当前 custom 样式的 palette；非 custom 样式返回 {}（QML 据此覆盖 AppTheme 颜色）。"""
+        value = self._theme_style()
         if not value.startswith(CUSTOM_THEME_PREFIX):
             return {}
         item = self._custom_theme_map().get(value[len(CUSTOM_THEME_PREFIX) :])
@@ -3970,10 +4848,10 @@ class AppBridge(QObject):
             "palette": colors,
         }
         self._settings.set("custom_themes", stored)
-        self._settings.set("theme_mode", CUSTOM_THEME_PREFIX + wanted)
+        self._settings.set("theme_style", CUSTOM_THEME_PREFIX + wanted)
         self.customThemesChanged.emit()
         self.settingsChanged.emit()
-        self.themeChanged.emit(self._chrome_theme_for(CUSTOM_THEME_PREFIX + wanted))
+        self.themeChanged.emit(self._chrome_theme())
         self.toast.emit(
             QCoreApplication.translate("ShenQing", "已安装主题：{0}").format(
                 stored[wanted]["name"]
@@ -3998,9 +4876,9 @@ class AppBridge(QObject):
             for key, item in themes.items()
         }
         self._settings.set("custom_themes", stored)
-        if str(self._settings.get("theme_mode", "")) == CUSTOM_THEME_PREFIX + wanted:
-            self._settings.set("theme_mode", DEFAULT_THEME)
-            self.themeChanged.emit(self._chrome_theme_for(DEFAULT_THEME))
+        if self._theme_style() == CUSTOM_THEME_PREFIX + wanted:
+            self._settings.set("theme_style", DEFAULT_THEME_STYLE)
+            self.themeChanged.emit(self._chrome_theme())
         self.customThemesChanged.emit()
         self.settingsChanged.emit()
         self.toast.emit(QCoreApplication.translate("ShenQing", "已删除主题"))
@@ -4182,6 +5060,10 @@ class AppBridge(QObject):
         self._begin_prepare(spaces[0])
 
     def _begin_prepare(self, space: dict, minutes: int | None = None) -> None:
+        # 真正开始倒计时了：残留的待确认开局信息作废
+        if self._start_pending:
+            self._start_pending = {}
+            self.confirmationChanged.emit()
         self._prepare_minutes = int(minutes) if minutes else None
         self._prepare_active = True
         self._prepare_remaining = int(self.PREPARE_SECONDS)
@@ -4362,6 +5244,25 @@ class AppBridge(QObject):
     @Property(int, notify=pomodoroChanged)
     def pomodoroLongBreakMinutes(self) -> int:
         return self._pomodoro.long_break_minutes
+
+    @Property(int, notify=pomodoroChanged)
+    def pomodoroTotalRounds(self) -> int:
+        """一轮清番包含的番茄个数（1~20）。"""
+        return self._pomodoro.rounds_total
+
+    @Slot(int)
+    def setPomodoroTotalRounds(self, rounds: int) -> None:
+        """设置番茄个数（1~20），保存后立即生效。"""
+        try:
+            value = max(1, min(20, int(rounds)))
+        except (TypeError, ValueError):
+            return
+        self._settings.set("pomodoro_rounds", value)
+        self._pomodoro.changed.emit()
+        self.pomodoroChanged.emit()
+        self.toast.emit(
+            QCoreApplication.translate("ShenQing", "清番个数已设为 {0} 个").format(value)
+        )
 
     @Property(int, notify=pomodoroChanged)
     def pomodoroRoundsBeforeLong(self) -> int:
@@ -4554,14 +5455,37 @@ class AppBridge(QObject):
         self._settings.set("auto_update", bool(enabled))
         self.settingsChanged.emit()
 
+    @Property(str, notify=settingsChanged)
+    def updateChannel(self) -> str:
+        """更新渠道：stable 正式版 / preview 预览版。"""
+        return updater.normalize_channel(self._settings.get("update_channel", "stable"))
+
+    @Slot(str, result=bool)
+    def setUpdateChannel(self, channel: str) -> bool:
+        """切换更新渠道（stable / preview），切换后需重新检查更新。"""
+        value = str(channel or "").strip().lower()
+        if value not in updater.CHANNELS:
+            self.toast.emit(QCoreApplication.translate("ShenQing", "未知的更新渠道"))
+            return False
+        self._settings.set("update_channel", value)
+        self._update_info = None
+        self._set_update_state("idle")
+        self.settingsChanged.emit()
+        self.toast.emit(
+            QCoreApplication.translate("ShenQing", "已切换更新渠道：{0}").format(
+                "预览版" if value == "preview" else "正式版"
+            )
+        )
+        return True
+
     def _check_update_worker(
-        self, source_id: str, custom_sources: list[dict]
+        self, source_id: str, custom_sources: list[dict], channel: str = "stable"
     ) -> None:
         info: dict | None = None
         error = ""
         try:
             info, error = updater.check_latest_detail(
-                APP_VERSION, source_id=source_id, custom_sources=custom_sources
+                APP_VERSION, source_id=source_id, custom_sources=custom_sources, channel=channel
             )
         except Exception as exc:  # noqa: BLE001 - 后台线程不能崩
             error = str(exc)
@@ -4580,7 +5504,7 @@ class AppBridge(QObject):
         self._set_update_state("checking")
         threading.Thread(
             target=self._check_update_worker,
-            args=(self.updateSource, self._custom_update_sources()),
+            args=(self.updateSource, self._custom_update_sources(), self.updateChannel),
             name="shenqing-update-check",
             daemon=True,
         ).start()
@@ -4791,7 +5715,8 @@ class AppBridge(QObject):
         add(QCoreApplication.translate("ShenQing", "数据"), QCoreApplication.translate("ShenQing", "专注统计"), "page", 1)
         add(QCoreApplication.translate("ShenQing", "插件"), QCoreApplication.translate("ShenQing", "插件管理"), "page", 2)
         add(QCoreApplication.translate("ShenQing", "设置"), QCoreApplication.translate("ShenQing", "偏好设置"), "page", 3)
-        add(QCoreApplication.translate("ShenQing", "主题"), QCoreApplication.translate("ShenQing", "纯色 / 浅色 / 液态玻璃"), "theme", "")
+        add(QCoreApplication.translate("ShenQing", "主题样式"), QCoreApplication.translate("ShenQing", "纯色 / 液态玻璃 / 海洋"), "theme", "")
+        add(QCoreApplication.translate("ShenQing", "主题配色"), QCoreApplication.translate("ShenQing", "跟随系统 / 浅色 / 深色"), "scheme", "")
         for mode in self.modes:
             add(mode["label"], mode["desc"], "mode", mode["value"])
         # v0.6：每张空间也是一条搜索结果（payload 带 id + mode，QML 可跳到空间页）
@@ -4842,6 +5767,7 @@ class AppBridge(QObject):
         self._exit_warning = False
         self._delete_session_state()
         self._restore_site_block(force=True)
+        self._restore_desktop_icons(force=True)
         self._guard.stop()
         power.allow_sleep()
         self._sleep_lock_active = False

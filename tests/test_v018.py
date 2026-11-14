@@ -35,6 +35,7 @@ from shenqing.consts import (  # noqa: E402
 )
 from shenqing.paths import app_data_dir  # noqa: E402
 from shenqing.services import store  # noqa: E402
+from shenqing.services import theme as theme_service  # noqa: E402
 from shenqing.settings import Settings  # noqa: E402
 
 PALETTE = {
@@ -147,6 +148,11 @@ class _BridgeCase(unittest.TestCase):
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
         os.environ["SHENQING_DATA_DIR"] = self._tmp.name
+        # v0.21：默认 scheme=auto 会读真实系统深浅；测试固定成 dark 保证断言稳定
+        self._scheme_patcher = mock.patch.object(
+            theme_service, "system_scheme", return_value="dark"
+        )
+        self._scheme_patcher.start()
         self.bridge = AppBridge()
         self.toasts: list[str] = []
         self.bridge.toast.connect(self.toasts.append)
@@ -165,6 +171,7 @@ class _BridgeCase(unittest.TestCase):
             self.bridge.deleteLater()
         except RuntimeError:
             pass
+        self._scheme_patcher.stop()
         self._tmp.cleanup()
         os.environ.pop("SHENQING_DATA_DIR", None)
 
@@ -189,6 +196,9 @@ class CustomThemeBridgeTest(_BridgeCase):
 
         self.assertTrue(bridge.installCustomTheme("aurora", "极光", "深夜海面", PALETTE))
         self.assertEqual(bridge.themeMode, "custom:aurora")
+        self.assertEqual(bridge.themeStyle, "custom:aurora")
+        # 只换样式，配色保持默认（auto = 跟随系统）
+        self.assertEqual(bridge.themeScheme, "auto")
         self.assertEqual(bridge.customThemePalette, PALETTE)
         self.assertEqual(changes, ["Dark"])
         themes = bridge.customThemes
@@ -200,15 +210,29 @@ class CustomThemeBridgeTest(_BridgeCase):
 
         reloaded = self._reload()
         self.assertEqual(reloaded.themeMode, "custom:aurora")
+        self.assertEqual(reloaded.themeStyle, "custom:aurora")
+        self.assertEqual(reloaded.themeScheme, "auto")
         self.assertEqual(reloaded.customThemePalette, PALETTE)
         self.assertEqual([item["id"] for item in reloaded.customThemes], ["aurora"])
 
-    def test_light_palette_uses_light_chrome(self) -> None:
+    def test_custom_theme_chrome_follows_scheme(self) -> None:
+        """v0.21：窗口 chrome 只看配色，palette 亮度不再决定浅色/深色。"""
         changes: list[str] = []
-        self.bridge.themeChanged.connect(changes.append)
-        self.assertTrue(self.bridge.installCustomTheme("sakura", "樱雾", "", LIGHT_PALETTE))
+        bridge = self.bridge
+        bridge.themeChanged.connect(changes.append)
+        # 显式浅色配色 → Light（即使 palette 本身是浅色）
+        bridge.setThemeScheme("light")
+        changes.clear()
+        self.assertTrue(bridge.installCustomTheme("sakura", "樱雾", "", LIGHT_PALETTE))
         self.assertEqual(changes, ["Light"])
-        self.assertEqual(self.bridge.customThemePalette, LIGHT_PALETTE)
+        self.assertEqual(bridge.customThemePalette, LIGHT_PALETTE)
+        # 显式深色配色 → Dark（即使 palette 是浅色）
+        bridge.setThemeScheme("dark")
+        bridge.setThemeStyle("solid")
+        changes.clear()
+        self.assertTrue(bridge.installCustomTheme("dawn", "晨光", "", LIGHT_PALETTE))
+        self.assertEqual(changes, ["Dark"])
+        self.assertEqual(bridge.themeScheme, "dark")
 
     def test_invalid_palette_and_id_rejected(self) -> None:
         bridge = self.bridge
@@ -219,6 +243,7 @@ class CustomThemeBridgeTest(_BridgeCase):
         self.assertFalse(bridge.installCustomTheme("../evil", "坏 id", "", PALETTE))
         self.assertEqual(bridge.customThemes, [])
         self.assertEqual(bridge.themeMode, DEFAULT_THEME)
+        self.assertEqual(bridge.themeStyle, DEFAULT_THEME)
         self.assertTrue(any("#RRGGBB" in item or "配色" in item for item in self.toasts))
 
     def test_theme_limit_is_twenty(self) -> None:
@@ -242,10 +267,13 @@ class CustomThemeBridgeTest(_BridgeCase):
         # 删除非当前主题不影响当前模式
         self.assertTrue(bridge.removeCustomTheme("a"))
         self.assertEqual(bridge.themeMode, "custom:b")
+        self.assertEqual(bridge.themeStyle, "custom:b")
         self.assertEqual([item["id"] for item in bridge.customThemes], ["b"])
-        # 删除当前主题 → 回退 solid
+        # 删除当前主题 → 样式回退 solid，配色保持不变
         self.assertTrue(bridge.removeCustomTheme("b"))
         self.assertEqual(bridge.themeMode, DEFAULT_THEME)
+        self.assertEqual(bridge.themeStyle, DEFAULT_THEME)
+        self.assertEqual(bridge.themeScheme, "auto")
         self.assertEqual(bridge.customThemePalette, {})
         self.assertEqual(bridge.customThemes, [])
         self.assertFalse(bridge.removeCustomTheme("b"))
@@ -257,19 +285,26 @@ class CustomThemeBridgeTest(_BridgeCase):
         self.assertTrue(bridge.installCustomTheme("aurora", "极光", "", PALETTE))
         bridge.setThemeMode("solid")
         self.assertEqual(bridge.themeMode, "solid")
+        self.assertEqual(bridge.themeScheme, "dark")
         self.assertEqual(bridge.customThemePalette, {})
         bridge.setThemeMode("custom:aurora")
         self.assertEqual(bridge.themeMode, "custom:aurora")
+        self.assertEqual(bridge.themeScheme, "auto")
         self.assertEqual(bridge.customThemePalette, PALETTE)
         bridge.setThemeMode("ocean")
         self.assertEqual(bridge.themeMode, "ocean")
+        self.assertEqual(bridge.themeScheme, "dark")
         self.assertEqual(bridge.customThemePalette, {})
-        # 设置里残留未知 custom:<id> → 回退 solid（旧值兼容）
-        bridge._settings.set("theme_mode", "custom:ghost")
+        # 设置里残留未知 custom:<id> → 样式回退 solid（旧值兼容）
+        bridge._settings.set("theme_style", "custom:ghost")
         self.assertEqual(bridge.themeMode, DEFAULT_THEME)
-        # 内置主题列表仍然只有 4 个（自定义主题单独暴露）
+        self.assertEqual(bridge.customThemePalette, {})
+        # 内置样式列表只有 3 个（自定义主题单独暴露；浅色/深色已拆到配色）
         self.assertEqual(
-            [item["value"] for item in bridge.themes], ["solid", "light", "glass", "ocean"]
+            [item["value"] for item in bridge.themes], ["solid", "glass", "ocean"]
+        )
+        self.assertEqual(
+            [item["value"] for item in bridge.themeStyles], ["solid", "glass", "ocean"]
         )
 
 

@@ -3,6 +3,7 @@ import "../theme"
 import QtQuick.Window
 import QtQuick.Effects
 import "../glass"
+import "widgets"
 import "Constants.js" as C
 
 // 专注全屏遮罩（App.locked 由 Python 控制；预览模式 App.previewActive 也会显示）。
@@ -125,6 +126,21 @@ Window {
     readonly property var dockApps: App.dockApps !== undefined ? App.dockApps : []
     readonly property int dockCount: overlay.dockApps !== null && overlay.dockApps !== undefined
                                     ? overlay.dockApps.length : 0
+
+    // ================= v0.24：内置布局组件（右半屏，归一化 0~1） =================
+    // 数据：App.overlayWidgets（list<{id,type,x,y,w,h,visible,props}>，坐标 = 右半屏自身 0~1）
+    //       App.overlayWidgetsEnabled（总开关）。接口缺失时退回空列表 → 不渲染。
+    // 深清（heavy）保持「只居中显示倒计时」的极简设计，不渲染布局组件，避免压在大倒计时上。
+    readonly property var layoutWidgets: (typeof App !== "undefined"
+                                          && App.overlayWidgets !== undefined
+                                          && App.overlayWidgets !== null)
+                                         ? App.overlayWidgets : []
+    readonly property bool layoutWidgetsEnabled: (typeof App !== "undefined"
+                                                  && App.overlayWidgetsEnabled !== undefined)
+                                                 ? App.overlayWidgetsEnabled === true : false
+    // 与 v0.8 内置组件列 / 插件组件共存策略：布局组件生效时隐藏旧的内置组件列，避免重叠
+    readonly property bool layoutWidgetsActive: overlay.layoutWidgetsEnabled
+                                                && overlay.layoutWidgets.length > 0
 
     // ================= v0.8：dock 设置 / 时钟 / 右侧组件 =================
     property string clockTime: ""
@@ -791,7 +807,8 @@ Window {
         // ---------- 右侧自定义组件区（v0.8；预览模式下可增删） ----------
         Column {
             id: rightWidgets
-            visible: !overlay.heavyLock
+            // v0.24：布局组件生效时隐藏旧的「组件」列，避免与右半屏布局组件重叠
+            visible: !overlay.heavyLock && !overlay.layoutWidgetsActive
             z: 2
             anchors.right: parent.right
             anchors.rightMargin: 28
@@ -981,6 +998,51 @@ Window {
                     y: widgetLoader.bottomSide
                        ? overlay.height - widgetLoader.height - 104
                        : 92
+                }
+            }
+        }
+
+        // ---------- v0.24：内置布局组件（右半屏，归一化坐标映射） ----------
+        Item {
+            id: layoutWidgetLayer
+            objectName: "LockLayoutWidgets"
+            visible: overlay.layoutWidgetsActive && !overlay.heavyLock
+            z: 1
+            anchors.fill: parent
+
+            WidgetCatalog { id: widgetCatalog }
+
+            Repeater {
+                model: widgetCatalog.normalizeLayout(overlay.layoutWidgets)
+
+                delegate: Item {
+                    id: layoutSlot
+                    readonly property var entry: modelData
+                    readonly property real halfWidth: overlay.width * 0.5
+                    readonly property bool entryVisible: entry.visible !== false
+
+                    // 归一化坐标（右半屏自身 0~1）→ 屏幕像素
+                    x: Math.round(layoutSlot.halfWidth + Number(entry.x) * layoutSlot.halfWidth)
+                    y: Math.round(Number(entry.y) * overlay.height)
+                    width: Math.max(8, Math.round(Number(entry.w) * layoutSlot.halfWidth))
+                    height: Math.max(8, Math.round(Number(entry.h) * overlay.height))
+                    visible: layoutSlot.entryVisible
+                    z: 1
+
+                    Loader {
+                        id: layoutWidgetLoader
+                        anchors.fill: parent
+                        sourceComponent: widgetCatalog.componentFor(String(layoutSlot.entry.type))
+
+                        onLoaded: {
+                            if (!layoutWidgetLoader.item) return
+                            layoutWidgetLoader.item.props = layoutSlot.entry.props !== undefined
+                                                            ? layoutSlot.entry.props : ({})
+                            layoutWidgetLoader.item.compact = layoutSlot.width < 240
+                                                              || layoutSlot.height < 100
+                            layoutWidgetLoader.item.app = (typeof App !== "undefined") ? App : null
+                        }
+                    }
                 }
             }
         }
