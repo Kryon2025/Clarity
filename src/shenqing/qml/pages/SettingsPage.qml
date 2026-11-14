@@ -366,7 +366,9 @@ Item {
             id: settingsScroll
             policy: ScrollBar.AsNeeded
             interactive: true
-            width: 8
+            hoverEnabled: true
+            width: 6
+            padding: 0
             anchors.right: parent.right
             anchors.rightMargin: 6
             contentItem: Rectangle {
@@ -375,7 +377,7 @@ Item {
                 color: settingsScroll.pressed
                        ? AppTheme.accent
                        : (settingsScroll.hovered ? AppTheme.textSecondary : AppTheme.textTertiary)
-                opacity: settingsScroll.active || settingsScroll.pressed ? 0.85 : 0.35
+                opacity: (settingsScroll.hovered || settingsScroll.active || settingsScroll.pressed) ? 0.9 : 0.35
                 Behavior on opacity { NumberAnimation { duration: 140 } }
             }
             background: Item {}
@@ -1517,14 +1519,4 @@ Item {
         onSelected: (value) => page.setFontFamily(String(value))
     }
 
-    Rectangle {
-        visible: flick.contentHeight > flick.height + 4
-        width: 4
-        radius: 2
-        color: "#26FFFFFF"
-        x: flick.width - 14
-        height: Math.max(48, flick.height * flick.height / Math.max(1, flick.contentHeight))
-        y: 18 + Math.max(0, Math.min(1, flick.contentY / Math.max(1, flick.contentHeight - flick.height)))
-           * Math.max(1, flick.height - 36 - height)
-    }
 }

@@ -3,7 +3,7 @@
 ; 前置：先运行 PyInstaller（onedir）生成 dist\深清\深清.exe
 
 #ifndef AppVersion
-  #define AppVersion "0.17.2"
+  #define AppVersion "0.17.3"
 #endif
 #define AppName "深清"
 #define AppNameEn "Clarity"

@@ -8,7 +8,7 @@ APP_NAME = "深清"
 #: 英文名（v0.4 起对外统一用 Clarity；「身轻」不再展示）
 APP_ALIAS = "Clarity"
 APP_ID = "ShenQing"
-APP_VERSION = "0.17.2"
+APP_VERSION = "0.17.3"
 
 #: GitHub 仓库（自动更新与反馈入口用）
 GITHUB_REPO = "Kryon2025/Clarity"
@@ -71,6 +71,15 @@ MAX_FONT_FAMILIES = 200
 
 #: 更新日志（最新在前；en 为空时用中文兜底）
 CHANGELOG = [
+    {
+        "version": "0.17.3",
+        "date": "2025-11-14",
+        "tag": "",
+        "items": [
+            "设置页滚动条细节修正：移除旧自绘细线、宽度 6px、悬停加深",
+        ],
+        "items_en": ["Settings scrollbar polish: removed the old hand-drawn bar, 6px width, hover emphasis"],
+    },
     {
         "version": "0.17.2",
         "date": "2025-11-14",
