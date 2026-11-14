@@ -12,7 +12,12 @@ from .paths import app_data_dir
 
 DEFAULTS: dict[str, Any] = {
     "theme": "Auto",            # 窗口 chrome：Auto / Light / Dark
-    "theme_mode": "solid",      # 应用主题：solid / light / glass / ocean（v0.17）
+    "theme_mode": "solid",      # 应用主题：solid / light / glass / ocean / custom:<id>（v0.18）
+    "custom_themes": {},        # v0.18 自定义主题包：id -> {name, description, palette}
+    "store_catalog_url": (      # v0.18 商店目录 JSON 地址（留空 = 只用内置目录）
+        "https://raw.githubusercontent.com/Kryon2025/Clarity/store/catalog.json"
+    ),
+    "store_comments": {},       # v0.18 商店评论：item_id -> [{id,author,rating,text,created_at,status}]
     "default_mode": "medium",   # 默认强度：light / medium / heavy
     "language": "auto",  # auto / zh_CN / en_US
     "autostart": False,

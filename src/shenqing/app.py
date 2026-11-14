@@ -28,9 +28,9 @@ from RinUI.core.config import Theme
 
 from .bridge.app_bridge import AppBridge
 from .i18n import Translator
-from .consts import APP_ALIAS, APP_ID, APP_NAME, APP_VERSION
+from .consts import APP_ALIAS, APP_ID, APP_NAME, APP_VERSION, CUSTOM_THEME_PREFIX
 from .paths import app_data_dir, qml_dir, qml_file
-from .services import elevation, keeper, power, timesync
+from .services import elevation, keeper, power, store, timesync
 from .services.dock_reveal import DockRevealController
 from .services.lock_hardening import restore_taskbars
 from .services.logging_setup import setup_logging
@@ -463,7 +463,16 @@ def main(argv: list[str] | None = None) -> int:
     window.engine.rootContext().setContextProperty("App", bridge)
 
     theme_mode = str(settings.get("theme_mode", "solid"))
-    theme_name = args.theme or ("Light" if theme_mode == "light" else "Dark")
+    if args.theme:
+        theme_name = args.theme
+    elif theme_mode.startswith(CUSTOM_THEME_PREFIX):
+        # v0.18：自定义主题按 palette 亮度决定窗口 chrome，浅色主题也能配对
+        custom = store.normalize_custom_themes(settings.get("custom_themes", {}))
+        custom_item = custom.get(theme_mode[len(CUSTOM_THEME_PREFIX) :])
+        is_light = bool(custom_item and store.palette_is_light(custom_item["palette"]))
+        theme_name = "Light" if is_light else "Dark"
+    else:
+        theme_name = "Light" if theme_mode == "light" else "Dark"
     try:
         window.setTheme(Theme(theme_name))
     except (ValueError, KeyError):

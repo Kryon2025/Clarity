@@ -9,6 +9,9 @@ Item {
 
     property Item glassSource: null
 
+    // v0.18：插件商店入口
+    signal storeRequested(string kind)
+
     Flickable {
         id: flick
         anchors.fill: parent
@@ -48,6 +51,16 @@ Item {
                         font.family: AppTheme.fontFamily
                     }
                 }
+            }
+
+            // ---------- 插件商店入口（v0.18） ----------
+            StoreEntryBanner {
+                width: parent.width
+                glassSource: page.glassSource
+                title: qsTr("插件商店")
+                subtitle: qsTr("发现更多效率工具与玩法")
+                iconKind: "grid"
+                onClicked: page.storeRequested("plugin")
             }
 
             // ---------- 插件列表 ----------

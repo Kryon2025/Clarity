@@ -8,7 +8,10 @@ APP_NAME = "深清"
 #: 英文名（v0.4 起对外统一用 Clarity；「身轻」不再展示）
 APP_ALIAS = "Clarity"
 APP_ID = "ShenQing"
-APP_VERSION = "0.17.4"
+APP_VERSION = "0.18.0"
+
+#: v0.18 自定义主题 id 前缀：theme_mode = "custom:<id>"
+CUSTOM_THEME_PREFIX = "custom:"
 
 #: GitHub 仓库（自动更新与反馈入口用）
 GITHUB_REPO = "Kryon2025/Clarity"
@@ -71,6 +74,23 @@ MAX_FONT_FAMILIES = 200
 
 #: 更新日志（最新在前；en 为空时用中文兜底）
 CHANGELOG = [
+    {
+        "version": "0.18.0",
+        "date": "2025-11-14",
+        "tag": "",
+        "items": [
+            "商店后端：主题/插件目录在线拉取（6 秒超时，失败回退内置 6 主题 + 4 插件），结果缓存 10 分钟",
+            "自定义主题包：settings 保存 custom_themes，theme_mode 支持 custom:<id>，安装/删除后即时生效",
+            "商店评论：新评论默认审核中，仅 approved 展示，同一项目每分钟最多 3 条",
+            "插件商店安装：zip 下载 + plugin.json 校验 + 防路径穿越解压到用户插件目录并热重载",
+        ],
+        "items_en": [
+            "Store backend: online theme/plugin catalog (6s timeout, builtin fallback with 6 themes + 4 plugins), cached for 10 minutes",
+            "Custom theme packages: custom_themes in settings, theme_mode supports custom:<id>, install/remove applies immediately",
+            "Store comments: new comments start pending, only approved are shown, max 3 per item per minute",
+            "Plugin store install: zip download + plugin.json validation + traversal-safe extraction into the user plugin dir with hot reload",
+        ],
+    },
     {
         "version": "0.17.4",
         "date": "2025-11-14",

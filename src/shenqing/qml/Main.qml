@@ -35,14 +35,18 @@ FluentWindow {
     property int navIndex: 0
     property bool showThemePage: false
     property bool showAboutPage: false
+    // v0.18：主题 / 插件商店页（独立 pageKey = 8，不占 navIndex；返回时回到来源页）
+    property bool showStorePage: false
+    property string storeKind: "theme"
     property bool showAIPage: false
     property bool showUpdatePage: false
     property string overlayMode: "none"        // none | whitelist
     property string whitelistMode: ""           // 白名单浮层当前对应的档位（light / medium / heavy）
     property string whitelistSpaceId: ""        // 白名单浮层当前对应的具体空间 id（v0.6 多空间）
-    readonly property int effectivePage: showAboutPage ? 5
+    readonly property int effectivePage: showStorePage ? 8
+                                             : (showAboutPage ? 5
                                              : (showThemePage ? 4
-                                             : (showAIPage ? 6 : (showUpdatePage ? 7 : navIndex)))
+                                             : (showAIPage ? 6 : (showUpdatePage ? 7 : navIndex))))
 
     // 导航轨展开/收起 + 插件入口
     property bool navExpanded: true
@@ -123,8 +127,19 @@ FluentWindow {
         var next = win.resolvedThemeMode
         var changed = AppTheme.mode !== next
         AppTheme.mode = next
+        win.syncThemePalette()
         if (changed && win.themePulseReady && win.pageTransitions)
             themePulseAnim.restart()
+    }
+
+    // v0.18：把 App.customThemePalette 推给 AppTheme（QML 单例里不直接读上下文对象 App）
+    function syncThemePalette() {
+        var palette = ({})
+        if (typeof App !== "undefined" && App !== null) {
+            var raw = (typeof App.customThemePalette !== "undefined") ? App.customThemePalette : null
+            if (raw !== null && raw !== undefined && typeof raw === "object") palette = raw
+        }
+        AppTheme.customPalette = palette
     }
 
     // 液态玻璃采样源：窗口背景层（渐变 + 光斑 + 噪点）
@@ -152,6 +167,7 @@ FluentWindow {
 
     // 当前高亮对应的导航项下标：0..4 上部（空间/数据/AI/插件/主题），5..7 下部（更新/设置/关于）
     readonly property int currentNavEntry: {
+        if (win.showStorePage) return win.storeKind === "plugin" ? 3 : 4
         if (win.showAboutPage) return 7
         if (win.showUpdatePage) return 5
         if (win.showThemePage) return 4
@@ -185,12 +201,17 @@ FluentWindow {
         navigationView.navigationBar.visible = false
         navigationView.navigationBar.titleBarEnabled = false
         AppTheme.mode = (typeof App !== "undefined" && App.themeMode) ? App.themeMode : "solid"
+        win.syncThemePalette()
         win.applyAppearance()
     }
 
     Connections {
         target: (typeof App !== "undefined") ? App : null
-        function onSettingsChanged() { win.applyAppearance() }
+        function onSettingsChanged() {
+            win.applyAppearance()
+            win.syncThemePalette()
+        }
+        function onThemeChanged(name) { win.syncThemePalette() }
     }
 
     // 根背景 = 主题渐变（默认恢复 v0.16.3 之前的深海渐变；海洋主题叠加静态浪花）
@@ -213,6 +234,7 @@ FluentWindow {
         win.showAboutPage = false
         win.showAIPage = false
         win.showUpdatePage = false
+        win.showStorePage = false
         win.activePluginPath = ""
         if (win.navIndex === 2) {
             // 点「插件」：进入插件页并展开/收起入口列表
@@ -231,6 +253,7 @@ FluentWindow {
         win.showAboutPage = false
         win.showAIPage = false
         win.showUpdatePage = false
+        win.showStorePage = false
         win.activePluginPath = ""
         win.pluginListOpen = win.navIndex === 2
     }
@@ -240,6 +263,7 @@ FluentWindow {
         win.showAboutPage = false
         win.showAIPage = false
         win.showUpdatePage = false
+        win.showStorePage = false
         win.pluginListOpen = false
         win.activePluginPath = ""
         if (themePage && value !== undefined && value !== null && String(value) !== "")
@@ -251,6 +275,7 @@ FluentWindow {
         win.showThemePage = false
         win.showAIPage = false
         win.showUpdatePage = false
+        win.showStorePage = false
         win.pluginListOpen = false
         win.activePluginPath = ""
     }
@@ -260,6 +285,7 @@ FluentWindow {
         win.showThemePage = false
         win.showAboutPage = false
         win.showUpdatePage = false
+        win.showStorePage = false
         win.pluginListOpen = false
         win.activePluginPath = ""
         // 已配置时进入 AI 页拉一次模型列表；未配置时先显示预设候选，避免无 Key 报错
@@ -273,6 +299,7 @@ FluentWindow {
         win.showThemePage = false
         win.showAboutPage = false
         win.showAIPage = false
+        win.showStorePage = false
         win.pluginListOpen = false
         win.activePluginPath = ""
     }
@@ -283,9 +310,22 @@ FluentWindow {
         win.showAboutPage = false
         win.showAIPage = false
         win.showUpdatePage = false
+        win.showStorePage = false
         win.pluginListOpen = true
         // 没有独立页面的插件入口：落到插件页（卡片上能看到它的状态/开关）
         win.activePluginPath = path ? String(path) : ""
+    }
+
+    // v0.18：打开主题 / 插件商店（不占 navIndex；关闭后回到来源页）
+    function openStorePage(kind) {
+        win.storeKind = (String(kind) === "plugin") ? "plugin" : "theme"
+        win.showStorePage = true
+        if (storePage)
+            storePage.open(win.storeKind)
+    }
+
+    function closeStorePage() {
+        win.showStorePage = false
     }
 
     // 导航项点击（0..7，含 AI / 主题 / 更新 / 设置 / 关于）
@@ -983,6 +1023,7 @@ FluentWindow {
                     PluginsPage {
                         anchors.fill: parent
                         glassSource: win.glassSource
+                        onStoreRequested: (kind) => win.openStorePage(kind)
                     }
                 }
 
@@ -1027,6 +1068,7 @@ FluentWindow {
                         id: themePage
                         anchors.fill: parent
                         glassSource: win.glassSource
+                        onStoreRequested: (kind) => win.openStorePage(kind)
                     }
                 }
 
@@ -1072,6 +1114,24 @@ FluentWindow {
                     UpdatePage {
                         anchors.fill: parent
                         glassSource: win.glassSource
+                    }
+                }
+
+                // 主题 / 插件商店：独立 pageKey（effectivePage = 8），不占 navIndex（浮层式）
+                AnimatedPage {
+                    id: storePageLayer
+                    anchors.fill: parent
+                    z: (win.effectivePage === 8 || storePageLayer.shown) ? 5 : 1
+                    active: win.effectivePage === 8
+                    animationsEnabled: win.pageTransitions
+                    scaleEnabled: true
+
+                    StorePage {
+                        id: storePage
+                        anchors.fill: parent
+                        glassSource: win.glassSource
+                        active: win.effectivePage === 8
+                        onBackRequested: win.closeStorePage()
                     }
                 }
             }

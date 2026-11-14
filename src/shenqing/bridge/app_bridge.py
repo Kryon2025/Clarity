@@ -9,6 +9,8 @@ from __future__ import annotations
 import json
 import logging
 import os
+import shutil
+import tempfile
 import threading
 import time
 from collections import deque
@@ -32,6 +34,7 @@ from ..consts import (
     APP_NAME,
     APP_VERSION,
     ATMOSPHERES,
+    CUSTOM_THEME_PREFIX,
     DEFAULT_THEME,
     FEEDBACK_URLS,
     MAX_FONT_FAMILIES,
@@ -54,7 +57,7 @@ from ..core.guard import ProcessGuard
 from ..core.session import SessionController, SessionState
 from ..core.spaces import SpaceManager
 from ..core.stats import StatsStore
-from ..services import elevation, power, timesync, updater
+from ..services import elevation, power, store, timesync, updater
 from ..services import ai as ai_service
 from ..services import app_usage
 from ..services import backup as backup_service
@@ -155,6 +158,12 @@ class AppBridge(QObject):
     onboardingFinished = Signal()
     #: v0.16 清番番茄钟状态变化
     pomodoroChanged = Signal()
+    #: v0.18 自定义主题包（商店安装）列表变化
+    customThemesChanged = Signal()
+    #: v0.18 商店目录 / 状态变化
+    storeChanged = Signal()
+    #: v0.18 某个 item 的评论变化（携带 item id）
+    storeCommentsChanged = Signal(str)
 
     def __init__(
         self,
@@ -262,6 +271,10 @@ class AppBridge(QObject):
         self._media_info: dict = {}
         self._catalog: list[dict] = load_cached()
         self._catalog_scanning = False
+        # v0.18 商店：目录缓存 / 评论审核 / 插件安装串行保护
+        self._store = store.CatalogService(self._settings)
+        self._comments = store.CommentService(self._settings)
+        self._store_installing = False
         self._plugins = self._init_plugins()
         if self._plugins is not None and hasattr(self._plugins, "set_notifier"):
             try:
@@ -3117,19 +3130,30 @@ class AppBridge(QObject):
 
     @Property(str, notify=settingsChanged)
     def themeMode(self) -> str:
-        """当前主题模式；旧设置里缺失/未知的值统一回落到默认 solid。"""
+        """当前主题模式；旧设置里缺失/未知的值统一回落到默认 solid。
+
+        v0.18：额外支持 "custom:<id>"（对应 settings 里的 custom_themes）。
+        """
         value = str(self._settings.get("theme_mode", DEFAULT_THEME) or "")
+        if value.startswith(CUSTOM_THEME_PREFIX):
+            theme_id = value[len(CUSTOM_THEME_PREFIX) :]
+            return value if theme_id in self._custom_theme_map() else DEFAULT_THEME
         valid = {item["value"] for item in THEMES}
         return value if value in valid else DEFAULT_THEME
 
     @Slot(str)
     def setThemeMode(self, theme: str) -> None:
-        valid = {item["value"] for item in THEMES}
-        if theme not in valid:
+        """切换应用主题：内置主题或已安装的 custom:<id>。"""
+        value = str(theme or "")
+        if value.startswith(CUSTOM_THEME_PREFIX):
+            theme_id = value[len(CUSTOM_THEME_PREFIX) :]
+            if theme_id not in self._custom_theme_map():
+                return
+        elif value not in {item["value"] for item in THEMES}:
             return
-        self._settings.set("theme_mode", theme)
+        self._settings.set("theme_mode", value)
         self.settingsChanged.emit()
-        self.themeChanged.emit("Light" if theme == "light" else "Dark")
+        self.themeChanged.emit(self._chrome_theme_for(value))
 
     @Property(str, constant=True)
     def licenseText(self) -> str:
@@ -3182,6 +3206,243 @@ class AppBridge(QObject):
             }
             for item in THEMES
         ]
+
+    # ================= v0.18：自定义主题包（商店「安装主题」） =================
+    def _custom_theme_map(self) -> dict[str, dict]:
+        """settings 里的自定义主题（坏数据静默跳过）：{id: {id,name,description,palette}}。"""
+        return store.normalize_custom_themes(self._settings.get("custom_themes", {}))
+
+    def _chrome_theme_for(self, mode_value: str) -> str:
+        """把主题模式映射成窗口 chrome 主题（Light / Dark）。"""
+        if mode_value.startswith(CUSTOM_THEME_PREFIX):
+            theme_id = mode_value[len(CUSTOM_THEME_PREFIX) :]
+            item = self._custom_theme_map().get(theme_id)
+            light = bool(item and store.palette_is_light(item["palette"]))
+            return "Light" if light else "Dark"
+        return "Light" if mode_value == "light" else "Dark"
+
+    @Property(list, notify=customThemesChanged)
+    def customThemes(self) -> list[dict]:
+        """已安装的自定义主题包：[{id,name,description,palette}]。"""
+        return list(self._custom_theme_map().values())
+
+    @Property(dict, notify=themeChanged)
+    def customThemePalette(self) -> dict:
+        """当前 custom 主题的 palette；非 custom 主题返回 {}（QML 据此覆盖 AppTheme 颜色）。"""
+        value = str(self._settings.get("theme_mode", "") or "")
+        if not value.startswith(CUSTOM_THEME_PREFIX):
+            return {}
+        item = self._custom_theme_map().get(value[len(CUSTOM_THEME_PREFIX) :])
+        return dict(item["palette"]) if item else {}
+
+    @Slot(str, str, str, dict, result=bool)
+    def installCustomTheme(
+        self, theme_id: str, name: str, description: str, palette: dict
+    ) -> bool:
+        """安装（或更新）一个自定义主题包，成功后立即切换到它。"""
+        try:
+            wanted = store.normalize_theme_id(theme_id)
+            colors = store.normalize_palette(palette)
+        except store.StoreError as exc:
+            self.toast.emit(str(exc))
+            return False
+        themes = self._custom_theme_map()
+        if wanted not in themes and len(themes) >= store.MAX_CUSTOM_THEMES:
+            self.toast.emit(
+                QCoreApplication.translate("ShenQing", "自定义主题最多 {0} 个").format(
+                    store.MAX_CUSTOM_THEMES
+                )
+            )
+            return False
+        stored = {
+            key: {
+                "name": item["name"],
+                "description": item["description"],
+                "palette": dict(item["palette"]),
+            }
+            for key, item in themes.items()
+        }
+        stored[wanted] = {
+            "name": str(name or "").strip()[:40] or wanted,
+            "description": str(description or "").strip()[:200],
+            "palette": colors,
+        }
+        self._settings.set("custom_themes", stored)
+        self._settings.set("theme_mode", CUSTOM_THEME_PREFIX + wanted)
+        self.customThemesChanged.emit()
+        self.settingsChanged.emit()
+        self.themeChanged.emit(self._chrome_theme_for(CUSTOM_THEME_PREFIX + wanted))
+        self.toast.emit(
+            QCoreApplication.translate("ShenQing", "已安装主题：{0}").format(
+                stored[wanted]["name"]
+            )
+        )
+        return True
+
+    @Slot(str, result=bool)
+    def removeCustomTheme(self, theme_id: str) -> bool:
+        """删除自定义主题；若正在使用则回退默认 solid。"""
+        wanted = str(theme_id or "").strip()
+        themes = self._custom_theme_map()
+        if wanted not in themes:
+            return False
+        del themes[wanted]
+        stored = {
+            key: {
+                "name": item["name"],
+                "description": item["description"],
+                "palette": dict(item["palette"]),
+            }
+            for key, item in themes.items()
+        }
+        self._settings.set("custom_themes", stored)
+        if str(self._settings.get("theme_mode", "")) == CUSTOM_THEME_PREFIX + wanted:
+            self._settings.set("theme_mode", DEFAULT_THEME)
+            self.themeChanged.emit(self._chrome_theme_for(DEFAULT_THEME))
+        self.customThemesChanged.emit()
+        self.settingsChanged.emit()
+        self.toast.emit(QCoreApplication.translate("ShenQing", "已删除主题"))
+        return True
+
+    # ================= v0.18：主题 / 插件商店 =================
+    @Property(str, notify=storeChanged)
+    def storeCatalogStatus(self) -> str:
+        """目录状态：online / builtin / error:<原因>（首次调用 storeItems 时刷新）。"""
+        return self._store.status
+
+    @Property(str, notify=storeChanged)
+    def storeCatalogError(self) -> str:
+        """最近一次远程目录失败原因（空 = 无错误）。"""
+        return self._store.error
+
+    def _sync_store_state(self, before: tuple[str, str]) -> None:
+        if before != (self._store.status, self._store.error):
+            self.storeChanged.emit()
+
+    @Slot(str, result=list)
+    @Slot(str, str, result=list)
+    def storeItems(self, kind: str = "", sort: str = "") -> list[dict]:
+        """商店条目列表；kind = ""/all/theme/plugin，sort = ""/rating/downloads/newest/name。"""
+        before = (self._store.status, self._store.error)
+        items = self._store.items()
+        self._sync_store_state(before)
+        return store.filter_items(items, kind, sort)
+
+    @Slot(str, result=dict)
+    def storeItem(self, item_id: str) -> dict:
+        """单个商店条目；不存在返回 {}。"""
+        before = (self._store.status, self._store.error)
+        item = self._store.get(item_id)
+        self._sync_store_state(before)
+        return item or {}
+
+    @Slot(result=str)
+    def refreshStore(self) -> str:
+        """强制刷新商店目录（跳过 10 分钟缓存），返回最新状态。"""
+        status = self._store.refresh()
+        self.storeChanged.emit()
+        return status
+
+    @Slot(str, result=dict)
+    def storeComments(self, item_id: str) -> dict:
+        """评论：{comments: [已审核通过], pendingCount: 审核中数量}。"""
+        return self._comments.list(item_id)
+
+    @Slot(str, int, str, result=dict)
+    def addStoreComment(self, item_id: str, rating: int, text: str) -> dict:
+        """提交评论（默认进入审核中）；返回 {ok, message, pendingCount}。"""
+        try:
+            self._comments.add(item_id, rating, text)
+        except store.StoreError as exc:
+            message = str(exc)
+            self.toast.emit(message)
+            return {"ok": False, "message": message}
+        message = QCoreApplication.translate("ShenQing", "评论已提交，审核通过后展示")
+        self.toast.emit(message)
+        self.storeCommentsChanged.emit(str(item_id or ""))
+        pending = self._comments.list(item_id).get("pendingCount", 0)
+        return {"ok": True, "message": message, "pendingCount": pending}
+
+    @Slot(str, str, result=bool)
+    def approveStoreComment(self, item_id: str, comment_id: str) -> bool:
+        """调试用本地审核：通过一条评论（UI 不暴露）。"""
+        changed = self._comments.approve(item_id, comment_id)
+        if changed:
+            self.storeCommentsChanged.emit(str(item_id or ""))
+        return changed
+
+    @Slot(str, str, result=bool)
+    def rejectStoreComment(self, item_id: str, comment_id: str) -> bool:
+        """调试用本地审核：拒绝一条评论（UI 不暴露）。"""
+        changed = self._comments.reject(item_id, comment_id)
+        if changed:
+            self.storeCommentsChanged.emit(str(item_id or ""))
+        return changed
+
+    @Slot(str, result=dict)
+    def installStorePlugin(self, item_id: str) -> dict:
+        """下载并安装插件商店条目；返回 {ok, message}。"""
+        if self._store_installing:
+            return {
+                "ok": False,
+                "message": QCoreApplication.translate("ShenQing", "正在安装插件，请稍候"),
+            }
+        before = (self._store.status, self._store.error)
+        item = self._store.get(item_id)
+        self._sync_store_state(before)
+        if not item:
+            return {
+                "ok": False,
+                "message": QCoreApplication.translate("ShenQing", "商店里没有这个条目"),
+            }
+        if str(item.get("kind")) != "plugin":
+            return {
+                "ok": False,
+                "message": QCoreApplication.translate("ShenQing", "该条目不是插件"),
+            }
+        url = str(item.get("download_url") or "").strip()
+        if not url:
+            return {
+                "ok": False,
+                "message": QCoreApplication.translate("ShenQing", "插件缺少下载地址"),
+            }
+        self._store_installing = True
+        temp_dir: Path | None = None
+        error = ""
+        try:
+            temp_dir = Path(tempfile.mkdtemp(prefix="shenqing-store-"))
+            zip_path = store.download_file(url, temp_dir / "plugin.zip")
+            store.install_plugin_zip(zip_path, str(item.get("id") or ""))
+        except store.StoreError as exc:
+            error = str(exc)
+        except Exception as exc:  # noqa: BLE001 - 下载/解压异常都要给可读提示
+            error = str(exc) or "插件安装失败"
+            logger.warning("插件安装异常：%s", exc)
+        finally:
+            self._store_installing = False
+            if temp_dir is not None:
+                shutil.rmtree(temp_dir, ignore_errors=True)
+        if error:
+            logger.warning("插件安装失败：%s", error)
+            self.toast.emit(
+                QCoreApplication.translate("ShenQing", "插件安装失败：{0}").format(error[:120])
+            )
+            return {"ok": False, "message": error}
+        if self._plugins is not None:
+            try:
+                self._plugins.reload()
+            except Exception as exc:  # noqa: BLE001 - 插件系统失败不能拖垮桥
+                message = QCoreApplication.translate(
+                    "ShenQing", "插件已解压，但重新加载失败：{0}"
+                ).format(exc)
+                logger.warning("安装后重载插件失败：%s", exc)
+                self.pluginsChanged.emit()
+                return {"ok": False, "message": message}
+        self.pluginsChanged.emit()
+        name = str(item.get("name") or item.get("id") or "")
+        message = QCoreApplication.translate("ShenQing", "插件已安装：{0}").format(name)
+        self.toast.emit(message)
+        return {"ok": True, "message": message}
 
     # ================= 进入前 10 秒倒计时（水滴凝聚） =================
     PREPARE_SECONDS = 10
