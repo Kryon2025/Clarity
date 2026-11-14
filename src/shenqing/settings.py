@@ -62,6 +62,12 @@ DEFAULTS: dict[str, Any] = {
     "web_admin_enabled": False,    # v0.19 网页管理：浏览器里打开本地管理页
     "web_admin_port": 8765,        # v0.19 网页管理端口（被占用时自动 +1，最多 20 次）
     "web_admin_token": "",         # v0.19 网页管理 token（首次启用时生成并持久化）
+    "cloud_sync_url": "",          # v0.20 账户同步：商店服务器地址（留空 = 未配置）
+    "cloud_sync_email": "",        # v0.20 账户同步：登录邮箱（不存密码）
+    "cloud_sync_token": "",        # v0.20 账户同步：登录令牌（只在登录后保存）
+    "cloud_sync_device": "",       # v0.20 账户同步：本机名称（空 = 取电脑名）
+    "cloud_sync_revision": 0,      # v0.20 账户同步：本机上次同步到的远端 revision
+    "cloud_sync_last_at": "",      # v0.20 账户同步：上次成功同步时间
 }
 
 

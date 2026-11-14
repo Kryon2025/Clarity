@@ -30,7 +30,10 @@ __all__ = [
     "EMAIL_MIN_INTERVAL_SECONDS",
     "IP_LIMIT",
     "IP_WINDOW_SECONDS",
+    "SYNC_WRITE_LIMIT",
+    "SYNC_WRITE_WINDOW_SECONDS",
     "SendRateLimiter",
+    "SyncWriteRateLimiter",
 ]
 
 #: 同一邮箱最小发送间隔（秒）
@@ -44,6 +47,10 @@ EMAIL_DAILY_WINDOW_SECONDS = 86400
 #: 同一 IP 10 分钟内最多发送次数
 IP_LIMIT = 20
 IP_WINDOW_SECONDS = 600
+
+#: 账户云同步：每个用户 30 秒内最多写入次数（PUT/DELETE 共享）
+SYNC_WRITE_LIMIT = 10
+SYNC_WRITE_WINDOW_SECONDS = 30
 
 
 def _prune(hits: deque, now: float, window_seconds: float) -> None:
@@ -117,3 +124,44 @@ class SendRateLimiter:
         with self._lock:
             self._email_hits.clear()
             self._ip_hits.clear()
+
+
+class SyncWriteRateLimiter:
+    """账户云同步写入限流：每用户 30 秒最多 10 次（线程安全，单进程内存）。
+
+    只限制写接口（PUT / DELETE）；读接口（GET）不限流。单进程计数对
+    「一台服务」足够，多副本部署时每个进程各自计数。
+
+    用法：
+
+    >>> limiter = SyncWriteRateLimiter()
+    >>> ok, reason, retry_after = limiter.allow(user_id)
+    """
+
+    def __init__(self, clock: Callable[[], float] | None = None) -> None:
+        self.clock: Callable[[], float] = clock or time.time
+        self._hits: dict[str, deque] = {}
+        self._lock = threading.Lock()
+
+    def allow(self, user_id: int | str) -> tuple[bool, str, int]:
+        """检查并记账；返回 (是否允许, 拒绝原因中文, 建议重试秒数)。"""
+        key = str(user_id)
+        with self._lock:
+            now = float(self.clock())
+            hits = self._hits.setdefault(key, deque())
+            _prune(hits, now, SYNC_WRITE_WINDOW_SECONDS)
+            if len(hits) >= SYNC_WRITE_LIMIT:
+                retry = _retry_after(hits[0] + SYNC_WRITE_WINDOW_SECONDS, now)
+                return (
+                    False,
+                    "同步写入太频繁：每 " + str(SYNC_WRITE_WINDOW_SECONDS)
+                    + " 秒最多 " + str(SYNC_WRITE_LIMIT) + " 次，请 " + str(retry) + " 秒后再试",
+                    retry,
+                )
+            hits.append(now)
+            return True, "", 0
+
+    def reset(self) -> None:
+        """清空所有计数（测试用）。"""
+        with self._lock:
+            self._hits.clear()

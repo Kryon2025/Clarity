@@ -133,6 +133,78 @@ Item {
         onTriggered: page.webAdminCopied = false
     }
 
+    // ---------- v0.20 账户同步（本机数据同步到深清商店服务器） ----------
+    // 后端接口按契约：App.cloudSyncUrl / cloudSyncEmail / cloudSyncLoggedIn / cloudSyncStatus /
+    // cloudSyncLastAt / cloudSyncError / cloudSyncBusy，动作 setCloudSyncUrl / cloudLogin /
+    // cloudLogout / cloudPush / cloudPull / cloudSyncNow / openCloudServer。
+    // 与网页管理卡片一样全部 typeof 兜底：缺接口时卡片里列出缺哪个，界面仍能显示。
+    property string cloudUrlDraft: ""
+    property string cloudEmailDraft: ""
+    property string cloudPasswordDraft: ""
+    readonly property string cloudSyncUrlValue: (typeof App !== "undefined" && App.cloudSyncUrl !== undefined
+                                                 && App.cloudSyncUrl !== null) ? String(App.cloudSyncUrl) : ""
+    readonly property string cloudSyncEmailValue: (typeof App !== "undefined" && App.cloudSyncEmail !== undefined
+                                                   && App.cloudSyncEmail !== null) ? String(App.cloudSyncEmail) : ""
+    readonly property bool cloudSyncLoggedIn: (typeof App !== "undefined" && App.cloudSyncLoggedIn !== undefined)
+                                              ? App.cloudSyncLoggedIn === true : false
+    readonly property bool cloudSyncBusy: (typeof App !== "undefined" && App.cloudSyncBusy !== undefined)
+                                          ? App.cloudSyncBusy === true : false
+    readonly property string cloudSyncStatusValue: (typeof App !== "undefined" && App.cloudSyncStatus !== undefined
+                                                    && App.cloudSyncStatus !== null) ? String(App.cloudSyncStatus) : ""
+    readonly property string cloudSyncLastAtValue: (typeof App !== "undefined" && App.cloudSyncLastAt !== undefined
+                                                    && App.cloudSyncLastAt !== null) ? String(App.cloudSyncLastAt) : ""
+    readonly property string cloudSyncErrorValue: (typeof App !== "undefined" && App.cloudSyncError !== undefined
+                                                   && App.cloudSyncError !== null) ? String(App.cloudSyncError) : ""
+    readonly property var cloudSyncMissingApis: {
+        var missing = []
+        if (typeof App === "undefined") return ["App"]
+        if (App.cloudSyncUrl === undefined) missing.push("App.cloudSyncUrl")
+        if (typeof App.cloudLogin !== "function") missing.push("App.cloudLogin")
+        if (typeof App.cloudPush !== "function") missing.push("App.cloudPush")
+        if (typeof App.cloudPull !== "function") missing.push("App.cloudPull")
+        if (typeof App.cloudSyncNow !== "function") missing.push("App.cloudSyncNow")
+        if (typeof App.openCloudServer !== "function") missing.push("App.openCloudServer")
+        return missing
+    }
+    function saveCloudSyncUrl() {
+        var text = page.cloudUrlDraft !== "" ? page.cloudUrlDraft : page.cloudSyncUrlValue
+        text = text.trim()
+        page.cloudUrlDraft = ""
+        if (typeof App !== "undefined" && typeof App.setCloudSyncUrl === "function")
+            App.setCloudSyncUrl(text)
+    }
+    function doCloudLogin() {
+        if (page.cloudSyncBusy) return
+        var email = page.cloudEmailDraft.trim()
+        var password = page.cloudPasswordDraft
+        if (typeof App !== "undefined" && typeof App.cloudLogin === "function") {
+            if (App.cloudLogin(email, password)) page.cloudPasswordDraft = ""
+        }
+    }
+    function doCloudLogout() {
+        if (typeof App !== "undefined" && typeof App.cloudLogout === "function")
+            App.cloudLogout()
+    }
+    function doCloudPush() {
+        if (page.cloudSyncBusy) return
+        if (typeof App !== "undefined" && typeof App.cloudPush === "function")
+            App.cloudPush()
+    }
+    function doCloudPull() {
+        if (page.cloudSyncBusy) return
+        if (typeof App !== "undefined" && typeof App.cloudPull === "function")
+            App.cloudPull()
+    }
+    function doCloudSyncNow() {
+        if (page.cloudSyncBusy) return
+        if (typeof App !== "undefined" && typeof App.cloudSyncNow === "function")
+            App.cloudSyncNow()
+    }
+    function openCloudServerPage() {
+        if (typeof App !== "undefined" && typeof App.openCloudServer === "function")
+            App.openCloudServer()
+    }
+
     // ---------- v0.14 数据与备份 ----------
     property bool backupBusyLocal: false
     property bool backupConfirmOpen: false
@@ -1483,6 +1555,366 @@ Item {
                             font.family: AppTheme.fontFamily
                             wrapMode: Text.WordWrap
                         }
+                    }
+                }
+            }
+
+            // ---------- v0.20 账户同步 ----------
+            GlassCard {
+                id: cloudSyncCard
+                objectName: "CloudSyncCard"
+                width: parent.width
+                implicitHeight: cloudSyncColumn.implicitHeight + 36
+                height: implicitHeight
+                radius: 20
+                interactive: false
+                glassSource: page.glassSource
+
+                Column {
+                    id: cloudSyncColumn
+                    x: 20
+                    y: 18
+                    width: parent.width - 40
+                    spacing: 10
+
+                    Row {
+                        width: parent.width
+                        spacing: 9
+
+                        Glyph {
+                            anchors.verticalCenter: parent.verticalCenter
+                            kind: "refresh"
+                            size: 15
+                            color: AppTheme.accent
+                        }
+
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: qsTr("账户同步")
+                            color: AppTheme.textPrimary
+                            font.pixelSize: AppTheme.fs(15)
+                            font.weight: Font.DemiBold
+                            font.family: AppTheme.fontFamily
+                        }
+
+                        Text {
+                            objectName: "CloudSyncLoginStateText"
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: page.cloudSyncLoggedIn ? qsTr("已登录") : qsTr("未登录")
+                            color: page.cloudSyncLoggedIn ? AppTheme.accent : AppTheme.textTertiary
+                            font.pixelSize: AppTheme.fs(11)
+                            font.family: AppTheme.fontFamily
+                        }
+
+                        Item { width: Math.max(0, parent.width - 360); height: 1 }
+
+                        Text {
+                            objectName: "CloudSyncLastAtText"
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: page.cloudSyncLastAtValue !== ""
+                                  ? qsTr("上次同步：%1").arg(page.cloudSyncLastAtValue)
+                                  : qsTr("还没同步过")
+                            color: AppTheme.textTertiary
+                            font.pixelSize: AppTheme.fs(10)
+                            font.family: AppTheme.fontFamily
+                        }
+                    }
+
+                    Text {
+                        width: parent.width
+                        text: qsTr("登录深清商店账号后，把本机设置、空间与专注统计同步到云端；换电脑登录同一账号即可拉取。同步前先比对版本，拉取前会自动备份本机数据。")
+                        color: AppTheme.textSecondary
+                        font.pixelSize: AppTheme.fs(11)
+                        font.family: AppTheme.fontFamily
+                        wrapMode: Text.WordWrap
+                        lineHeight: 1.35
+                    }
+
+                    // 服务器地址（留空 = 未配置；失焦或点按钮时保存）
+                    Item {
+                        objectName: "CloudSyncUrlField"
+                        width: parent.width
+                        height: 34
+
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: 9
+                            color: AppTheme.cardBgAlt
+                            border.width: 1
+                            border.color: cloudUrlInput.activeFocus ? AppTheme.accent : AppTheme.cardBorder
+                        }
+
+                        TextInput {
+                            id: cloudUrlInput
+                            objectName: "CloudSyncUrlEdit"
+                            anchors.fill: parent
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
+                            verticalAlignment: TextInput.AlignVCenter
+                            color: AppTheme.textPrimary
+                            selectionColor: AppTheme.accentSoft
+                            selectedTextColor: "#FFFFFF"
+                            font.pixelSize: AppTheme.fs(12)
+                            font.family: C.monoFont
+                            text: page.cloudSyncUrlValue
+                            onTextEdited: page.cloudUrlDraft = text
+                            onEditingFinished: page.saveCloudSyncUrl()
+                            onAccepted: page.saveCloudSyncUrl()
+                        }
+
+                        Text {
+                            anchors.left: parent.left
+                            anchors.leftMargin: 12
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: cloudUrlInput.text.length === 0
+                            text: qsTr("https://你的商店域名")
+                            color: AppTheme.textTertiary
+                            font.pixelSize: AppTheme.fs(11)
+                            font.family: AppTheme.fontFamily
+                        }
+                    }
+
+                    // 未登录：邮箱 + 密码 + 登录
+                    Row {
+                        objectName: "CloudSyncLoginRow"
+                        width: parent.width
+                        spacing: 8
+                        visible: !page.cloudSyncLoggedIn
+
+                        Item {
+                            width: Math.max(150, (parent.width - 16 - 110) * 0.5)
+                            height: 32
+
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: 9
+                                color: AppTheme.cardBgAlt
+                                border.width: 1
+                                border.color: cloudEmailInput.activeFocus ? AppTheme.accent : AppTheme.cardBorder
+                            }
+
+                            TextInput {
+                                id: cloudEmailInput
+                                objectName: "CloudSyncEmailEdit"
+                                anchors.fill: parent
+                                anchors.leftMargin: 10
+                                anchors.rightMargin: 10
+                                verticalAlignment: TextInput.AlignVCenter
+                                color: AppTheme.textPrimary
+                                selectionColor: AppTheme.accentSoft
+                                selectedTextColor: "#FFFFFF"
+                                font.pixelSize: AppTheme.fs(12)
+                                font.family: AppTheme.fontFamily
+                                text: page.cloudEmailDraft !== "" ? page.cloudEmailDraft
+                                                                  : page.cloudSyncEmailValue
+                                onTextEdited: page.cloudEmailDraft = text
+                            }
+
+                            Text {
+                                anchors.left: parent.left
+                                anchors.leftMargin: 10
+                                anchors.verticalCenter: parent.verticalCenter
+                                visible: cloudEmailInput.text.length === 0
+                                text: qsTr("邮箱")
+                                color: AppTheme.textTertiary
+                                font.pixelSize: AppTheme.fs(11)
+                                font.family: AppTheme.fontFamily
+                            }
+                        }
+
+                        Item {
+                            width: Math.max(130, (parent.width - 16 - 110) * 0.35)
+                            height: 32
+
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: 9
+                                color: AppTheme.cardBgAlt
+                                border.width: 1
+                                border.color: cloudPasswordInput.activeFocus ? AppTheme.accent : AppTheme.cardBorder
+                            }
+
+                            TextInput {
+                                id: cloudPasswordInput
+                                objectName: "CloudSyncPasswordEdit"
+                                anchors.fill: parent
+                                anchors.leftMargin: 10
+                                anchors.rightMargin: 10
+                                verticalAlignment: TextInput.AlignVCenter
+                                echoMode: TextInput.Password
+                                passwordCharacter: "•"
+                                color: AppTheme.textPrimary
+                                selectionColor: AppTheme.accentSoft
+                                selectedTextColor: "#FFFFFF"
+                                font.pixelSize: AppTheme.fs(12)
+                                font.family: AppTheme.fontFamily
+                                text: page.cloudPasswordDraft
+                                onTextEdited: page.cloudPasswordDraft = text
+                                onAccepted: page.doCloudLogin()
+                            }
+
+                            Text {
+                                anchors.left: parent.left
+                                anchors.leftMargin: 10
+                                anchors.verticalCenter: parent.verticalCenter
+                                visible: cloudPasswordInput.text.length === 0
+                                text: qsTr("密码")
+                                color: AppTheme.textTertiary
+                                font.pixelSize: AppTheme.fs(11)
+                                font.family: AppTheme.fontFamily
+                            }
+                        }
+
+                        GlassButton {
+                            objectName: "CloudSyncLoginButton"
+                            text: page.cloudSyncBusy ? qsTr("处理中…") : qsTr("登录")
+                            tone: "tinted"
+                            fontSize: AppTheme.fs(12)
+                            padH: 20
+                            minHeight: 32
+                            enabled: !page.cloudSyncBusy
+                            onClicked: {
+                                page.saveCloudSyncUrl()
+                                page.doCloudLogin()
+                            }
+                        }
+                    }
+
+                    // 已登录：显示邮箱 + 退出（不再显示密码框）
+                    Row {
+                        objectName: "CloudSyncLoggedRow"
+                        width: parent.width
+                        spacing: 10
+                        visible: page.cloudSyncLoggedIn
+
+                        Text {
+                            objectName: "CloudSyncLoggedEmailText"
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: qsTr("已登录：%1").arg(page.cloudSyncEmailValue)
+                            color: AppTheme.textPrimary
+                            font.pixelSize: AppTheme.fs(12)
+                            font.family: AppTheme.fontFamily
+                        }
+
+                        Item { width: Math.max(0, parent.width - 420); height: 1 }
+
+                        GlassButton {
+                            objectName: "CloudSyncLogoutButton"
+                            text: qsTr("退出")
+                            tone: "ghost"
+                            fontSize: AppTheme.fs(12)
+                            padH: 16
+                            minHeight: 32
+                            onClicked: page.doCloudLogout()
+                        }
+                    }
+
+                    // 同步动作
+                    Row {
+                        width: parent.width
+                        spacing: 10
+
+                        GlassButton {
+                            objectName: "CloudSyncNowButton"
+                            text: page.cloudSyncBusy ? qsTr("同步中…") : qsTr("立即同步")
+                            tone: "tinted"
+                            fontSize: AppTheme.fs(12)
+                            padH: 18
+                            minHeight: 34
+                            enabled: page.cloudSyncLoggedIn && !page.cloudSyncBusy
+                            onClicked: {
+                                page.saveCloudSyncUrl()
+                                page.doCloudSyncNow()
+                            }
+                        }
+
+                        GlassButton {
+                            objectName: "CloudSyncPushButton"
+                            text: qsTr("仅上传")
+                            tone: "ghost"
+                            fontSize: AppTheme.fs(12)
+                            padH: 16
+                            minHeight: 34
+                            enabled: page.cloudSyncLoggedIn && !page.cloudSyncBusy
+                            onClicked: {
+                                page.saveCloudSyncUrl()
+                                page.doCloudPush()
+                            }
+                        }
+
+                        GlassButton {
+                            objectName: "CloudSyncPullButton"
+                            text: qsTr("仅下载")
+                            tone: "ghost"
+                            fontSize: AppTheme.fs(12)
+                            padH: 16
+                            minHeight: 34
+                            enabled: page.cloudSyncLoggedIn && !page.cloudSyncBusy
+                            onClicked: {
+                                page.saveCloudSyncUrl()
+                                page.doCloudPull()
+                            }
+                        }
+
+                        GlassButton {
+                            objectName: "CloudSyncOpenServerButton"
+                            text: qsTr("打开服务器")
+                            tone: "ghost"
+                            fontSize: AppTheme.fs(12)
+                            padH: 16
+                            minHeight: 34
+                            onClicked: {
+                                page.saveCloudSyncUrl()
+                                page.openCloudServerPage()
+                            }
+                        }
+                    }
+
+                    // 状态 / 错误
+                    Text {
+                        objectName: "CloudSyncStatusText"
+                        width: parent.width
+                        visible: page.cloudSyncStatusValue !== ""
+                        text: page.cloudSyncStatusValue
+                        color: page.cloudSyncErrorValue !== "" ? AppTheme.danger : AppTheme.accent
+                        font.pixelSize: AppTheme.fs(10)
+                        font.family: AppTheme.fontFamily
+                        wrapMode: Text.WordWrap
+                        lineHeight: 1.3
+                    }
+
+                    Text {
+                        objectName: "CloudSyncErrorText"
+                        width: parent.width
+                        visible: page.cloudSyncErrorValue !== ""
+                        text: qsTr("错误：%1").arg(page.cloudSyncErrorValue)
+                        color: AppTheme.danger
+                        font.pixelSize: AppTheme.fs(10)
+                        font.family: AppTheme.fontFamily
+                        wrapMode: Text.WordWrap
+                        lineHeight: 1.3
+                    }
+
+                    Text {
+                        objectName: "CloudSyncMissingText"
+                        width: parent.width
+                        visible: page.cloudSyncMissingApis.length > 0
+                        text: qsTr("缺少接口：%1（界面已用本地状态兜底）").arg(page.cloudSyncMissingApis.join("、"))
+                        color: AppTheme.danger
+                        font.pixelSize: AppTheme.fs(10)
+                        font.family: AppTheme.fontFamily
+                        wrapMode: Text.WordWrap
+                        lineHeight: 1.3
+                    }
+
+                    Text {
+                        width: parent.width
+                        text: qsTr("只同步设置白名单、空间与专注统计；密码、API Key 与本机路径不会上传。拉取会覆盖本机设置/空间/统计，写前自动备份到数据目录 backups/。")
+                        color: AppTheme.textTertiary
+                        font.pixelSize: AppTheme.fs(10)
+                        font.family: AppTheme.fontFamily
+                        wrapMode: Text.WordWrap
+                        lineHeight: 1.35
                     }
                 }
             }

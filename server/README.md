@@ -1,7 +1,8 @@
 # 深清商店服务端（FastAPI + SQLite）
 
 深清（Clarity）主题 / 插件商店的可部署后端：账号登录、角色权限、开发者提交、
-管理员审核、评论、公开商店页面，以及桌面端兼容的 /api/catalog.json。
+管理员审核、评论、公开商店页面，桌面端兼容的 /api/catalog.json，以及
+账户云同步（/api/sync，跨设备同步专注数据）。
 
 - 技术栈：Python 3.13 + FastAPI + uvicorn + SQLite（stdlib sqlite3）
 - 认证：JWT（HS256，stdlib hmac/base64）+ PBKDF2-SHA256（stdlib hashlib）
@@ -17,7 +18,7 @@ server/
 ├── db.py                 SQLite 连接、建表、行序列化
 ├── auth.py               密码哈希与 JWT（纯 stdlib）
 ├── mailer.py             邮箱验证码发信（smtplib，未配 SMTP 时走开发模式）
-├── ratelimit.py          验证码发送限流（内存滑动窗口）
+├── ratelimit.py          验证码发送 / 云同步写入限流（内存滑动窗口）
 ├── seed.py               演示数据（3 主题 + 2 插件 + 示例账号）
 ├── static/               前端静态文件（index.html / app.js / style.css，由前端提供）
 ├── tests/                单元测试（fastapi.testclient.TestClient）
@@ -192,10 +193,13 @@ python -m server.seed          # 仓库根目录
 | POST | /api/admin/users/{id}/role | admin | {role: user/developer/admin}，不能改自己 |
 | GET | /api/admin/comments?status=pending | admin | 评论审核队列（扩展接口） |
 | POST | /api/admin/comments/{id}/review | admin | {action: approve/reject}（扩展接口） |
+| GET | /api/sync | 登录 | 读取本账号云同步快照 → {revision, updated_at, payload, device_name} |
+| PUT | /api/sync | 登录 | 写入快照（乐观并发）{payload, revision, device} → {revision, updated_at}；版本冲突 409 |
+| DELETE | /api/sync | 登录 | 清空本账号快照 → {ok: true, revision: 0} |
 | GET | /api/catalog.json | 公开 | 桌面端目录（仅 approved，download_url 绝对地址） |
 | GET | /api/health | 公开 | 健康检查 |
 
-约定：成功统一 200；错误统一 {"detail": "中文提示"}（400/401/403/404/409/422/429/503）。
+约定：成功统一 200；错误统一 {"detail": "中文提示"}（400/401/403/404/409/413/422/429/503）。
 列表接口直接返回 JSON 数组，单个资源返回对象。
 
 鉴权请求头：Authorization: Bearer <token>。
@@ -237,6 +241,57 @@ python -m server.seed          # 仓库根目录
 桌面端设置里的 store_catalog_url 填 https://你的域名/api/catalog.json 即可。
 download_url 若在数据库里是站内相对路径（以 / 开头），会拼成绝对地址。
 
+## 账户云同步（跨设备同步专注数据）
+
+登录用户每人一份「专注数据快照」，用于多设备同步；读接口不限流，写接口限流。
+payload 由客户端自己序列化为 JSON（服务端只保存、不解析结构，端到端加密也可以
+由客户端加密后再放进 payload）。
+
+### 表结构
+
+~~~sql
+CREATE TABLE sync_data (
+    user_id      INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    revision     INTEGER NOT NULL DEFAULT 0,
+    payload      TEXT    NOT NULL DEFAULT '',
+    payload_hash TEXT    NOT NULL DEFAULT '',
+    updated_at   INTEGER NOT NULL DEFAULT 0,
+    device_name  TEXT    NOT NULL DEFAULT ''
+);
+~~~
+
+- 每个账号最多一条记录（user_id 既是主键也是外键）；账号删除时级联清空；
+- payload 存原始 JSON 文本（不建索引、不解析），payload_hash 是它的
+  sha256 十六进制摘要（排查/校验用）；
+- updated_at 为 Unix 时间戳（秒）；device_name 是最后一次写入的设备名。
+
+### 接口语义
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | /api/sync | 无数据时返回 {"revision": 0, "updated_at": 0, "payload": null, "device_name": ""}；有数据时返回最新快照 |
+| PUT | /api/sync | 请求体 {payload: JSON 对象, revision: 当前版本, device: 设备名}；成功 revision+1，返回 {revision, updated_at} |
+| DELETE | /api/sync | 删除本人快照，返回 {ok: true, revision: 0}（只影响本人） |
+
+- 乐观并发：revision 必须等于服务端当前版本（无数据为 0）；不匹配返回
+  **409**，响应体 {"detail": "...", "revision": <最新版本>}，数据不变；
+- payload 必须是 **JSON 对象**，序列化后 ≤ **5MB**（超限 413，非对象 400），
+  失败的写入不会推进 revision；
+- 写限流（PUT / DELETE 共享）：每用户 **30 秒最多 10 次**，超出返回 429 并带
+  Retry-After；纯内存滑动窗口，进程重启即重置，多副本请叠加 Nginx limit_req；
+- device 最长 64 个字符（可省略），服务端记录为「最后写入设备」。
+
+~~~bash
+# 首次上传
+curl -X PUT http://127.0.0.1:8000/api/sync \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"payload":{"sessions":[],"settings":{}},"revision":0,"device":"我的笔记本"}'
+# → {"revision": 1, "updated_at": 1763000000}
+
+# 另一台设备想用旧版本覆盖 → 409
+# → {"detail": "revision 不匹配：服务端当前版本为 1，请先拉取最新数据", "revision": 1}
+~~~
+
 ## 前端静态页面
 
 - 目录固定 server/static（index.html / app.js / style.css），由同一个服务提供；
@@ -252,15 +307,19 @@ python -m unittest discover -s server/tests
 
 # 或指定文件
 python -m unittest server.tests.test_store_api -v
+python -m unittest server.tests.test_sync -v
 ~~~
 
 覆盖：注册/登录/鉴权、角色权限、待审不可见、审核通过后可见、拒绝原因、
 评论 pending 与评分、catalog 结构、管理员调整角色、排序筛选、输入校验、静态回退，
 以及邮箱验证码（建档只存摘要、dev_code 开发模式、注册需 code、错误/过期/用后即废/
-尝试超限、邮箱/IP 限流、验证码登录、找回密码后旧密码失效、SMTP 失败返回 503）。
+尝试超限、邮箱/IP 限流、验证码登录、找回密码后旧密码失效、SMTP 失败返回 503），
+以及账户云同步（未登录 401、空快照 revision=0、首次写入 revision=1、重复写入递增、
+旧/超前 revision 409 且回传最新版本、payload 非对象 400 与超 5MB 413、
+DELETE 后归零、双账号互不可见、每用户 30 秒 10 次写限流与窗口恢复）。
 
-测试全部用临时 SQLite + TestClient，并把发送限流的时钟注入成可控假时钟，
-所以限流用例（60 秒 / 1 小时 / 1 天）不需要真的等待。
+测试全部用临时 SQLite + TestClient，并把发送限流与云同步写限流的时钟注入成
+可控假时钟，所以限流用例（60 秒 / 1 小时 / 1 天 / 30 秒）不需要真的等待。
 
 ## Docker 部署
 

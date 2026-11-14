@@ -13,6 +13,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
 import re
 import secrets
@@ -52,6 +54,10 @@ KINDS = ("theme", "plugin")
 PALETTE_KEYS = ("bgTop", "bgMid", "bgBottom", "accent", "cardBg", "textPrimary")
 #: 评论正文上限（与桌面端一致）
 MAX_COMMENT_TEXT = 500
+#: 账户云同步：单份 payload 序列化后的字节上限（5MB）
+SYNC_MAX_PAYLOAD_BYTES = 5 * 1024 * 1024
+#: 账户云同步：设备名最大长度
+SYNC_DEVICE_NAME_MAX = 64
 #: 验证码用途（与 db.EMAIL_CODE_PURPOSES 保持一致）
 CODE_PURPOSES = db.EMAIL_CODE_PURPOSES
 #: 对外统一文案：不区分「不存在 / 用过了 / 过期了 / 填错了」
@@ -152,6 +158,14 @@ class RoleIn(BaseModel):
 
 class CommentReviewIn(BaseModel):
     action: str = ""
+
+
+class SyncPutIn(BaseModel):
+    """云端快照写入：payload 由客户端自己序列化（服务端不解析结构）。"""
+
+    payload: Any = None
+    revision: int = 0
+    device: str = ""
 
 
 # ========================= 校验工具 =========================
@@ -341,6 +355,52 @@ def _generate_item_id(kind: str) -> str:
 
 def _normalize_item_id(value: Any) -> str:
     return str(value or "").strip()
+
+
+def _sync_payload_text(payload: Any) -> str:
+    """校验并序列化云端快照 payload：必须是 JSON 对象，序列化后 ≤ 5MB。
+
+    服务端不理解 payload 的结构（专注记录、设置、端到端加密密文都行），
+    只做体积与「必须是对象」两项约束，再原样存库。
+    """
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="payload 必须是 JSON 对象")
+    try:
+        text = db.dumps(payload)
+        size = len(text.encode("utf-8"))
+    except (TypeError, ValueError, UnicodeEncodeError):
+        raise HTTPException(status_code=400, detail="payload 无法序列化为 JSON") from None
+    if size > SYNC_MAX_PAYLOAD_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail="payload 过大：序列化后 "
+            + str(size)
+            + " 字节，上限 "
+            + str(SYNC_MAX_PAYLOAD_BYTES)
+            + " 字节（5MB）",
+        )
+    return text
+
+
+def _sync_payload_out(text: str) -> Any:
+    """库里存的 JSON 文本 -> 响应里的 payload 对象；坏数据返回 None（绝不 500）。"""
+    if not text:
+        return None
+    try:
+        value = json.loads(text)
+    except (TypeError, ValueError):
+        return None
+    return value if isinstance(value, dict) else None
+
+
+def _guard_sync_write(request: Request, user: dict) -> None:
+    """云同步写接口限流：每用户 30 秒最多 10 次（PUT / DELETE 共享）。"""
+    limiter = request.app.state.sync_limiter
+    allowed, reason, retry_after = limiter.allow(int(user["id"]))
+    if not allowed:
+        raise HTTPException(
+            status_code=429, detail=reason, headers={"Retry-After": str(retry_after)}
+        )
 
 
 # ========================= 依赖：数据库 / 当前用户 =========================
@@ -556,6 +616,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.state.mail_config = mail_config
     #: 发送限流（纯内存，进程重启即重置）
     application.state.send_limiter = ratelimit.SendRateLimiter()
+    #: 账户云同步写入限流（纯内存，进程重启即重置）
+    application.state.sync_limiter = ratelimit.SyncWriteRateLimiter()
 
     application.add_middleware(
         CORSMiddleware,
@@ -1008,6 +1070,67 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         comment = _fetch_comment(conn, int(comment_id))
         assert comment is not None
         return comment
+
+    # ---------------- 账户云同步（跨设备同步专注数据） ----------------
+    @router.get("/sync")
+    def get_sync(conn: DB, user: CurrentUser) -> dict:
+        """读取本账号的云端快照；没有数据时 revision=0、payload=null。"""
+        row = db.fetch_sync_data(conn, int(user["id"]))
+        if row is None:
+            return {
+                "revision": 0,
+                "updated_at": 0,
+                "payload": None,
+                "device_name": "",
+            }
+        return {
+            "revision": int(row["revision"]),
+            "updated_at": int(row["updated_at"]),
+            "payload": _sync_payload_out(str(row["payload"])),
+            "device_name": str(row["device_name"]),
+        }
+
+    @router.put("/sync")
+    def put_sync(payload: SyncPutIn, request: Request, conn: DB, user: CurrentUser):
+        """写入云端快照（乐观并发）：revision 必须等于服务端当前版本，否则 409。
+
+        revision 规则：首次写入传 0，成功后返回 1；之后每次成功 +1。
+        409 的响应体里带最新 revision，客户端据此决定覆盖还是先拉取。
+        """
+        _guard_sync_write(request, user)
+        expected = int(payload.revision or 0)
+        if expected < 0:
+            raise HTTPException(status_code=400, detail="revision 不能为负数")
+        text = _sync_payload_text(payload.payload)
+        device = _require_text(payload.device, "device", SYNC_DEVICE_NAME_MAX, required=False)
+        row = db.save_sync_data(
+            conn,
+            int(user["id"]),
+            text,
+            hashlib.sha256(text.encode("utf-8")).hexdigest(),
+            expected,
+            device,
+        )
+        if row is None:
+            latest = db.fetch_sync_data(conn, int(user["id"]))
+            latest_revision = int(latest["revision"]) if latest is not None else 0
+            return JSONResponse(
+                status_code=409,
+                content={
+                    "detail": "revision 不匹配：服务端当前版本为 "
+                    + str(latest_revision)
+                    + "，请先拉取最新数据",
+                    "revision": latest_revision,
+                },
+            )
+        return {"revision": int(row["revision"]), "updated_at": int(row["updated_at"])}
+
+    @router.delete("/sync")
+    def delete_sync(request: Request, conn: DB, user: CurrentUser) -> dict:
+        """清空本账号的云端快照（只影响本人），删除后版本回到 0。"""
+        _guard_sync_write(request, user)
+        db.clear_sync_data(conn, int(user["id"]))
+        return {"ok": True, "revision": 0}
 
     # ---------------- 桌面端目录 / 健康检查 ----------------
     @router.get("/catalog.json")

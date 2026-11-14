@@ -8,7 +8,7 @@ APP_NAME = "深清"
 #: 英文名（v0.4 起对外统一用 Clarity；「身轻」不再展示）
 APP_ALIAS = "Clarity"
 APP_ID = "ShenQing"
-APP_VERSION = "0.19.0"
+APP_VERSION = "0.20.0"
 
 #: v0.18 自定义主题 id 前缀：theme_mode = "custom:<id>"
 CUSTOM_THEME_PREFIX = "custom:"
@@ -74,6 +74,21 @@ MAX_FONT_FAMILIES = 200
 
 #: 更新日志（最新在前；en 为空时用中文兜底）
 CHANGELOG = [
+    {
+        "version": "0.20.0",
+        "date": "2025-11-14",
+        "tag": "",
+        "items": [
+            "新增账户同步：设置页登录深清商店账号，把设置、空间与专注统计同步到云端，换电脑登录同一账号即可拉取（写前自动备份）",
+            "同步冲突按云端 revision 处理：远端更新需先下载，上传失败自动提示",
+            "商店服务端新增 /api/sync 接口（快照存储、revision 乐观锁、5MB 限制、限流）",
+        ],
+        "items_en": [
+            "Account sync: sign in to your ShenQing Store account to sync settings, spaces and focus stats to the cloud and pull them on another PC (auto-backup before applying)",
+            "Revision-based conflict handling: download when the cloud is newer, with clear prompts",
+            "Store server gained /api/sync (snapshot storage, optimistic revisions, 5MB limit, rate limiting)",
+        ],
+    },
     {
         "version": "0.19.0",
         "date": "2025-11-14",

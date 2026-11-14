@@ -62,6 +62,7 @@ from ..services import ai as ai_service
 from ..services import app_usage
 from ..services import backup as backup_service
 from ..services import click_counter
+from ..services import cloud_sync as cloud_sync_service
 from ..services import pomodoro as pomodoro_service
 from ..services import site_blocker
 from ..services import sleep_mode, system_control, wallpaper
@@ -99,6 +100,29 @@ class _CatalogScan(QRunnable):
             items = []
         try:
             self._bridge._catalogScanned.emit(items)
+        except RuntimeError:  # 宿主已销毁
+            pass
+
+
+class _CloudTask(QRunnable):
+    """账户同步后台任务：联网 / 写文件都在线程池里跑，结果通过信号回主线程。"""
+
+    def __init__(self, bridge: "AppBridge", kind: str, job) -> None:  # noqa: ANN001
+        super().__init__()
+        self._bridge = bridge
+        self._kind = str(kind)
+        self._job = job
+
+    def run(self) -> None:  # noqa: D401 - QRunnable 接口
+        try:
+            result = self._job()
+        except Exception as exc:  # noqa: BLE001 - 后台任务不能把异常抛给线程池
+            logger.warning("账户同步任务异常：%s", exc)
+            result = {"ok": False, "error": str(exc) or "同步失败"}
+        if not isinstance(result, dict):
+            result = {"ok": False, "error": "同步失败"}
+        try:
+            self._bridge._cloudTaskResult.emit(self._kind, result)
         except RuntimeError:  # 宿主已销毁
             pass
 
@@ -168,6 +192,10 @@ class AppBridge(QObject):
     storeCommentsChanged = Signal(str)
     #: v0.19 网页管理状态变化（开关 / 地址 / 错误）
     webAdminChanged = Signal()
+    #: v0.20 账户同步状态变化（登录态 / 地址 / 状态 / 上次同步时间 / 错误）
+    cloudChanged = Signal()
+    #: v0.20 账户同步后台任务完成：任务名 + 结果字典（QThreadPool → 主线程）
+    _cloudTaskResult = Signal(str, object)
 
     def __init__(
         self,
@@ -293,6 +321,13 @@ class AppBridge(QObject):
             self._settings, self._build_web_admin_host()
         )
 
+        # v0.20：账户同步（设置页「账户同步」卡片）——联网在 QThreadPool 里跑
+        self._cloud_busy = False
+        self._cloud_status = ""
+        self._cloud_error = ""
+        self._cloud_last_at = str(self._settings.get("cloud_sync_last_at", "") or "")
+        self._cloud_device = ""
+
         self._media = MediaSmtcService(self)
         self._media.changed.connect(self._on_media_changed)
         # 冒烟/测试模式下不起 WinRT 轮询线程（离屏环境没有媒体会话，也没必要）
@@ -320,6 +355,7 @@ class AppBridge(QObject):
         self._updateDownloaded.connect(self._on_update_downloaded)
         self._aiAsyncResult.connect(self._on_ai_result)
         self._aiModelsFetched.connect(self._on_ai_models_fetched)
+        self._cloudTaskResult.connect(self._on_cloud_task_result)
         self._app_usage.changed.connect(self._on_app_usage_changed)
         self._session.stateChanged.connect(self.stateChanged)
         self._session.stateChanged.connect(self.lockedChanged)
@@ -2081,6 +2117,476 @@ class AppBridge(QObject):
         self.webAdminChanged.emit()
         self.toast.emit(QCoreApplication.translate("ShenQing", "网页管理 token 已更新"))
         return token
+
+    # ================= v0.20：账户同步（本机数据同步到深清商店服务器） =================
+    # 后端接口：POST /api/auth/login、GET/PUT /api/sync（见 services/cloud_sync.py）。
+    # 所有联网操作都在 QThreadPool 里跑，结果经 _cloudTaskResult 回主线程；
+    # 拉取写回前自动备份当前数据（backups/cloud-pre-pull-*.json），写回后重新加载内存数据。
+    @Property(str, notify=cloudChanged)
+    def cloudSyncUrl(self) -> str:
+        """商店服务器地址（空 = 未配置）。"""
+        return str(self._settings.get("cloud_sync_url", "") or "")
+
+    @Property(str, notify=cloudChanged)
+    def cloudSyncEmail(self) -> str:
+        """已登录 / 上次登录的邮箱（不存密码）。"""
+        return str(self._settings.get("cloud_sync_email", "") or "")
+
+    @Property(bool, notify=cloudChanged)
+    def cloudSyncLoggedIn(self) -> bool:
+        """是否已持有可用的登录令牌。"""
+        return bool(str(self._settings.get("cloud_sync_token", "") or "").strip())
+
+    @Property(str, notify=cloudChanged)
+    def cloudSyncStatus(self) -> str:
+        """最近一次同步动作的结果文案（空 = 还没同步过）。"""
+        return self._cloud_status
+
+    @Property(str, notify=cloudChanged)
+    def cloudSyncLastAt(self) -> str:
+        """上次成功同步时间（YYYY-MM-DD HH:MM）。"""
+        return self._cloud_last_at
+
+    @Property(str, notify=cloudChanged)
+    def cloudSyncError(self) -> str:
+        """最近一次失败原因（空 = 没有错误）。"""
+        return self._cloud_error
+
+    @Property(bool, notify=cloudChanged)
+    def cloudSyncBusy(self) -> bool:
+        """是否有同步任务在跑。"""
+        return self._cloud_busy
+
+    @Property(str, notify=cloudChanged)
+    def cloudSyncDevice(self) -> str:
+        """设备名：设置里有就用手填的，否则取电脑名。"""
+        saved = str(self._settings.get("cloud_sync_device", "") or "").strip()
+        if saved:
+            return saved
+        if not self._cloud_device:
+            self._cloud_device = cloud_sync_service.default_device_name()
+        return self._cloud_device
+
+    # ---- 内部状态 ----
+    def _cloud_url(self) -> str:
+        return str(self._settings.get("cloud_sync_url", "") or "").strip()
+
+    def _cloud_token(self) -> str:
+        return str(self._settings.get("cloud_sync_token", "") or "").strip()
+
+    def _cloud_revision(self) -> int:
+        try:
+            return max(0, int(self._settings.get("cloud_sync_revision", 0) or 0))
+        except (TypeError, ValueError):
+            return 0
+
+    def _set_cloud_state(
+        self,
+        *,
+        busy: bool | None = None,
+        status: str | None = None,
+        error: str | None = None,
+        last_at: str | None = None,
+    ) -> None:
+        if busy is not None:
+            self._cloud_busy = bool(busy)
+        if status is not None:
+            self._cloud_status = str(status or "")
+        if error is not None:
+            self._cloud_error = str(error or "")
+        if last_at is not None:
+            self._cloud_last_at = str(last_at or "")
+        self.cloudChanged.emit()
+
+    def _cloud_fail(self, message: object) -> None:
+        """统一的失败处理：写错误、结束忙碌、弹 toast（不抛异常）。"""
+        text = str(message or "").strip() or QCoreApplication.translate(
+            "ShenQing", "同步失败"
+        )
+        self._set_cloud_state(busy=False, status="", error=text)
+        logger.warning("账户同步失败：%s", text)
+        self.toast.emit(text)
+
+    def _mark_cloud_synced(self) -> None:
+        stamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+        self._settings.set("cloud_sync_last_at", stamp)
+        self._cloud_last_at = stamp
+
+    def _cloud_payload(self) -> dict:
+        """导出同步快照（设置白名单 + 空间 + 专注统计）。"""
+        try:
+            return cloud_sync_service.build_payload(
+                self._settings, self._spaces, self._stats
+            )
+        except Exception as exc:  # noqa: BLE001 - 导出失败也要给可读原因
+            logger.warning("导出同步快照失败：%s", exc)
+            return {}
+
+    def _start_cloud_task(self, kind: str, job) -> None:  # noqa: ANN001
+        QThreadPool.globalInstance().start(_CloudTask(self, kind, job))
+
+    def _reload_after_cloud_pull(self) -> None:
+        """拉取写回后重新读盘：设置 / 空间 / 统计立即生效（不需要重启）。"""
+        try:
+            self._settings.load()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("重新加载设置失败：%s", exc)
+        try:
+            self._spaces.load()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("重新加载空间失败：%s", exc)
+        try:
+            self._stats.load()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("重新加载统计失败：%s", exc)
+        self.settingsChanged.emit()
+        self.spacesChanged.emit()
+        self.statsChanged.emit()
+
+    # ---- QML 动作 ----
+    @Slot(str)
+    def setCloudSyncUrl(self, url: str) -> None:
+        """保存服务器地址（允许带或不带 https://）。"""
+        text = str(url or "").strip()
+        self._settings.set("cloud_sync_url", text)
+        self._set_cloud_state()
+        self.settingsChanged.emit()
+
+    @Slot(str)
+    def setCloudSyncDevice(self, name: str) -> None:
+        """保存设备名（空 = 回到电脑名）。"""
+        text = str(name or "").strip()[: cloud_sync_service.DEVICE_NAME_LIMIT]
+        self._settings.set("cloud_sync_device", text)
+        self._cloud_device = text or cloud_sync_service.default_device_name()
+        self._set_cloud_state()
+
+    @Slot(str, str, result=bool)
+    def cloudLogin(self, email: str, password: str) -> bool:
+        """登录商店账号：异步，返回是否已发起请求。"""
+        if self._cloud_busy:
+            return False
+        url = self._cloud_url()
+        email_text = str(email or "").strip() or self.cloudSyncEmail
+        password_text = str(password or "")
+        if not url:
+            self._cloud_fail(QCoreApplication.translate("ShenQing", "请先填写商店服务器地址"))
+            return False
+        if not email_text or not password_text:
+            self._cloud_fail(QCoreApplication.translate("ShenQing", "请填写邮箱和密码"))
+            return False
+        self._settings.set("cloud_sync_email", email_text)
+        self._set_cloud_state(
+            busy=True,
+            status=QCoreApplication.translate("ShenQing", "正在登录…"),
+            error="",
+        )
+
+        def _job() -> dict:
+            try:
+                token = cloud_sync_service.login(url, email_text, password_text)
+            except Exception as exc:  # noqa: BLE001 - 网络/校验错误都给可读文案
+                return {"ok": False, "error": str(exc) or "登录失败"}
+            return {"ok": True, "token": token, "email": email_text}
+
+        self._start_cloud_task("login", _job)
+        return True
+
+    @Slot()
+    def cloudLogout(self) -> None:
+        """退出登录：清掉本地令牌（不动云端数据）。"""
+        self._settings.set("cloud_sync_token", "")
+        self._settings.set("cloud_sync_revision", 0)
+        self._set_cloud_state(
+            busy=False,
+            status=QCoreApplication.translate("ShenQing", "已退出登录"),
+            error="",
+        )
+        self.toast.emit(QCoreApplication.translate("ShenQing", "已退出商店账号"))
+
+    @Slot()
+    def cloudPush(self) -> None:
+        """仅上传：把本机快照推到云端。"""
+        if self._cloud_busy:
+            return
+        url = self._cloud_url()
+        token = self._cloud_token()
+        if not url or not token:
+            self._cloud_fail(
+                QCoreApplication.translate("ShenQing", "请先填写服务器地址并登录")
+            )
+            return
+        payload = self._cloud_payload()
+        if not payload:
+            self._cloud_fail(QCoreApplication.translate("ShenQing", "导出同步快照失败"))
+            return
+        revision = self._cloud_revision()
+        device = self.cloudSyncDevice
+        self._set_cloud_state(
+            busy=True,
+            status=QCoreApplication.translate("ShenQing", "正在上传…"),
+            error="",
+        )
+
+        def _job() -> dict:
+            try:
+                ok, remote_revision = cloud_sync_service.push(
+                    url, token, payload, revision, device
+                )
+            except Exception as exc:  # noqa: BLE001
+                return {"ok": False, "error": str(exc) or "上传失败"}
+            if not ok:
+                return {"ok": False, "conflict": True, "revision": remote_revision}
+            return {"ok": True, "revision": remote_revision}
+
+        self._start_cloud_task("push", _job)
+
+    @Slot()
+    def cloudPull(self) -> None:
+        """仅下载：拉取云端快照并写回本机（写前自动备份）。"""
+        if self._cloud_busy:
+            return
+        url = self._cloud_url()
+        token = self._cloud_token()
+        if not url or not token:
+            self._cloud_fail(
+                QCoreApplication.translate("ShenQing", "请先填写服务器地址并登录")
+            )
+            return
+        self._set_cloud_state(
+            busy=True,
+            status=QCoreApplication.translate("ShenQing", "正在下载…"),
+            error="",
+        )
+
+        def _job() -> dict:
+            try:
+                remote = cloud_sync_service.pull(url, token)
+                payload = remote.get("payload") or {}
+                if not payload:
+                    return {"ok": True, "empty": True, "revision": remote.get("revision", 0)}
+                backup = cloud_sync_service.backup_current()
+                applied = cloud_sync_service.apply_payload(payload)
+            except Exception as exc:  # noqa: BLE001
+                return {"ok": False, "error": str(exc) or "下载失败"}
+            return {
+                "ok": True,
+                "revision": remote.get("revision", 0),
+                "updated_at": remote.get("updated_at", ""),
+                "backup": str(backup),
+                "applied": applied,
+            }
+
+        self._start_cloud_task("pull", _job)
+
+    @Slot()
+    def cloudSyncNow(self) -> None:
+        """立即同步：先拉取远端，远端更新则覆盖本机，否则上传；409 时以远端 revision 重试一次。"""
+        if self._cloud_busy:
+            return
+        url = self._cloud_url()
+        token = self._cloud_token()
+        if not url or not token:
+            self._cloud_fail(
+                QCoreApplication.translate("ShenQing", "请先填写服务器地址并登录")
+            )
+            return
+        payload = self._cloud_payload()
+        if not payload:
+            self._cloud_fail(QCoreApplication.translate("ShenQing", "导出同步快照失败"))
+            return
+        local_revision = self._cloud_revision()
+        device = self.cloudSyncDevice
+        self._set_cloud_state(
+            busy=True,
+            status=QCoreApplication.translate("ShenQing", "正在同步…"),
+            error="",
+        )
+
+        def _job() -> dict:
+            try:
+                remote = cloud_sync_service.pull(url, token)
+                remote_revision = max(0, int(remote.get("revision") or 0))
+                remote_payload = remote.get("payload") or {}
+                if remote_revision > local_revision and remote_payload:
+                    backup = cloud_sync_service.backup_current()
+                    applied = cloud_sync_service.apply_payload(remote_payload)
+                    return {
+                        "ok": True,
+                        "action": "pull",
+                        "revision": remote_revision,
+                        "backup": str(backup),
+                        "applied": applied,
+                    }
+                ok, new_revision = cloud_sync_service.push(
+                    url, token, payload, local_revision, device
+                )
+                if ok:
+                    return {"ok": True, "action": "push", "revision": new_revision}
+                # 409：远端刚被别的设备更新过，用远端 revision 重试一次（覆盖远端）
+                ok, new_revision = cloud_sync_service.push(
+                    url, token, payload, new_revision, device
+                )
+                if ok:
+                    return {"ok": True, "action": "push", "revision": new_revision}
+                return {"ok": False, "conflict": True, "revision": new_revision}
+            except Exception as exc:  # noqa: BLE001
+                return {"ok": False, "error": str(exc) or "同步失败"}
+
+        self._start_cloud_task("now", _job)
+
+    @Slot()
+    def openCloudServer(self) -> None:
+        """在系统浏览器里打开商店服务器的同步接口地址。"""
+        url = self._cloud_url()
+        if not url:
+            self.toast.emit(
+                QCoreApplication.translate("ShenQing", "请先填写商店服务器地址")
+            )
+            return
+        try:
+            target = cloud_sync_service.api_url(url, cloud_sync_service.SYNC_PATH)
+        except cloud_sync_service.CloudSyncError as exc:
+            self.toast.emit(str(exc))
+            return
+        from PySide6.QtCore import QUrl
+        from PySide6.QtGui import QDesktopServices
+
+        QDesktopServices.openUrl(QUrl(target))
+
+    # ---- 后台任务结果（主线程） ----
+    @Slot(str, object)
+    def _on_cloud_task_result(self, kind: str, result: object) -> None:
+        data = result if isinstance(result, dict) else {}
+        handler = getattr(self, f"_on_cloud_{str(kind)}_done", None)
+        if handler is None:
+            self._set_cloud_state(busy=False)
+            return
+        try:
+            handler(data)
+        except Exception as exc:  # noqa: BLE001 - 回调异常不能让主线程崩
+            logger.warning("处理账户同步结果失败：%s", exc)
+            self._set_cloud_state(busy=False)
+
+    def _on_cloud_login_done(self, data: dict) -> None:
+        if not data.get("ok"):
+            self._cloud_fail(str(data.get("error") or "登录失败"))
+            return
+        token = str(data.get("token") or "")
+        if not token:
+            self._cloud_fail("登录响应里没有 token，请检查服务器版本")
+            return
+        self._settings.set("cloud_sync_token", token)
+        email = str(data.get("email") or "")
+        if email:
+            self._settings.set("cloud_sync_email", email)
+        self._set_cloud_state(
+            busy=False,
+            status=QCoreApplication.translate("ShenQing", "已登录，可以同步了"),
+            error="",
+        )
+        self.toast.emit(QCoreApplication.translate("ShenQing", "已登录商店账号"))
+
+    def _on_cloud_push_done(self, data: dict) -> None:
+        if not data.get("ok"):
+            if data.get("conflict"):
+                revision = int(data.get("revision") or 0)
+                self._set_cloud_state(
+                    busy=False,
+                    status="",
+                    error=QCoreApplication.translate(
+                        "ShenQing",
+                        "云端已有更新版本（revision {0}），请先「仅下载」再上传",
+                    ).format(revision),
+                )
+                self.toast.emit(
+                    QCoreApplication.translate(
+                        "ShenQing", "上传已取消：云端有更新的数据，请先下载"
+                    )
+                )
+                return
+            self._cloud_fail(str(data.get("error") or "上传失败"))
+            return
+        revision = max(0, int(data.get("revision") or 0))
+        self._settings.set("cloud_sync_revision", revision)
+        self._mark_cloud_synced()
+        self._set_cloud_state(
+            busy=False,
+            status=QCoreApplication.translate("ShenQing", "已上传（revision {0}）").format(
+                revision
+            ),
+            error="",
+        )
+        self.toast.emit(QCoreApplication.translate("ShenQing", "已上传到云端"))
+
+    def _on_cloud_pull_done(self, data: dict) -> None:
+        if not data.get("ok"):
+            self._cloud_fail(str(data.get("error") or "下载失败"))
+            return
+        if data.get("empty"):
+            self._set_cloud_state(
+                busy=False,
+                status=QCoreApplication.translate(
+                    "ShenQing", "云端还没有数据，先点「仅上传」"
+                ),
+                error="",
+            )
+            return
+        revision = max(0, int(data.get("revision") or 0))
+        self._reload_after_cloud_pull()
+        self._settings.set("cloud_sync_revision", revision)
+        self._mark_cloud_synced()
+        applied = data.get("applied") if isinstance(data.get("applied"), dict) else {}
+        self._set_cloud_state(
+            busy=False,
+            status=QCoreApplication.translate(
+                "ShenQing", "已从云端恢复（revision {0}）"
+            ).format(revision),
+            error="",
+        )
+        logger.info(
+            "账户同步：已从云端写回（设置 %s 项 / 空间 %s 个 / 记录 %s 条，备份 %s）",
+            applied.get("settings", 0),
+            applied.get("spaces", 0),
+            applied.get("stats", 0),
+            data.get("backup", ""),
+        )
+        self.toast.emit(
+            QCoreApplication.translate("ShenQing", "已从云端恢复设置、空间与统计")
+        )
+
+    def _on_cloud_now_done(self, data: dict) -> None:
+        if not data.get("ok"):
+            if data.get("conflict"):
+                self._set_cloud_state(
+                    busy=False,
+                    status="",
+                    error=QCoreApplication.translate(
+                        "ShenQing", "云端版本冲突，请稍后重试"
+                    ),
+                )
+                self.toast.emit(
+                    QCoreApplication.translate("ShenQing", "同步失败：云端版本冲突")
+                )
+                return
+            self._cloud_fail(str(data.get("error") or "同步失败"))
+            return
+        revision = max(0, int(data.get("revision") or 0))
+        action = str(data.get("action") or "push")
+        if action == "pull":
+            self._reload_after_cloud_pull()
+        self._settings.set("cloud_sync_revision", revision)
+        self._mark_cloud_synced()
+        status = (
+            QCoreApplication.translate("ShenQing", "已从云端恢复（revision {0}）")
+            if action == "pull"
+            else QCoreApplication.translate("ShenQing", "已上传（revision {0}）")
+        )
+        self._set_cloud_state(busy=False, status=status.format(revision), error="")
+        self.toast.emit(
+            QCoreApplication.translate("ShenQing", "已从云端恢复设置、空间与统计")
+            if action == "pull"
+            else QCoreApplication.translate("ShenQing", "已同步到云端")
+        )
 
     # ================= 服务退出清理 =================
     def _shutdown_services(self) -> None:

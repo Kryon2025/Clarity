@@ -8,6 +8,7 @@
 - comments(id, item_id, user_id, rating, text, status, created_at)
 - email_codes(id, email, purpose, code_hash, salt, attempts, created_at,
               expires_at, used_at)
+- sync_data(user_id, revision, payload, payload_hash, updated_at, device_name)
 
 item 的 palette/tags/screenshots 以 JSON 文本存；对外序列化时还原。
 邮箱验证码只存 HMAC 摘要（salt 每个验证码独立），成功后立刻置 used_at，
@@ -30,11 +31,13 @@ __all__ = [
     "EMAIL_CODE_PURPOSES",
     "EMAIL_CODE_TTL_SECONDS",
     "ITEM_COLUMNS",
+    "clear_sync_data",
     "connect",
     "consume_email_code",
     "create_email_code",
     "dumps",
     "fetch_email_code",
+    "fetch_sync_data",
     "hash_email_code",
     "init_db",
     "isoformat",
@@ -42,7 +45,9 @@ __all__ = [
     "purge_email_codes",
     "row_to_comment",
     "row_to_item",
+    "row_to_sync",
     "row_to_user",
+    "save_sync_data",
     "utc_datetime",
     "utc_now",
     "verify_email_code_hash",
@@ -102,6 +107,18 @@ CREATE TABLE IF NOT EXISTS email_codes (
     created_at TEXT    NOT NULL,
     expires_at TEXT    NOT NULL,
     used_at    TEXT
+);
+
+-- 账户云同步：每个账号一条专注数据快照。payload 是客户端自己序列化的 JSON
+-- 文本，服务端只保存、不解析结构（端到端加密由客户端负责），因此这里不做
+-- JSON 语法约束，只记录 sha256 摘要用于排查/校验。
+CREATE TABLE IF NOT EXISTS sync_data (
+    user_id      INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    revision     INTEGER NOT NULL DEFAULT 0,
+    payload      TEXT    NOT NULL DEFAULT '',
+    payload_hash TEXT    NOT NULL DEFAULT '',
+    updated_at   INTEGER NOT NULL DEFAULT 0,
+    device_name  TEXT    NOT NULL DEFAULT ''
 );
 
 CREATE INDEX IF NOT EXISTS idx_items_status      ON items(status);
@@ -403,5 +420,92 @@ def purge_email_codes(
     """物理清理过早创建的历史验证码，返回删除行数（表不会无限增长）。"""
     cutoff = isoformat(utc_datetime(now) - timedelta(seconds=max(1, int(keep_seconds))))
     cursor = conn.execute("DELETE FROM email_codes WHERE created_at < ?", (cutoff,))
+    conn.commit()
+    return int(cursor.rowcount or 0)
+
+
+# ========================= 账户云同步 =========================
+#: 云同步快照的查询列（一个账号最多一条）
+SYNC_COLUMNS = "user_id, revision, payload, payload_hash, updated_at, device_name"
+
+
+def row_to_sync(row: sqlite3.Row | None) -> dict | None:
+    """sync_data 行 -> 内部字典（payload 保持原始 JSON 文本，不做解析）。"""
+    if row is None:
+        return None
+    return {
+        "user_id": int(row["user_id"]),
+        "revision": int(row["revision"]),
+        "payload": str(row["payload"]),
+        "payload_hash": str(row["payload_hash"]),
+        "updated_at": int(row["updated_at"]),
+        "device_name": str(row["device_name"]),
+    }
+
+
+def fetch_sync_data(conn: sqlite3.Connection, user_id: int) -> dict | None:
+    """取某账号的云同步快照；没有返回 None（对外等价于 revision=0）。"""
+    row = conn.execute(
+        "SELECT " + SYNC_COLUMNS + " FROM sync_data WHERE user_id = ?", (int(user_id),)
+    ).fetchone()
+    return row_to_sync(row)
+
+
+def save_sync_data(
+    conn: sqlite3.Connection,
+    user_id: int,
+    payload_text: str,
+    payload_hash: str,
+    expected_revision: int,
+    device_name: str = "",
+    *,
+    now: datetime | None = None,
+) -> dict | None:
+    """乐观并发写入一份新快照。
+
+    - 无快照时 expected_revision 必须是 0，写入后 revision=1；
+    - 有快照时 expected_revision 必须等于当前 revision，写入后 revision+1；
+    - 不匹配返回 None（调用方转 409 并回传最新 revision），且不改动任何数据。
+
+    并发安全：插入用 ON CONFLICT(user_id) DO NOTHING、更新带
+    WHERE revision = expected，两个并发写里落败的一方写不到行（rowcount=0），
+    返回 None 让上层重新读最新版本，不会把别人的版本覆盖掉。
+    """
+    uid = int(user_id)
+    expected = int(expected_revision)
+    updated_at = int(utc_datetime(now).timestamp())
+    row = conn.execute(
+        "SELECT revision FROM sync_data WHERE user_id = ?", (uid,)
+    ).fetchone()
+    if row is None:
+        if expected != 0:
+            return None
+        cursor = conn.execute(
+            "INSERT INTO sync_data "
+            "(user_id, revision, payload, payload_hash, updated_at, device_name) "
+            "VALUES (?, 1, ?, ?, ?, ?) ON CONFLICT(user_id) DO NOTHING",
+            (uid, payload_text, payload_hash, updated_at, device_name),
+        )
+        conn.commit()
+        if int(cursor.rowcount or 0) != 1:
+            return None
+    else:
+        if expected != int(row["revision"]):
+            return None
+        cursor = conn.execute(
+            "UPDATE sync_data SET revision = revision + 1, payload = ?, "
+            "payload_hash = ?, updated_at = ?, device_name = ? "
+            "WHERE user_id = ? AND revision = ?",
+            (payload_text, payload_hash, updated_at, device_name, uid, expected),
+        )
+        conn.commit()
+        if int(cursor.rowcount or 0) != 1:
+            return None
+    return fetch_sync_data(conn, uid)
+
+
+def clear_sync_data(conn: sqlite3.Connection, user_id: int) -> int:
+    """删除某账号的云端快照（只影响本人），返回删除行数。"""
+    cursor = conn.execute("DELETE FROM sync_data WHERE user_id = ?", (int(user_id),))
     conn.commit()
     return int(cursor.rowcount or 0)
