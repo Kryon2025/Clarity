@@ -2064,7 +2064,7 @@
 <context>
     <name>SettingsPage</name>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="635"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="637"/>
         <source>跟随系统</source>
         <translation>跟随系统</translation>
     </message>
@@ -2077,12 +2077,12 @@
         <translation type="vanished">深色</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="414"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="416"/>
         <source>设置</source>
         <translation>设置</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="422"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="424"/>
         <source>%1（%2）v%3</source>
         <translation>%1（%2）v%3</translation>
     </message>
@@ -2201,137 +2201,137 @@
         <translation>缺少测试接口（App.testAIConnection）</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="459"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="461"/>
         <source>防退出加固</source>
         <translation>防退出加固</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="467"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="469"/>
         <source>锁定期间隐藏任务栏，并屏蔽 Win、Alt+Tab 等系统快捷键</source>
         <translation>锁定期间隐藏任务栏，并屏蔽 Win、Alt+Tab 等系统快捷键</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="512"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="514"/>
         <source>以管理员身份运行</source>
         <translation>以管理员身份运行</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="521"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="523"/>
         <source>当前已提权</source>
         <translation>当前已提权</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="531"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="533"/>
         <source>开启后会弹一次 UAC 并以管理员身份重启</source>
         <translation>开启后会弹一次 UAC 并以管理员身份重启</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="573"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="575"/>
         <source>最高权限开机自启</source>
         <translation>最高权限开机自启</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="581"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="583"/>
         <source>用计划任务在登录时以最高权限启动，不再弹 UAC；需要管理员</source>
         <translation>用计划任务在登录时以最高权限启动，不再弹 UAC；需要管理员</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="620"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="622"/>
         <source>语言</source>
         <translation>语言</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="636"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="638"/>
         <source>简体中文</source>
         <translation>简体中文</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="660"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="662"/>
         <source>切换后界面会立即更新；托盘菜单在下次启动时生效。</source>
         <translation>切换后界面会立即更新；托盘菜单在下次启动时生效。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="686"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="688"/>
         <source>外观</source>
         <translation>外观</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="700"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="702"/>
         <source>字号</source>
         <translation>字号</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="867"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="869"/>
         <source>字号影响整个界面，实时生效；字体与导航方式同样即时生效。</source>
         <translation>字号影响整个界面，实时生效；字体与导航方式同样即时生效。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="983"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="985"/>
         <source>网址屏蔽</source>
         <translation>网址屏蔽</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="999"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1001"/>
         <source>专注期间通过 hosts 屏蔽这些网站，需要管理员权限；开关与列表在锁定开始时生效。</source>
         <translation>专注期间通过 hosts 屏蔽这些网站，需要管理员权限；开关与列表在锁定开始时生效。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1035"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1037"/>
         <source>例如 bilibili.com</source>
         <translation>例如 bilibili.com</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1042"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1044"/>
         <source>添加</source>
         <translation>添加</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1051"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1053"/>
         <source>已屏蔽 %1 个域名</source>
         <translation>已屏蔽 %1 个域名</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1109"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1111"/>
         <source>还没有屏蔽网站，添加一个域名即可。</source>
         <translation>还没有屏蔽网站，添加一个域名即可。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1345"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1347"/>
         <source>睡眠模式已并入清空间的「还清」档位，可在那里设置作息。</source>
         <translation>睡眠模式已并入清空间的「还清」档位，可在那里设置作息。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1442"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1444"/>
         <source>导入备份并覆盖当前数据？</source>
         <translation>导入备份并覆盖当前数据？</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1451"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1453"/>
         <source>导入会覆盖当前设置、空间、白名单、专注统计、应用使用、AI 对话与用量、睡眠与插件数据，并自动重启深清。</source>
         <translation>导入会覆盖当前设置、空间、白名单、专注统计、应用使用、AI 对话与用量、睡眠与插件数据，并自动重启深清。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1471"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1473"/>
         <source>取消</source>
         <translation>取消</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1485"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1487"/>
         <source>覆盖并重启</source>
         <translation>覆盖并重启</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="735"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="737"/>
         <source>小</source>
         <translation>小</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="736"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="738"/>
         <source>标准</source>
         <translation>标准</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="737"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="739"/>
         <source>大</source>
         <translation>大</translation>
     </message>
@@ -2340,32 +2340,32 @@
         <translation type="vanished">特大</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="786"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="788"/>
         <source>字体</source>
         <translation>字体</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="829"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="831"/>
         <source>实时生效，无需重启</source>
         <translation>实时生效，无需重启</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="842"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="844"/>
         <source>导航展开方式</source>
         <translation>导航展开方式</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="849"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="851"/>
         <source>自动</source>
         <translation>自动</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="850"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="852"/>
         <source>始终展开</source>
         <translation>始终展开</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="851"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="853"/>
         <source>仅图标</source>
         <translation>仅图标</translation>
     </message>
@@ -2374,88 +2374,88 @@
         <translation type="vanished">字号与字体只影响界面显示；导航方式自动时会跟随窗口宽度。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="893"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="895"/>
         <source>默认专注时长</source>
         <translation>默认专注时长</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="904"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="906"/>
         <source>%1 分钟</source>
         <translation>%1 分钟</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="943"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="945"/>
         <source>开机自启</source>
         <translation>开机自启</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1144"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1146"/>
         <source>数据与备份</source>
         <translation>数据与备份</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1167"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1169"/>
         <source>备份包含：设置、空间、白名单、专注统计、应用使用记录、AI 对话与用量、睡眠与插件数据。导入会覆盖当前数据并自动重启深清。</source>
         <translation>备份包含：设置、空间、白名单、专注统计、应用使用记录、AI 对话与用量、睡眠与插件数据。导入会覆盖当前数据并自动重启深清。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1179"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="1188"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1181"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1190"/>
         <source>处理中…</source>
         <translation>处理中…</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1179"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1181"/>
         <source>导出备份</source>
         <translation>导出备份</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1188"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1190"/>
         <source>导入备份</source>
         <translation>导入备份</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1199"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1201"/>
         <source>导出为 .zip/.json 备份文件；导入前会二次确认。</source>
         <translation>导出为 .zip/.json 备份文件；导入前会二次确认。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1225"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1227"/>
         <source>反馈</source>
         <translation>反馈</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1239"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1241"/>
         <source>功能请求</source>
         <translation>功能请求</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1246"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1248"/>
         <source>Bug 反馈</source>
         <translation>Bug 反馈</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1253"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1255"/>
         <source>参与讨论</source>
         <translation>参与讨论</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1265"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1267"/>
         <source>在 GitHub 仓库 Kryon2025/Clarity 提交功能请求、Bug 反馈或参与讨论。</source>
         <translation>在 GitHub 仓库 Kryon2025/Clarity 提交功能请求、Bug 反馈或参与讨论。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1297"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1299"/>
         <source>AI 助手</source>
         <translation>AI 助手</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1303"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1305"/>
         <source>服务商、模型与对话，已移到左侧「AI」页</source>
         <translation>服务商、模型与对话，已移到左侧「AI」页</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1315"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1317"/>
         <source>前往 AI 页</source>
         <translation>前往 AI 页</translation>
     </message>
@@ -2524,17 +2524,17 @@
         <translation type="vanished">连续点击时钟 10 次解锁</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1374"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1376"/>
         <source>新手引导</source>
         <translation>新手引导</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1385"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1387"/>
         <source>重新查看引导</source>
         <translation>重新查看引导</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1398"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1400"/>
         <source>%1（%2）v%3 · Windows 专注锁机工具
 数据保存在 %APPDATA%/ShenQing/ · 主题可在左侧导航「主题」中切换</source>
         <translation>%1（%2）v%3 · Windows 专注锁机工具
