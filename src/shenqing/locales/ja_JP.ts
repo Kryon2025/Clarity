@@ -3311,33 +3311,33 @@ Data: %APPDATA%/ShenQing/ · UI: Liquid Glass v0.2</translation>
         <translation>Veil space</translation>
     </message>
     <message>
-        <location filename="../app.py" line="342"/>
+        <location filename="../app.py" line="378"/>
         <source>深清正在专注中，结束后自动恢复主界面</source>
         <extracomment>已知无害的 Qt / RinUI 噪音（不参与冒烟判定） 主实例监听的本地套接字名 第二个实例发给主实例的消息：激活主界面 单实例锁（QLockFile 被回收会自动解锁，由服务端持有到进程退出）</extracomment>
         <translation>ShenQing is focusing; the main window will return when the session ends</translation>
     </message>
     <message>
-        <location filename="../app.py" line="346"/>
+        <location filename="../app.py" line="382"/>
         <source>首次使用引导进行中，请先完成引导</source>
         <translation>The getting-started guide is open; please finish it first</translation>
     </message>
     <message>
-        <location filename="../app.py" line="680"/>
+        <location filename="../app.py" line="729"/>
         <source>已默认以最高权限运行，并开启最高权限开机自启</source>
         <translation>Running with highest privileges by default; elevated autostart enabled</translation>
     </message>
     <message>
-        <location filename="../app.py" line="684"/>
+        <location filename="../app.py" line="733"/>
         <source>已默认以最高权限运行（最高权限自启登记失败，可在设置里重试）</source>
         <translation>Running with highest privileges by default (elevated autostart registration failed; retry in settings)</translation>
     </message>
     <message>
-        <location filename="../app.py" line="688"/>
+        <location filename="../app.py" line="737"/>
         <source>已默认开启管理员模式，并登记最高权限开机自启</source>
         <translation>Admin mode enabled by default; elevated autostart registered</translation>
     </message>
     <message>
-        <location filename="../app.py" line="692"/>
+        <location filename="../app.py" line="741"/>
         <source>已默认开启管理员模式（下次启动会请求提权）</source>
         <translation>Admin mode enabled by default (next launch will request elevation)</translation>
     </message>
