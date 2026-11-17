@@ -9,6 +9,7 @@ import "Constants.js" as C
 // 无媒体会话时展示专注状态（空间、剩余、完成度），不显示播放控制。
 Item {
     id: island
+    objectName: "MediaIsland"
 
     property Item glassSource: null
     property bool hasMedia: false
@@ -46,6 +47,13 @@ Item {
     Behavior on height { NumberAnimation { duration: 340; easing.type: Easing.OutQuint } }
 
     function clamp01(v) { return Math.max(0, Math.min(1, v)) }
+    // 外部（进入专注时）主动触发一次展开提示
+    function triggerPeek(durationMs) {
+        if (island.hasMedia) {
+            island.peek = true
+            peekTimer.restart()
+        }
+    }
     function timeText(seconds) {
         var total = Math.max(0, Math.round(Number(seconds) || 0))
         var m = Math.floor(total / 60)
@@ -165,7 +173,7 @@ Item {
     }
     Timer {
         id: peekTimer
-        interval: 3200
+        interval: 4200
         repeat: false
         onTriggered: island.peek = false
     }

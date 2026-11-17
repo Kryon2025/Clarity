@@ -546,6 +546,55 @@ class AppBridge(QObject):
             for item in items
         ]
 
+    def _plugin_widget_prefs(self) -> dict:
+        """遮罩插件组件的位置（0~1 归一化）与隐藏状态。"""
+        raw = self._settings.get("plugin_widget_prefs", {})
+        return dict(raw) if isinstance(raw, dict) else {}
+
+    @Property("QVariantMap", notify=pluginsChanged)
+    def pluginWidgetPrefs(self) -> dict:
+        """插件组件布局：{widgetId: {"x":0~1, "y":0~1, "hidden":bool}}。"""
+        return self._plugin_widget_prefs()
+
+    @Slot(str, float, float)
+    def setPluginWidgetPos(self, widget_id: str, x: float, y: float) -> None:
+        """记住插件组件拖动后的位置（相对遮罩的归一化坐标）。"""
+        wid = str(widget_id or "").strip()
+        if not wid:
+            return
+        prefs = self._plugin_widget_prefs()
+        item = dict(prefs.get(wid) or {})
+        item["x"] = max(0.0, min(1.0, float(x)))
+        item["y"] = max(0.0, min(1.0, float(y)))
+        prefs[wid] = item
+        self._settings.set("plugin_widget_prefs", prefs)
+        self.pluginsChanged.emit()
+
+    @Slot(str, bool)
+    def setPluginWidgetHidden(self, widget_id: str, hidden: bool) -> None:
+        """隐藏 / 显示某个插件组件（专注遮罩上）。"""
+        wid = str(widget_id or "").strip()
+        if not wid:
+            return
+        prefs = self._plugin_widget_prefs()
+        item = dict(prefs.get(wid) or {})
+        if hidden:
+            item["hidden"] = True
+        else:
+            item.pop("hidden", None)
+            item.pop("x", None)
+            item.pop("y", None)
+        prefs[wid] = item
+        self._settings.set("plugin_widget_prefs", prefs)
+        self.pluginsChanged.emit()
+
+    @Slot()
+    def resetPluginWidgetPrefs(self) -> None:
+        """恢复所有插件组件的默认位置并重新显示。"""
+        self._settings.set("plugin_widget_prefs", {})
+        self.pluginsChanged.emit()
+        self.toast.emit(QCoreApplication.translate("ShenQing", "已恢复插件组件"))
+
     @Property(list, notify=pluginsChanged)
     def pluginWidgets(self) -> list[dict]:
         """插件注册的全屏遮罩组件。"""

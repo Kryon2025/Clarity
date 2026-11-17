@@ -43,6 +43,21 @@ Window {
         return App.locked === true ? String(App.sessionLevel !== undefined ? App.sessionLevel : "") : ""
     }
     readonly property bool mediumDock: overlay.level === "medium"
+    // v0.28：浅清 / 覆清都显示白名单 dock（浅清也配置了允许应用）
+    readonly property bool whitelistDock: overlay.level === "medium" || overlay.level === "light"
+    // v0.28：被隐藏的插件组件数量（用于左下角恢复入口）
+    readonly property int hiddenPluginWidgetCount: {
+        if (typeof App === "undefined" || App.pluginWidgets === undefined
+                || App.pluginWidgetPrefs === undefined) return 0
+        var prefs = App.pluginWidgetPrefs || ({})
+        var list = App.pluginWidgets || []
+        var count = 0
+        for (var i = 0; i < list.length; i++) {
+            var item = prefs[String(list[i].id)]
+            if (item !== undefined && item !== null && item.hidden === true) count += 1
+        }
+        return count
+    }
     // 深清：真实会话按 sessionLevel 判断；老接口没有 sessionLevel 时退回「主空间 super」判断
     readonly property bool heavyLock: {
         if (overlay.level !== "") return overlay.level === "heavy"
@@ -342,6 +357,9 @@ Window {
             overlay.closing = false
             overlay.bgOpacity = 0
             overlay.contentOpacity = 0
+            // 进入专注 / 预览时，灵动岛自动展开几秒展示正在播放的歌曲
+            if (typeof island !== "undefined" && island.triggerPeek !== undefined)
+                island.triggerPeek(4600)
             if (overlay.animationsEnabled) {
                 exitAnim.stop()
                 enterAnim.restart()
@@ -684,10 +702,10 @@ Window {
                           ? qsTr("预览 · %1档").arg(overlay.levelLabel)
                           : (overlay.spaceName !== "" ? overlay.spaceName : qsTr("专注中"))
                     color: AppTheme.textSecondary
-                    font.pixelSize: AppTheme.fs(18)
+                    font.pixelSize: AppTheme.fs(15)
                     font.weight: Font.DemiBold
                     font.family: AppTheme.fontFamily
-                    font.letterSpacing: 2
+                    font.letterSpacing: 0.5
                 }
             }
 
@@ -696,17 +714,19 @@ Window {
                 text: overlay.clockTime
                 color: AppTheme.textPrimary
                 font.family: C.monoFont
-                font.pixelSize: Math.max(AppTheme.fs(96), Math.min(overlay.width * 0.13, overlay.height * 0.22))
+                // v0.28：时钟不再随窗口无限膨胀，字距收敛（原来 96~198px + 字距 4 太散）
+                font.pixelSize: Math.max(AppTheme.fs(56),
+                                         Math.min(overlay.width * 0.085, overlay.height * 0.15, AppTheme.fs(112)))
                 font.weight: Font.Light
-                font.letterSpacing: 4
+                font.letterSpacing: 1
             }
 
             Text {
                 text: overlay.clockDate
                 color: AppTheme.textSecondary
-                font.pixelSize: AppTheme.fs(16)
+                font.pixelSize: AppTheme.fs(13)
                 font.family: AppTheme.fontFamily
-                font.letterSpacing: 2
+                font.letterSpacing: 0.5
             }
 
             Item {
@@ -745,9 +765,9 @@ Window {
                         ColorAnimation { duration: 140 }
                     }
                     font.family: C.monoFont
-                    font.pixelSize: AppTheme.fs(34)
+                    font.pixelSize: AppTheme.fs(28)
                     font.weight: Font.Light
-                    font.letterSpacing: 2
+                    font.letterSpacing: 1
                     // v0.16：时间显示可点击（无视觉反馈），连续 10 次触发退出警告
                     MouseArea {
                         id: mainTimeClickArea
@@ -764,7 +784,7 @@ Window {
                           ? qsTr("预览剩余 · 不计入专注统计")
                           : qsTr("剩余 · 已完成 %1%").arg(overlay.percentValue)
                     color: AppTheme.textSecondary
-                    font.pixelSize: AppTheme.fs(14)
+                    font.pixelSize: AppTheme.fs(12.5)
                     font.family: AppTheme.fontFamily
                 }
             }
@@ -776,7 +796,7 @@ Window {
                                                               ? qsTr("本档不可暂停，也不可提前结束")
                                                               : qsTr("可以暂停，但时间不会等你")))
                 color: AppTheme.textTertiary
-                font.pixelSize: AppTheme.fs(13)
+                font.pixelSize: AppTheme.fs(11.5)
                 font.family: AppTheme.fontFamily
             }
         }
@@ -981,25 +1001,151 @@ Window {
             Repeater {
                 model: App.pluginWidgets !== undefined ? App.pluginWidgets : []
 
-                delegate: Loader {
-                    id: widgetLoader
+                // v0.28：插件组件可自由拖动、可关闭；位置/隐藏状态持久化
+                delegate: Item {
+                    id: widgetHost
                     readonly property var widgetData: modelData
+                    readonly property string widgetId: widgetData.id !== undefined ? String(widgetData.id) : ""
+                    readonly property var prefs: {
+                        var all = (typeof App !== "undefined" && App.pluginWidgetPrefs !== undefined)
+                                  ? App.pluginWidgetPrefs : ({})
+                        var item = all[widgetHost.widgetId]
+                        return item !== undefined && item !== null ? item : ({})
+                    }
                     readonly property string anchorName: widgetData.anchor !== undefined
                                                           ? String(widgetData.anchor) : "topLeft"
                     readonly property bool rightSide: anchorName === "topRight"
                                                       || anchorName === "bottomRight"
                     readonly property bool bottomSide: anchorName === "bottomLeft"
                                                        || anchorName === "bottomRight"
+                    readonly property real defaultX: rightSide ? overlay.width - width - 28 : 28
+                    // 底部组件上移，给「暂停 / 提前结束」留出点击空间
+                    readonly property real defaultY: bottomSide ? overlay.height - height - 104 : 92
 
                     width: widgetData.width !== undefined ? Number(widgetData.width) : 240
                     height: widgetData.height !== undefined ? Number(widgetData.height) : 120
-                    source: (widgetData.qmlPath !== undefined && String(widgetData.qmlPath) !== "")
-                            ? String(widgetData.qmlPath) : ""
-                    x: widgetLoader.rightSide ? overlay.width - widgetLoader.width - 28 : 28
-                    // 底部组件上移，给「暂停 / 提前结束」留出点击空间
-                    y: widgetLoader.bottomSide
-                       ? overlay.height - widgetLoader.height - 104
-                       : 92
+                    visible: prefs.hidden !== true
+                    x: prefs.x !== undefined
+                       ? Math.max(0, Math.min(overlay.width - width, Number(prefs.x) * overlay.width))
+                       : defaultX
+                    y: prefs.y !== undefined
+                       ? Math.max(0, Math.min(overlay.height - height, Number(prefs.y) * overlay.height))
+                       : defaultY
+                    z: dragArea.drag.active ? 5 : 1
+
+                    Loader {
+                        id: widgetLoader
+                        anchors.fill: parent
+                        source: (widgetData.qmlPath !== undefined && String(widgetData.qmlPath) !== "")
+                                ? String(widgetData.qmlPath) : ""
+                    }
+
+                    HoverHandler { id: hostHover }
+
+                    // 顶部拖动条（悬停出现，不挡插件自身的点击）
+                    Rectangle {
+                        id: dragBar
+                        anchors.top: parent.top
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        height: 20
+                        radius: 10
+                        visible: hostHover.hovered || dragArea.drag.active
+                        color: dragArea.drag.active ? "#40FFFFFF" : "#26FFFFFF"
+                        Text {
+                            anchors.centerIn: parent
+                            text: "⋮⋮"
+                            color: "#B3FFFFFF"
+                            font.pixelSize: AppTheme.fs(10)
+                        }
+                        MouseArea {
+                            id: dragArea
+                            anchors.fill: parent
+                            cursorShape: Qt.SizeAllCursor
+                            drag.target: widgetHost
+                            drag.minimumX: 8
+                            drag.minimumY: 8
+                            drag.maximumX: overlay.width - widgetHost.width - 8
+                            drag.maximumY: overlay.height - widgetHost.height - 84
+                            onReleased: {
+                                if (typeof App.setPluginWidgetPos === "function") {
+                                    App.setPluginWidgetPos(widgetHost.widgetId,
+                                                           widgetHost.x / Math.max(1, overlay.width),
+                                                           widgetHost.y / Math.max(1, overlay.height))
+                                }
+                            }
+                        }
+                    }
+
+                    // 关闭按钮
+                    Rectangle {
+                        width: 22
+                        height: 22
+                        radius: 11
+                        anchors.top: parent.top
+                        anchors.right: parent.right
+                        anchors.topMargin: 4
+                        anchors.rightMargin: 4
+                        visible: hostHover.hovered
+                        color: closeArea.containsMouse ? "#E64444" : "#66101820"
+                        border.width: 1
+                        border.color: "#4DFFFFFF"
+                        Text {
+                            anchors.centerIn: parent
+                            text: "×"
+                            color: "#FFFFFF"
+                            font.pixelSize: AppTheme.fs(13)
+                        }
+                        MouseArea {
+                            id: closeArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: if (typeof App.setPluginWidgetHidden === "function")
+                                           App.setPluginWidgetHidden(widgetHost.widgetId, true)
+                        }
+                    }
+                }
+            }
+
+            // 已隐藏组件时，左下角提供恢复入口
+            Rectangle {
+                visible: overlay.hiddenPluginWidgetCount > 0
+                anchors.left: parent.left
+                anchors.bottom: parent.bottom
+                anchors.leftMargin: 28
+                anchors.bottomMargin: 96
+                width: restoreRow.implicitWidth + 22
+                height: 30
+                radius: 15
+                color: restoreArea.containsMouse ? "#33101820" : "#1F101820"
+                border.width: 1
+                border.color: "#33FFFFFF"
+                Row {
+                    id: restoreRow
+                    anchors.centerIn: parent
+                    spacing: 6
+                    Glyph {
+                        anchors.verticalCenter: parent.verticalCenter
+                        kind: "plus"
+                        size: 12
+                        color: AppTheme.textSecondary
+                    }
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: qsTr("恢复插件组件 (%1)").arg(overlay.hiddenPluginWidgetCount)
+                        color: AppTheme.textSecondary
+                        font.pixelSize: AppTheme.fs(11)
+                        font.family: AppTheme.fontFamily
+                    }
+                }
+                MouseArea {
+                    id: restoreArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: if (typeof App.resetPluginWidgetPrefs === "function")
+                                   App.resetPluginWidgetPrefs()
                 }
             }
         }
@@ -1083,7 +1229,7 @@ Window {
         Item {
             id: dockLayer
             z: 3
-            visible: overlay.mediumDock
+            visible: overlay.whitelistDock
             anchors.right: parent.right
             anchors.rightMargin: 44
             anchors.verticalCenter: parent.verticalCenter
