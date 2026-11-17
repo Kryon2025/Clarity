@@ -24,6 +24,7 @@ from PySide6.QtCore import (
     QRunnable,
     QThreadPool,
     QTimer,
+    QUrl,
     Signal,
     Slot,
 )
@@ -361,6 +362,8 @@ class AppBridge(QObject):
         self._sleep_timer.setInterval(20000)
         self._sleep_timer.timeout.connect(self._tick_sleep)
         self._media_info: dict = {}
+        # v0.22：当前曲目专辑封面的本地缓存路径（给灵动岛），无封面时为 ""
+        self._media_art = ""
         self._catalog: list[dict] = load_cached()
         self._catalog_scanning = False
         # v0.18 商店：目录缓存 / 评论审核 / 插件安装串行保护
@@ -826,6 +829,19 @@ class AppBridge(QObject):
     def mediaDuration(self) -> float:
         return float(self._media_info.get("duration", 0.0))
 
+    @Property(str, notify=mediaChanged)
+    def mediaArt(self) -> str:
+        """v0.22：当前曲目专辑封面的本地文件路径；取不到时为 ""。"""
+        return self._media_art
+
+    @Property(str, notify=mediaChanged)
+    def mediaArtUrl(self) -> str:
+        """v0.22：mediaArt 对应的 file:// URL，QML Image.source 直接可用；无封面为 ""。"""
+        path = self._media_art
+        if not path:
+            return ""
+        return QUrl.fromLocalFile(path).toString()
+
     @Property(bool, notify=mediaChanged)
     def mediaHasSession(self) -> bool:
         return bool(self._media_info.get("has", False))
@@ -843,7 +859,11 @@ class AppBridge(QObject):
         self._media.previous()
 
     def _on_media_changed(self, payload: dict) -> None:
-        self._media_info = dict(payload or {})
+        info = dict(payload or {})
+        self._media_info = info
+        # 切歌/无媒体时一起更新（清空）封面，避免灵动岛显示上一首的封面
+        art = str(info.get("art", "") or "")
+        self._media_art = art if info.get("has", False) else ""
         self.mediaChanged.emit()
 
     # ================= 主窗口 / 退出（速启面板用） =================

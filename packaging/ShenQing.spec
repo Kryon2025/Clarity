@@ -42,6 +42,12 @@ hiddenimports = [
     "win32con",
     "win32com.shell",
     "winreg",
+    # 系统媒体会话（灵动岛歌曲信息/封面；服务内是延迟导入，PyInstaller 静态分析抓不到）
+    "winrt",
+    "winrt.windows.media.control",
+    "winrt.windows.storage",
+    "winrt.windows.storage.streams",
+    "winrt.windows.foundation",
 ]
 
 a = Analysis(

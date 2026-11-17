@@ -1,17 +1,30 @@
 """Windows SMTC（System Media Transport Controls）媒体信息服务。
 
-后台线程跑 asyncio 轮询当前媒体会话（标题/艺术家/播放状态/进度），
+后台线程跑 asyncio 轮询当前媒体会话（标题/艺术家/播放状态/进度/专辑封面），
 通过 Qt 信号把数据交给主线程；提供播放/暂停、上一首、下一首控制。
+封面（thumbnail）按曲目写入临时目录缓存，读取失败一律静默降级为 ""。
 不依赖第三方包以外的 GUI，WinRT 不可用时整体降级为 available=False。
 """
 
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import tempfile
 import threading
+from pathlib import Path
 from typing import Any
 
 from PySide6.QtCore import QObject, Signal
+
+#: 封面缓存目录（系统临时目录下按曲目 sha1 命名，v0.22 起给灵动岛提供专辑封面）
+ART_CACHE_DIR: Path = Path(tempfile.gettempdir()) / "shenqing-media-art"
+#: 缓存目录最多保留的封面文件数（按 mtime 清理最旧的）
+ART_CACHE_KEEP = 40
+#: 单张封面最大字节数，超过视为异常数据
+_MAX_ART_BYTES = 8 * 1024 * 1024
+#: 同一曲目读不到封面时最多重试的轮询次数（避免每秒都去碰 WinRT）
+_ART_RETRIES = 3
 
 #: 常见播放器 AUMID/进程名 -> 友好名
 _APP_NAMES: dict[str, str] = {
@@ -44,6 +57,116 @@ def _friendly_app(app_id: str) -> str:
     return app_id or "媒体"
 
 
+# ---------- 封面缓存（纯逻辑，不依赖 winrt，方便单测） ----------
+def art_cache_path(title: str, artist: str, album: str, extension: str = "png") -> Path:
+    """同一首曲目永远得到同一个缓存路径；不同曲目互不相同。"""
+    key = f"{title or ''}|{artist or ''}|{album or ''}".encode("utf-8", "replace")
+    digest = hashlib.sha1(key).hexdigest()[:16]
+    ext = (extension or "png").strip().lstrip(".").lower() or "png"
+    return ART_CACHE_DIR / f"{digest}.{ext}"
+
+
+def detect_image_ext(data: bytes) -> str:
+    """按文件头识别图片格式，返回 png/jpg/bmp/webp；识别不了返回 ""。"""
+    if not isinstance(data, (bytes, bytearray, memoryview)):
+        return ""
+    try:
+        raw = bytes(data)
+    except Exception:  # noqa: BLE001
+        return ""
+    if raw.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "png"
+    if raw.startswith(b"\xff\xd8\xff"):
+        return "jpg"
+    if raw.startswith(b"BM"):
+        return "bmp"
+    if raw[:4] == b"RIFF" and raw[8:12] == b"WEBP":
+        return "webp"
+    return ""
+
+
+def prune_art_cache(directory: Path, keep: int = ART_CACHE_KEEP) -> int:
+    """只保留 directory 里最新的 keep 个文件（按 mtime），返回删除数量。"""
+    try:
+        directory = Path(directory)
+        if not directory.is_dir():
+            return 0
+        files = [item for item in directory.iterdir() if item.is_file()]
+    except OSError:
+        return 0
+    limit = max(0, int(keep))
+    if len(files) <= limit:
+        return 0
+
+    def _mtime(item: Path) -> float:
+        try:
+            return item.stat().st_mtime
+        except OSError:
+            return 0.0
+
+    files.sort(key=lambda item: (_mtime(item), item.name), reverse=True)
+    removed = 0
+    for stale in files[limit:]:
+        try:
+            stale.unlink()
+            removed += 1
+        except OSError:
+            pass
+    return removed
+
+
+def save_art_bytes(data: Any, title: str, artist: str, album: str) -> str:
+    """校验图片字节并落盘到缓存目录，返回绝对路径；非图片/写失败返回 ""。"""
+    ext = detect_image_ext(data)
+    if not ext:
+        return ""
+    try:
+        payload = bytes(data)
+        target = art_cache_path(title, artist, album, ext)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            # 同曲目重复轮询：内容没变就只刷新 mtime，避免每秒重写文件
+            if target.is_file() and target.read_bytes() == payload:
+                target.touch()
+                prune_art_cache(target.parent, ART_CACHE_KEEP)
+                return str(target)
+        except OSError:
+            pass
+        temp = target.with_name(f"{target.name}.tmp")
+        temp.write_bytes(payload)
+        temp.replace(target)
+        prune_art_cache(target.parent, ART_CACHE_KEEP)
+        return str(target)
+    except OSError:
+        return ""
+
+
+def _reader_bytes(reader: Any, count: int) -> bytes:
+    """从 DataReader 里取出 count 字节；pywinrt 版本不同，取法多路兜底。"""
+    try:
+        from winrt.system import Array, UInt8
+
+        buffer = Array(UInt8, count)
+        reader.read_bytes(buffer)
+        data = bytes(memoryview(buffer))
+        if data:
+            return data
+    except Exception:  # noqa: BLE001 - 旧版本 / 接口差异
+        pass
+    try:
+        ibuffer = reader.read_buffer(count)
+    except Exception:  # noqa: BLE001
+        return b""
+    for cast in (lambda buf: bytes(memoryview(buf)), bytes):
+        try:
+            data = cast(ibuffer)
+        except Exception:  # noqa: BLE001
+            continue
+        if data:
+            return data
+    return b""
+
+
 class MediaSmtcService(QObject):
     """轮询 SMTC 会话；数据以 dict 形式发 changed 信号。"""
 
@@ -58,6 +181,8 @@ class MediaSmtcService(QObject):
         self._available = False
         self._last: dict[str, Any] = {}
         self._lock = threading.Lock()
+        # 封面缓存：("标题|艺术家|专辑", 路径, 已失败次数)，避免每秒重复读 WinRT 缩略图
+        self._art_state: tuple[str, str, int] = ("", "", 0)
 
     # ---------- 生命周期 ----------
     @property
@@ -157,14 +282,18 @@ class MediaSmtcService(QObject):
             except Exception:  # noqa: BLE001
                 position = duration = 0.0
         title = getattr(props, "title", "") or ""
+        artist = getattr(props, "artist", "") or ""
+        album = getattr(props, "album_title", "") or ""
         app_id = session.source_app_user_model_id or ""
         if not title:
             return self._empty()
+        art = await self._art_for(props, title, artist, album)
         return {
             "has": True,
             "title": title,
-            "artist": getattr(props, "artist", "") or "",
-            "album": getattr(props, "album_title", "") or "",
+            "artist": artist,
+            "album": album,
+            "art": art,
             "app": _friendly_app(app_id),
             "appId": app_id,
             "playing": playing,
@@ -179,12 +308,68 @@ class MediaSmtcService(QObject):
             "title": "",
             "artist": "",
             "album": "",
+            "art": "",
             "app": "",
             "appId": "",
             "playing": False,
             "position": 0.0,
             "duration": 0.0,
         }
+
+    # ---------- 专辑封面 ----------
+    async def _art_for(self, props: Any, title: str, artist: str, album: str) -> str:
+        """当前曲目的封面路径：同曲目复用缓存，连续读不到就放弃（不拖慢轮询）。"""
+        key = f"{title}|{artist}|{album}"
+        cached_key, cached_path, tries = self._art_state
+        if cached_key == key:
+            if cached_path and Path(cached_path).is_file():
+                return cached_path
+            if not cached_path and tries >= _ART_RETRIES:
+                return ""
+        art = await self._read_art(props, title, artist, album)
+        self._art_state = (key, art, tries + 1 if cached_key == key else 1)
+        return art
+
+    async def _read_art(self, props: Any, title: str, artist: str, album: str) -> str:
+        """读 SMTC 缩略图并落盘缓存；任何异常都静默返回 ""，绝不中断轮询。"""
+        try:
+            thumbnail = getattr(props, "thumbnail", None)
+            if thumbnail is None:
+                return ""
+            data = await self._read_thumbnail_bytes(thumbnail)
+            if not data:
+                return ""
+            return save_art_bytes(data, title, artist, album)
+        except Exception:  # noqa: BLE001 - 封面失败不能影响媒体轮询
+            return ""
+
+    @staticmethod
+    async def _read_thumbnail_bytes(thumbnail: Any) -> bytes:
+        """IRandomAccessStreamReference -> bytes；拿不到就返回 b""。"""
+        try:
+            from winrt.windows.storage.streams import DataReader
+        except Exception:  # noqa: BLE001 - 没装 WinRT / 版本不匹配
+            return b""
+        try:
+            stream = await thumbnail.open_read_async()
+        except Exception:  # noqa: BLE001 - 无权限 / 会话已关闭
+            return b""
+        if stream is None:
+            return b""
+        try:
+            size = int(stream.size or 0)
+        except Exception:  # noqa: BLE001
+            return b""
+        if size <= 0 or size > _MAX_ART_BYTES:
+            return b""
+        try:
+            reader = DataReader(stream)
+            loaded = int(await reader.load_async(size) or 0)
+        except Exception:  # noqa: BLE001
+            return b""
+        if loaded <= 0:
+            return b""
+        return _reader_bytes(reader, loaded)
 
     # ---------- 控制 ----------
     def _run_coroutine(self, factory) -> None:  # noqa: ANN001
