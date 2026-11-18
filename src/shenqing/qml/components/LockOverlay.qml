@@ -173,6 +173,39 @@ Window {
     property var widgetIds: ["quote", "focusCount", "streak"]
     readonly property var allWidgetIds: ["clock", "quote", "countdown", "focusCount", "streak"]
 
+    // v0.29：清番活动（供灵动岛多活动卡显示）
+    readonly property bool pomodoroLive: (typeof App !== "undefined"
+                                          && App.pomodoroRunning !== undefined)
+                                         ? App.pomodoroRunning === true : false
+    readonly property real pomodoroProgress: {
+        if (!overlay.pomodoroLive) return 0
+        var total = Number(App.pomodoroPresetTotal !== undefined ? App.pomodoroPresetTotal : 0)
+        var remain = Number(App.pomodoroRemaining !== undefined ? App.pomodoroRemaining : 0)
+        if (!isFinite(total) || total <= 0) return 0
+        return Math.max(0, Math.min(1, 1 - remain / total))
+    }
+    readonly property string pomodoroTitle: {
+        if (!overlay.pomodoroLive) return ""
+        var phase = String(App.pomodoroPhase !== undefined ? App.pomodoroPhase : "")
+        return phase === "break" ? qsTr("清番 · 休息中") : qsTr("清番 · 专注中")
+    }
+    readonly property string pomodoroSub: {
+        if (!overlay.pomodoroLive) return ""
+        var remain = Number(App.pomodoroRemaining !== undefined ? App.pomodoroRemaining : 0)
+        var round = Number(App.pomodoroRound !== undefined ? App.pomodoroRound : 0)
+        var totalRounds = Number(App.pomodoroTotalRounds !== undefined ? App.pomodoroTotalRounds : 0)
+        var clock = overlay.formatMMSS(remain)
+        return totalRounds > 0
+               ? qsTr("剩余 %1 · 第 %2 / %3 个番茄").arg(clock).arg(Math.max(1, round)).arg(totalRounds)
+               : qsTr("剩余 %1").arg(clock)
+    }
+    function formatMMSS(seconds) {
+        var total = Math.max(0, Math.round(Number(seconds) || 0))
+        var m = Math.floor(total / 60)
+        var s = total % 60
+        return (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s
+    }
+
     function refreshClock() {
         var d = new Date()
         function two(n) { return n < 10 ? "0" + n : String(n) }
@@ -1018,9 +1051,14 @@ Window {
                                                       || anchorName === "bottomRight"
                     readonly property bool bottomSide: anchorName === "bottomLeft"
                                                        || anchorName === "bottomRight"
-                    readonly property real defaultX: rightSide ? overlay.width - width - 28 : 28
+                    // 右下角插件组件默认避开白名单 dock（可拖动覆盖）
+                    readonly property real dockReserve: (rightSide && overlay.whitelistDock) ? 130 : 0
+                    readonly property real defaultX: rightSide ? overlay.width - width - 28 - dockReserve : 28
                     // 底部组件上移，给「暂停 / 提前结束」留出点击空间
-                    readonly property real defaultY: bottomSide ? overlay.height - height - 104 : 92
+                    // 底部插件组件：有 dock 时更贴近底部，避免压住「每日一言」等布局组件
+                    readonly property real defaultY: bottomSide
+                                                     ? overlay.height - height - (overlay.whitelistDock ? 36 : 104)
+                                                     : 92
 
                     width: widgetData.width !== undefined ? Number(widgetData.width) : 240
                     height: widgetData.height !== undefined ? Number(widgetData.height) : 120
@@ -1166,13 +1204,16 @@ Window {
                 delegate: Item {
                     id: layoutSlot
                     readonly property var entry: modelData
-                    readonly property real halfWidth: overlay.width * 0.5
+                    // v0.29：右侧给白名单 dock 预留 150px，组件整体左移，避免被 dock 压住
+                    readonly property real areaLeft: overlay.width * 0.5
+                    readonly property real areaRight: overlay.width - (overlay.whitelistDock ? 150 : 0)
+                    readonly property real areaWidth: Math.max(200, layoutSlot.areaRight - layoutSlot.areaLeft)
                     readonly property bool entryVisible: entry.visible !== false
 
                     // 归一化坐标（右半屏自身 0~1）→ 屏幕像素
-                    x: Math.round(layoutSlot.halfWidth + Number(entry.x) * layoutSlot.halfWidth)
+                    x: Math.round(layoutSlot.areaLeft + Number(entry.x) * layoutSlot.areaWidth)
                     y: Math.round(Number(entry.y) * overlay.height)
-                    width: Math.max(8, Math.round(Number(entry.w) * layoutSlot.halfWidth))
+                    width: Math.max(8, Math.round(Number(entry.w) * layoutSlot.areaWidth))
                     height: Math.max(8, Math.round(Number(entry.h) * overlay.height))
                     visible: layoutSlot.entryVisible
                     z: 1
@@ -1214,12 +1255,17 @@ Window {
             mediaPosition: overlay.mediaPositionValue
             mediaDuration: overlay.mediaDurationValue
             mediaArtUrl: overlay.mediaArtUrl
-            focusLine: overlay.previewing
-                       ? qsTr("预览 · %1").arg(overlay.levelLabel)
-                       : qsTr("专注中 · 剩余 %1").arg(overlay.remainingTextValue)
-            focusSub: overlay.spaceName !== ""
-                      ? qsTr("%1 · 已完成 %2%").arg(overlay.spaceName).arg(overlay.percentValue)
-                      : qsTr("已完成 %1%").arg(overlay.percentValue)
+            focusActive: overlay.shouldShow
+            focusTitle: overlay.previewing
+                        ? qsTr("预览 · %1").arg(overlay.levelLabel)
+                        : (overlay.spaceName !== "" ? overlay.spaceName : qsTr("专注中"))
+            focusSub: qsTr("剩余 %1 · 已完成 %2%")
+                      .arg(overlay.remainingTextValue).arg(overlay.percentValue)
+            focusProgress: overlay.progressValue
+            pomodoroActive: overlay.pomodoroLive
+            pomodoroTitle: overlay.pomodoroTitle
+            pomodoroSub: overlay.pomodoroSub
+            pomodoroProgress: overlay.pomodoroProgress
             onTogglePlay: if (typeof App.mediaToggle === "function") App.mediaToggle()
             onNextTrack: if (typeof App.mediaNext === "function") App.mediaNext()
             onPrevTrack: if (typeof App.mediaPrev === "function") App.mediaPrev()

@@ -19,11 +19,12 @@ Item {
     property bool selected: false
 
     readonly property real corner: 18
-    readonly property real padH: compact ? 10 : 14
-    readonly property real padV: compact ? 8 : 11
-    readonly property real titleGap: compact ? 4 : 7
-    readonly property real titlePixel: AppTheme.fs(compact ? 10 : 11)
-    readonly property real titleRowHeight: Math.max(compact ? 12 : 14, titlePixel + 2)
+    // v0.29：内边距与标题间距收紧，避免「框大字小、四周空」
+    readonly property real padH: compact ? 8 : 11
+    readonly property real padV: compact ? 6 : 8
+    readonly property real titleGap: compact ? 3 : 4
+    readonly property real titlePixel: AppTheme.fs(compact ? 9.5 : 10)
+    readonly property real titleRowHeight: Math.max(compact ? 11 : 13, titlePixel + 2)
     readonly property real titleRowWidth: Math.max(0, card.width - card.padH * 2)
 
     clip: true
@@ -81,7 +82,7 @@ Item {
             color: AppTheme.textTertiary
             font.pixelSize: card.titlePixel
             font.family: AppTheme.fontFamily
-            font.letterSpacing: 1
+            font.letterSpacing: 0.3
             elide: Text.ElideRight
         }
     }

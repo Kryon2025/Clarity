@@ -56,7 +56,7 @@ Item {
                 text: "“" + widget.quoteText + "”"
                 color: AppTheme.textPrimary
                 font.family: AppTheme.fontFamily
-                font.pixelSize: Math.min(20, Math.max(10, widget.height * 0.14))
+                font.pixelSize: Math.min(18, Math.max(10, widget.height * 0.12))
                 wrapMode: Text.WordWrap
                 maximumLineCount: 2
                 elide: Text.ElideRight
@@ -69,7 +69,7 @@ Item {
                 visible: !widget.dense && widget.sourceText !== ""
                 text: widget.sourceText
                 color: AppTheme.textTertiary
-                font.pixelSize: Math.min(11, Math.max(8, widget.height * 0.07))
+                font.pixelSize: Math.min(10, Math.max(8, widget.height * 0.065))
                 font.family: AppTheme.fontFamily
             }
 
