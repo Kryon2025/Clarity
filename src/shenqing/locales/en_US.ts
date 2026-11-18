@@ -1317,89 +1317,115 @@ Fill in the provider and API key on the left, then send a message.</translation>
         <translation>Focus</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="191"/>
+        <location filename="../qml/components/LockOverlay.qml" line="190"/>
+        <source>清番 · 休息中</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/components/LockOverlay.qml" line="190"/>
+        <source>清番 · 专注中</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/components/LockOverlay.qml" line="199"/>
+        <source>剩余 %1 · 第 %2 / %3 个番茄</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/components/LockOverlay.qml" line="200"/>
+        <source>剩余 %1</source>
+        <translation type="unfinished">%1 left</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/LockOverlay.qml" line="224"/>
         <source>时钟</source>
         <translation>Clock</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="192"/>
+        <location filename="../qml/components/LockOverlay.qml" line="225"/>
         <source>每日一言</source>
         <translation>Daily quote</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="193"/>
+        <location filename="../qml/components/LockOverlay.qml" line="226"/>
         <source>倒数日</source>
         <translation>Countdown</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="194"/>
+        <location filename="../qml/components/LockOverlay.qml" line="227"/>
         <source>今日专注</source>
         <translation>Focus today</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="195"/>
+        <location filename="../qml/components/LockOverlay.qml" line="228"/>
         <source>连续打卡</source>
         <translation>Streak</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="203"/>
-        <location filename="../qml/components/LockOverlay.qml" line="209"/>
+        <location filename="../qml/components/LockOverlay.qml" line="236"/>
+        <location filename="../qml/components/LockOverlay.qml" line="242"/>
         <source>%1 天</source>
         <translation>%1 days</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="204"/>
+        <location filename="../qml/components/LockOverlay.qml" line="237"/>
         <source>还没有倒数日</source>
         <translation>No countdown yet</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="207"/>
+        <location filename="../qml/components/LockOverlay.qml" line="240"/>
         <source>%1 次</source>
         <translation>%1 times</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="207"/>
+        <location filename="../qml/components/LockOverlay.qml" line="240"/>
         <source>0 次</source>
         <translation>0 times</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="209"/>
+        <location filename="../qml/components/LockOverlay.qml" line="242"/>
         <source>0 天</source>
         <translation>0 days</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="619"/>
+        <location filename="../qml/components/LockOverlay.qml" line="652"/>
         <source>预览</source>
         <translation>Preview</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="702"/>
+        <location filename="../qml/components/LockOverlay.qml" line="735"/>
         <source>预览 · %1档</source>
         <translation>Preview · %1 mode</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="703"/>
+        <location filename="../qml/components/LockOverlay.qml" line="736"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1261"/>
         <source>专注中</source>
         <translation>Focusing</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="796"/>
+        <location filename="../qml/components/LockOverlay.qml" line="829"/>
         <source>本档不可暂停，也不可提前结束</source>
         <translation>This tier cannot be paused or ended early</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1136"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1174"/>
         <source>恢复插件组件 (%1)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1443"/>
-        <location filename="../qml/components/LockOverlay.qml" line="1592"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1262"/>
+        <source>剩余 %1 · 已完成 %2%</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/components/LockOverlay.qml" line="1489"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1638"/>
         <source>控制面板</source>
         <translation>Control panel</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1471"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1517"/>
         <source>点击 %1 次</source>
         <translation>%1 clicks</translation>
     </message>
@@ -1412,17 +1438,17 @@ Fill in the provider and API key on the left, then send a message.</translation>
         <translation type="vanished">System volume</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1744"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1790"/>
         <source>当前系统不支持音量调节</source>
         <translation>Volume control is not supported on this system</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1714"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1760"/>
         <source>关机</source>
         <translation>Shut down</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1722"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1768"/>
         <source>重启</source>
         <translation>Restart</translation>
     </message>
@@ -1435,59 +1461,59 @@ Fill in the provider and API key on the left, then send a message.</translation>
         <translation type="vanished">Shutdown and restart ask for confirmation first.</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1802"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1848"/>
         <source>确认关机？</source>
         <translation>Shut down now?</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1802"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1848"/>
         <source>确认重启？</source>
         <translation>Restart now?</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1812"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1858"/>
         <source>系统会立即执行该操作，未保存的工作可能丢失。</source>
         <translation>This happens immediately and unsaved work may be lost.</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1730"/>
-        <location filename="../qml/components/LockOverlay.qml" line="1825"/>
-        <location filename="../qml/components/LockOverlay.qml" line="1946"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1776"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1871"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1992"/>
         <source>取消</source>
         <translation>Cancel</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1599"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1645"/>
         <source>音量与电源 · 覆清档右侧 dock</source>
         <translation>Volume &amp; power · right dock of the Veil tier</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1752"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1798"/>
         <source>拖动滑块实时调整系统音量；关机 / 重启会先弹出确认，避免误触。</source>
         <translation>Drag the slider to change system volume; shutdown/restart asks for confirmation first to avoid mis-taps.</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1839"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1885"/>
         <source>确认执行</source>
         <translation>Confirm</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1913"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1959"/>
         <source>确认退出本次专注？</source>
         <translation>End this focus session?</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1923"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1969"/>
         <source>你连续点击了 10 次时间显示。确认后将立即结束本次专注，本轮不算完整完成。</source>
         <translation>You clicked the time display 10 times. Confirming ends this session immediately and it won&apos;t count as completed.</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1933"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1979"/>
         <source>如果只是误触，点「取消」继续专注。</source>
         <translation>If this was accidental, choose Cancel to keep focusing.</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1960"/>
+        <location filename="../qml/components/LockOverlay.qml" line="2006"/>
         <source>确认退出</source>
         <translation>Confirm exit</translation>
     </message>
@@ -1500,22 +1526,22 @@ Fill in the provider and API key on the left, then send a message.</translation>
         <translation type="vanished">%1% complete · %2 min left</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="200"/>
+        <location filename="../qml/components/LockOverlay.qml" line="233"/>
         <source>把这件事做完，再抬头。</source>
         <translation>Finish this, then look up.</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="784"/>
+        <location filename="../qml/components/LockOverlay.qml" line="817"/>
         <source>预览剩余 · 不计入专注统计</source>
         <translation>Preview · not counted in focus stats</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="785"/>
+        <location filename="../qml/components/LockOverlay.qml" line="818"/>
         <source>剩余 · 已完成 %1%</source>
         <translation>Remaining · %1% done</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="793"/>
+        <location filename="../qml/components/LockOverlay.qml" line="826"/>
         <source>10 秒假倒计时，仅用于预览遮罩效果</source>
         <translation>10-second demo countdown, only to preview the lock screen</translation>
     </message>
@@ -1524,7 +1550,7 @@ Fill in the provider and API key on the left, then send a message.</translation>
         <translation type="vanished">Click &quot;End preview&quot; at the bottom right to exit</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="794"/>
+        <location filename="../qml/components/LockOverlay.qml" line="827"/>
         <source>体验模式 · 可提前结束</source>
         <translation>Trial mode · can end early</translation>
     </message>
@@ -1533,67 +1559,64 @@ Fill in the provider and API key on the left, then send a message.</translation>
         <translation type="vanished">This window closes itself when the session ends</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="797"/>
+        <location filename="../qml/components/LockOverlay.qml" line="830"/>
         <source>可以暂停，但时间不会等你</source>
         <translation>You can pause, but time will not wait</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="848"/>
+        <location filename="../qml/components/LockOverlay.qml" line="881"/>
         <source>组件</source>
         <translation>Widgets</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="871"/>
+        <location filename="../qml/components/LockOverlay.qml" line="904"/>
         <source>＋ 添加组件</source>
         <translation>+ Add widget</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1218"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1260"/>
         <source>预览 · %1</source>
         <translation>Preview · %1</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1219"/>
         <source>专注中 · 剩余 %1</source>
-        <translation>Focusing · %1 left</translation>
+        <translation type="vanished">Focusing · %1 left</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1221"/>
         <source>%1 · 已完成 %2%</source>
-        <translation>%1 · %2% complete</translation>
+        <translation type="vanished">%1 · %2% complete</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1222"/>
         <source>已完成 %1%</source>
-        <translation>%1% complete</translation>
+        <translation type="vanished">%1% complete</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1282"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1328"/>
         <source>未设置允许使用的应用</source>
         <translation>No allowed apps yet</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1489"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1535"/>
         <source>结束预览</source>
         <translation>End preview</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1500"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1546"/>
         <source>继续</source>
         <translation>Resume</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1500"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1546"/>
         <source>暂停</source>
         <translation>Pause</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1515"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1561"/>
         <source>提前结束</source>
         <translation>End early</translation>
     </message>
     <message>
-        <location filename="../qml/components/LockOverlay.qml" line="1515"/>
+        <location filename="../qml/components/LockOverlay.qml" line="1561"/>
         <source>结束体验</source>
         <translation>End trial</translation>
     </message>
@@ -1737,14 +1760,15 @@ Fill in the provider and API key on the left, then send a message.</translation>
 <context>
     <name>MediaIsland</name>
     <message>
-        <location filename="../qml/components/MediaIsland.qml" line="25"/>
+        <location filename="../qml/components/MediaIsland.qml" line="384"/>
+        <location filename="../qml/components/MediaIsland.qml" line="526"/>
         <source>专注中</source>
         <translation>Focusing</translation>
     </message>
     <message>
-        <location filename="../qml/components/MediaIsland.qml" line="663"/>
-        <source>完成本轮后自动解除专注</source>
-        <translation type="unfinished"></translation>
+        <location filename="../qml/components/MediaIsland.qml" line="436"/>
+        <source>清番</source>
+        <translation type="unfinished">Pomodoro</translation>
     </message>
     <message>
         <source>正在播放</source>
