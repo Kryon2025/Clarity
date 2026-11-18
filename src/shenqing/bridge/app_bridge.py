@@ -68,6 +68,7 @@ from ..services import app_usage
 from ..services import backup as backup_service
 from ..services import click_counter
 from ..services import cloud_sync as cloud_sync_service
+from ..services import lyrics as lyrics_service
 from ..services import overlay_widgets as overlay_widgets_service
 from ..services import pomodoro as pomodoro_service
 from ..services import desktop_icons, site_blocker
@@ -192,6 +193,7 @@ class AppBridge(QObject):
     #: v0.6：从覆清 dock 启动白名单应用成功（携带 exe 名/路径），供主程序把应用窗口提到遮罩之上
     appLaunched = Signal(str)
     mediaChanged = Signal()
+    _lyricsReady = Signal(list, str, str)  # lines, key, error
     showMainRequested = Signal()
     spacesPageRequested = Signal(str)
     settingsRequested = Signal()
@@ -402,6 +404,9 @@ class AppBridge(QObject):
 
         self._media = MediaSmtcService(self)
         self._media.changed.connect(self._on_media_changed)
+        self._lyric_lines: list[dict] = []
+        self._lyric_key = ""
+        self._lyricsReady.connect(self._on_lyrics_ready)
         # 冒烟/测试模式下不起 WinRT 轮询线程（离屏环境没有媒体会话，也没必要）
         if os.environ.get("SHENQING_NO_SCAN") != "1":
             self._media.start()
@@ -907,12 +912,63 @@ class AppBridge(QObject):
     def mediaPrev(self) -> None:
         self._media.previous()
 
+    # ================= 歌词（灵动岛显示当前一句） =================
+    def _request_lyrics(self, info: dict) -> None:
+        if not info.get("has"):
+            self._lyric_key = ""
+            self._lyric_lines = []
+            return
+        title = str(info.get("title") or "")
+        artist = str(info.get("artist") or "")
+        key = (title + "|" + artist).lower()
+        if key == self._lyric_key:
+            return
+        self._lyric_key = key
+        self._lyric_lines = []
+        if not title:
+            return
+
+        def worker() -> None:
+            try:
+                result = lyrics_service.fetch_lyrics(title, artist)
+                self._lyricsReady.emit(list(result.get("lines") or []), key,
+                                       str(result.get("error") or ""))
+            except Exception:  # noqa: BLE001 - 歌词失败静默
+                pass
+
+        threading.Thread(target=worker, name="shenqing-lyrics", daemon=True).start()
+
+    def _on_lyrics_ready(self, lines: list, key: str, error: str) -> None:
+        if str(key) != self._lyric_key:
+            return  # 已切歌
+        self._lyric_lines = list(lines or [])
+        if error:
+            logger.debug("歌词获取失败：%s", error)
+        self.mediaChanged.emit()
+
+    @Property(str, notify=mediaChanged)
+    def mediaLyric(self) -> str:
+        info = self._media_info or {}
+        if not info.get("has"):
+            return ""
+        current, _next = lyrics_service.pick_line(self._lyric_lines, info.get("position") or 0)
+        return current
+
+    @Property(str, notify=mediaChanged)
+    def mediaLyricNext(self) -> str:
+        info = self._media_info or {}
+        if not info.get("has"):
+            return ""
+        _current, following = lyrics_service.pick_line(self._lyric_lines, info.get("position") or 0)
+        return following
+
     def _on_media_changed(self, payload: dict) -> None:
         info = dict(payload or {})
         self._media_info = info
         # 切歌/无媒体时一起更新（清空）封面，避免灵动岛显示上一首的封面
         art = str(info.get("art", "") or "")
         self._media_art = art if info.get("has", False) else ""
+        self._request_lyrics(info)
         self.mediaChanged.emit()
 
     # ================= 主窗口 / 退出（速启面板用） =================
@@ -5229,8 +5285,12 @@ class AppBridge(QObject):
     def dockApps(self) -> list[dict]:
         catalog = {str(item.get("exe", "")).lower(): item for item in self._catalog}
         result: list[dict] = []
-        medium = self._spaces.get_by_mode("medium") or self._spaces.space
-        for exe in medium.get("allowed_apps", []):
+        # v0.29：dock 按当前档位取白名单（浅清/覆清各自的应用），不再固定用覆清
+        level = str(self._session_level or "")
+        space = self._spaces.get_by_mode(level) if level in ("light", "medium") else None
+        if space is None:
+            space = self._spaces.get_by_mode("medium") or self._spaces.space
+        for exe in space.get("allowed_apps", []):
             item = catalog.get(str(exe).lower())
             if item is not None:
                 result.append(

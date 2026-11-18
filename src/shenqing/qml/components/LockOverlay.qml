@@ -466,6 +466,10 @@ Window {
     readonly property bool hasMedia: App.mediaHasSession === true
     readonly property string mediaArtUrl: (typeof App !== "undefined" && App.mediaArtUrl !== undefined)
                                           ? String(App.mediaArtUrl) : ""
+    readonly property string mediaLyricText: (typeof App !== "undefined" && App.mediaLyric !== undefined)
+                                             ? String(App.mediaLyric) : ""
+    readonly property string mediaLyricNextText: (typeof App !== "undefined" && App.mediaLyricNext !== undefined)
+                                                 ? String(App.mediaLyricNext) : ""
     readonly property string mediaTitleText: App.mediaTitle !== undefined ? String(App.mediaTitle) : ""
     readonly property string mediaArtistText: App.mediaArtist !== undefined ? String(App.mediaArtist) : ""
     readonly property string mediaAlbumText: App.mediaAlbum !== undefined ? String(App.mediaAlbum) : ""
@@ -1255,6 +1259,8 @@ Window {
             mediaPosition: overlay.mediaPositionValue
             mediaDuration: overlay.mediaDurationValue
             mediaArtUrl: overlay.mediaArtUrl
+            mediaLyric: overlay.mediaLyricText
+            mediaLyricNext: overlay.mediaLyricNextText
             focusActive: overlay.shouldShow
             focusTitle: overlay.previewing
                         ? qsTr("预览 · %1").arg(overlay.levelLabel)

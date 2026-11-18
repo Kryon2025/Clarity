@@ -24,6 +24,8 @@ Item {
     property bool mediaPlaying: false
     property real mediaPosition: 0
     property real mediaDuration: 0
+    property string mediaLyric: ""
+    property string mediaLyricNext: ""
 
     // 专注活动
     property bool focusActive: false
@@ -227,6 +229,17 @@ Item {
                     color: "#A6FFFFFF"
                     font.pixelSize: AppTheme.fs(13)
                     font.family: AppTheme.fontFamily
+                    elide: Text.ElideRight
+                }
+                // 当前一句歌词（没有歌词时不占位）
+                Text {
+                    width: parent.width
+                    visible: text !== ""
+                    text: island.mediaLyric
+                    color: "#E6FFFFFF"
+                    font.pixelSize: AppTheme.fs(12.5)
+                    font.family: AppTheme.fontFamily
+                    font.italic: true
                     elide: Text.ElideRight
                 }
             }
@@ -533,7 +546,8 @@ Item {
             Text {
                 width: parent.width
                 text: island.hasMedia
-                      ? (island.mediaArtist !== "" ? island.mediaArtist : island.mediaApp)
+                      ? (island.mediaLyric !== "" ? island.mediaLyric
+                                                  : (island.mediaArtist !== "" ? island.mediaArtist : island.mediaApp))
                       : island.focusSub
                 visible: text !== ""
                 color: "#A6FFFFFF"

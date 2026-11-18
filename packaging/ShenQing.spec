@@ -10,7 +10,7 @@
 import os
 from pathlib import Path
 
-from PyInstaller.utils.hooks import collect_data_files
+from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
 ROOT = Path(SPECPATH).resolve().parent  # 项目根目录（深清/）
 SRC = ROOT / "src"
@@ -29,6 +29,8 @@ datas += [
     (str(ROOT / "CHANGELOG.md"), "."),
 ]
 datas += collect_data_files("RinUI")             # RinUI 的 QML 组件与字体
+# WinRT 投影包：除了 python 模块，还需要各命名空间的 _table.pywinrt / pyi
+datas += collect_data_files("winrt")
 
 hiddenimports = [
     "RinUI",
@@ -49,6 +51,8 @@ hiddenimports = [
     "winrt.windows.storage.streams",
     "winrt.windows.foundation",
 ]
+# 动态收集 winrt 的所有命名空间子模块（媒体会话/封面依赖）
+hiddenimports += collect_submodules("winrt")
 
 a = Analysis(
     [str(ROOT / "run.py")],
